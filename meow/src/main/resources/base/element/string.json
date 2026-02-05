@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Consume dictionary files nya!"
+    },
+    {
+      "name": "MeowAbility_desc",
+      "value": "To read dictionaries!"
+    },
+    {
+      "name": "MeowAbility_label",
+      "value": "Dictionareow"
+    },
+    {
+      "name": "permission_reason_INTERNET",
+      "value": "To show perhaps web resources?"
+    }
+  ]
+}

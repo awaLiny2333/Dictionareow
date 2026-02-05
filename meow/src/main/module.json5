@@ -1,0 +1,67 @@
+{
+  "module": {
+    "name": "meow",
+    "type": "entry",
+    "description": "$string:module_desc",
+    "mainElement": "MeowAbility",
+    "deviceTypes": [
+      "phone",
+      "tablet",
+      "2in1",
+      "car",
+      "wearable",
+      "tv"
+    ],
+    "deliveryWithInstall": true,
+    "installationFree": false,
+    "pages": "$profile:main_pages",
+    "abilities": [
+      {
+        "name": "MeowAbility",
+        "srcEntry": "./ets/meowability/MeowAbility.ets",
+        "description": "$string:MeowAbility_desc",
+        "icon": "$media:layered_image",
+        "label": "$string:MeowAbility_label",
+        "startWindowIcon": "$media:startIcon",
+        "startWindowBackground": "$color:start_window_background",
+        "exported": true,
+        "skills": [
+          {
+            "entities": [
+              "entity.system.home"
+            ],
+            "actions": [
+              "ohos.want.action.home"
+            ]
+          }
+        ]
+      }
+    ],
+    "extensionAbilities": [
+      {
+        "name": "MeowBackupAbility",
+        "srcEntry": "./ets/meowbackupability/MeowBackupAbility.ets",
+        "type": "backup",
+        "exported": false,
+        "metadata": [
+          {
+            "name": "ohos.extension.backup",
+            "resource": "$profile:backup_config"
+          }
+        ],
+      }
+    ],
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.INTERNET",
+        "reason": "$string:permission_reason_INTERNET",
+        "usedScene": {
+          "when": "inuse",
+          "abilities": [
+            "HomeAbility"
+          ]
+        }
+      }
+    ]
+  }
+}

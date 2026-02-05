@@ -1,0 +1,200 @@
+import lazy { AppStorageV2, display, window } from '@kit.ArkUI';
+import lazy { meow, meowLevel } from './catsLogger';
+import { deviceInfo, settings } from '@kit.BasicServicesKit';
+
+/**
+ * Converts px to vp.
+ * @param px The true px.
+ * @returns The equivalent vp.
+ * */
+export function meowPx2vp(px: number) {
+  try {
+    return px / display.getDefaultDisplaySync().densityPixels;
+  } catch (e) {
+    // This is not good.
+    meow(`Error: ${e}, returned in px.`, 'meowPx2vp', meowLevel.ERROR);
+    return px;
+  }
+}
+
+/**
+ * Converts vp to px.
+ * @param vp The true vp.
+ * @returns The equivalent px.
+ * */
+export function meowVp2px(vp: number) {
+  try {
+    return vp * display.getDefaultDisplaySync().densityPixels;
+  } catch (e) {
+    // This is not good.
+    meow(`Error: ${e}, returned in vp.`, 'meowVp2px', meowLevel.ERROR);
+    return vp;
+  }
+}
+
+/**
+ * Returns the text's height.
+ * @param text The text.
+ * @param uiContext The UIContext.
+ * @param fontSize The fontSize.
+ * @param fontWeight The fontWeight.
+ * @returns The height in vp.
+ * */
+export function measureTextHeight(text: string, uiContext: UIContext, fontSize: number, fontWeight: FontWeight): number {
+  return meowPx2vp(uiContext
+    .getMeasureUtils()
+    .measureTextSize({ textContent: text, fontSize: fontSize, fontWeight: fontWeight })
+    .width as number)
+}
+
+export let defaultAnima: AnimateParam = { curve: Curve.FastOutSlowIn, duration: 500 };
+
+// Decor (Free window mode)
+
+export let defaultDecorHeight: number = 40;
+
+/**
+ * Sets the decor height to defaultDecorHeight (50).
+ * @param windowClass The window.Window object.
+ * */
+export function setDecorHeight(windowClass: window.Window) {
+  try {
+    meow(`setDecorHeight: ${defaultDecorHeight}`, 'setDecorHeight', meowLevel.INFO);
+    windowClass.setWindowDecorHeight(defaultDecorHeight);
+  } catch (e) {
+    meow(`windowClass.setWindowDecorHeight(defaultDecorHeight) Failed: ${e}`, 'setDecorHeight', meowLevel.ERROR);
+  }
+}
+
+// Avoid
+
+@ObservedV2
+export class meowAvoid {
+  @Trace top: number = 0;
+  @Trace left: number = 0;
+  @Trace right: number = 0;
+  @Trace bottom: number = 0;
+
+  constructor(t: number, b: number, l: number, r: number) {
+    this.top = t;
+    this.bottom = b;
+    this.left = l;
+    this.right = r;
+  }
+}
+
+/**
+ * Enables the listeners for avoid area change.
+ * @param windowClass The window.Window object.
+ * */
+export function listenAvoid(windowClass: window.Window) {
+  try {
+    windowClass.on('avoidAreaChange', (data) => {
+      meow('Changes on avoid areas!', 'avoidAreaChange', meowLevel.INFO);
+      let avoid = AppStorageV2.connect<meowAvoid>(meowAvoid, 'meowAvoid', () => new meowAvoid(0, 0, 0, 0))!;
+      if (data.type == window.AvoidAreaType.TYPE_SYSTEM) {
+        let top = meowPx2vp(data.area.topRect.height);
+        avoid.top = top;
+      }
+      if (data.type == window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR) {
+        let bottom = meowPx2vp(data.area.bottomRect.height);
+        avoid.bottom = bottom;
+      }
+      if (data.type == window.AvoidAreaType.TYPE_CUTOUT) {
+        let left = meowPx2vp(data.area.leftRect.width);
+        avoid.left = left;
+      }
+      if (data.type == window.AvoidAreaType.TYPE_CUTOUT) {
+        let right = meowPx2vp(data.area.rightRect.width);
+        avoid.right = right;
+      }
+    })
+  } catch (e) {
+    meow(`windowClass.on('avoidAreaChange') Failed: ${e}`, 'avoidAreaChange', meowLevel.ERROR);
+  }
+}
+
+/**
+ * Gets the avoid information and sync to AppStorage.
+ * @param windowClass The window.Window object.
+ * */
+export function getUpdateAvoid(windowClass: window.Window) {
+  try {
+    let avoidArea: window.AvoidArea;
+    let top: number;
+    let bottom: number;
+    let left: number;
+    let right: number;
+
+    // Get
+    avoidArea = windowClass.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+    top = meowPx2vp(avoidArea.topRect.height);
+    avoidArea = windowClass.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+    bottom = meowPx2vp(avoidArea.bottomRect.height);
+    avoidArea = windowClass.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+    left = meowPx2vp(avoidArea.leftRect.width);
+    avoidArea = windowClass.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+    right = meowPx2vp(avoidArea.rightRect.width);
+
+    let newMeowAvoid = new meowAvoid(top, bottom, left, right);
+    AppStorageV2.connect<meowAvoid>(meowAvoid, 'meowAvoid', () => newMeowAvoid)!;
+  } catch (error) {
+    // TODO: Implement error handling.
+  }
+}
+
+// Free window mode
+
+@ObservedV2
+export class meowFreeWindowModeStatus {
+  @Trace on: boolean;
+
+  constructor(on: boolean) {
+    this.on = on;
+  }
+}
+
+/**
+ * Listens to the Free-window Mode change and automatically switch modes.
+ * @param context
+ * @param windowClass
+ * @param storage
+ * @param id
+ * */
+export function listenFreeWindowMode(context: Context, windowClass: window.Window) {
+  meow('ON!', 'listenFreeWindowMode');
+  settings.registerKeyObserver(context, 'window_pcmode_switch_status', settings.domainName.USER_PROPERTY,
+    () => {
+      settings.getValue(context, 'window_pcmode_switch_status', settings.domainName.USER_PROPERTY)
+        .then((val) => {
+          let free = (val == 'true');
+          if (free) {
+            setDecorHeight(windowClass);
+          }
+          AppStorageV2.connect<meowFreeWindowModeStatus>(meowFreeWindowModeStatus, 'meowFreeWindowModeStatus', () => new meowFreeWindowModeStatus(free))!.on = free;
+          meow(`${free}`, 'listenFreeWindowMode', meowLevel.INFO);
+        });
+    })
+}
+
+/**
+ * Checks settings to figure out if currently is in free window mode.
+ * @param context The UIAbility Context.
+ * @returns A boolean value.
+ * */
+export function getUpdateFreeWindowMode(context: Context, windowClass: window.Window) {
+  if (deviceInfo.deviceType == '2in1') {
+    meow('Return true for 2in1 type!', 'getUpdateFreeWindowMode', meowLevel.INFO);
+    AppStorageV2.connect<meowFreeWindowModeStatus>(meowFreeWindowModeStatus, 'meowFreeWindowModeStatus', () => new meowFreeWindowModeStatus(true));
+    setDecorHeight(windowClass);
+    return true;
+  }
+  let val = settings.getValueSync(context, 'window_pcmode_switch_status', 'false', settings.domainName.USER_PROPERTY);
+  let free = (val == 'true');
+  AppStorageV2.connect<meowFreeWindowModeStatus>(meowFreeWindowModeStatus, 'meowFreeWindowModeStatus', () => new meowFreeWindowModeStatus(free));
+  if (free) {
+    setDecorHeight(windowClass);
+  }
+  meow(`settings.getValueSync "window_pcmode_switch_status" = ${val}`, 'getUpdateFreeWindowMode', meowLevel.INFO);
+  return free;
+}
