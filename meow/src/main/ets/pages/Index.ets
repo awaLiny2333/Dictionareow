@@ -198,9 +198,10 @@ struct Index {
           .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
           .borderWidth(1)
           .borderColor($r('sys.color.comp_background_tertiary'))
-          .backgroundEffect({ radius: 100 })
+          .backgroundEffect({ radius: 100, color: $r('app.color.blur_background')})
           .padding(10)
           .margin({ left: 10, bottom: 10, right: 10 })
+          .shadow(ShadowStyle.OUTER_DEFAULT_LG)
         }
       }
       .layoutWeight(1)
