@@ -75,13 +75,19 @@ export class meowDictKeyword {
   private processIndex() {
     const startTime = Date.now();
     let index = new meowDictKeywordIndex(this.globalOffset + 44, this.globalRawData, this.keyIndexDecompLen, this.keyIndexCompLen, this.numBlocks);
-    return index.init(this.globalEncoding).then(() => {
+    index.init(this.globalEncoding).then(() => {
       this.index = index;
       console.log(`[meowDictKeyword][Index][init] Index loaded! Used time ${Date.now() - startTime} ms!`);
     })
   }
 
-  async lookUpRecordEntryOffset(word: string, fuzzyInclusive: boolean = false) {
+  /**
+   * Gets the offset of a specific record entry of given key.
+   * @param key The key
+   * @param fuzzyInclusive Allow case and punctuation fuzzy
+   * @returns [offsetStart, offsetEnd] local offsets with head of record as base
+   * */
+  async lookUpRecordEntryOffset(key: string, fuzzyInclusive: boolean = false) {
     if (!this.index) {
       console.warn(`[meowDictKeyword][Index][lookUp] Index uninitialized. Request rejected.`);
       return undefined;
@@ -93,7 +99,7 @@ export class meowDictKeyword {
       const firstWord = theBlockEntry.firstWord;
       const lastWord = theBlockEntry.lastWord;
 
-      if (isStringBetween(word, firstWord, lastWord)) {
+      if (isStringBetween(key, firstWord, lastWord)) {
         console.log(`[meowDictKeyword][Index][lookUp] Selected index block from '${firstWord}' to '${lastWord}'! Looking into this index block!`);
         this.lookUpBlockIndex = lookUpBlockIndex;
 
@@ -103,11 +109,11 @@ export class meowDictKeyword {
             return undefined;
           }
 
-          let offset = this.findOffsetByKeyword(word, block.keywords, block.offsets, fuzzyInclusive);
+          let offset = this.findOffsetByKeyword(key, block.keywords, block.offsets, fuzzyInclusive);
           if (offset === null) {
-            console.warn(`[meowDictKeyword][Index][lookUp] Key '${word}' not found!`);
+            console.warn(`[meowDictKeyword][Index][lookUp] Key '${key}' not found!`);
           } else {
-            console.warn(`[meowDictKeyword][Index][lookUp] Found key '${word}', offset = [${offset}], used time ${(Date.now() - startTime)} ms!`);
+            console.warn(`[meowDictKeyword][Index][lookUp] Found key '${key}', offset = [${offset}], used time ${(Date.now() - startTime)} ms!`);
           }
           return offset;
 
@@ -123,7 +129,7 @@ export class meowDictKeyword {
       }
     }
 
-    console.warn(`[meowDictKeyword][Index][lookUp] Key '${word}' not found in any of the blocks!`);
+    console.warn(`[meowDictKeyword][Index][lookUp] Key '${key}' not found in any of the blocks!`);
     return undefined;
   }
 

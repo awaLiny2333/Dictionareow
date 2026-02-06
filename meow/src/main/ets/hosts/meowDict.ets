@@ -12,7 +12,7 @@ export enum meowDictType {
 @ObservedV2
 export class meowDict {
   type: meowDictType;
-  @Trace rawData: ArrayBuffer | undefined;
+  rawData: ArrayBuffer | undefined;
   @Trace header: meowDictHeader | undefined;
   keyword: meowDictKeyword | undefined;
   record: meowDictRecord | undefined;

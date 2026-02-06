@@ -24,6 +24,11 @@ export async function fileDocumentPick2ArrayBuffer(fileSuffixFilters: string[] =
       fileSuffixFilters: fileSuffixFilters
     })
       .then((documentSelectResult) => {
+        if (documentSelectResult.length == 0) {
+          console.info(`[file_document_reader] DocumentViewPicker.select Selected nothing. documentSelectResult = ${documentSelectResult}`);
+          return { succeed: false } as meowReadPickResult;
+        }
+
         selected_uri = documentSelectResult;
         console.info(`[file_document_reader] DocumentViewPicker.select successfully, documentSelectResult uri: ${selected_uri[0]}`);
         let fileName: string | undefined = undefined;

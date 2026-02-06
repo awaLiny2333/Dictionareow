@@ -47,7 +47,7 @@ export function measureTextHeight(text: string, uiContext: UIContext, fontSize: 
     .width as number)
 }
 
-export let defaultAnima: AnimateParam = { curve: Curve.FastOutSlowIn, duration: 500 };
+export let defaultAnima: AnimateParam = { curve: Curve.FastOutSlowIn, duration: 250 };
 
 // Decor (Free window mode)
 
@@ -197,4 +197,19 @@ export function getUpdateFreeWindowMode(context: Context, windowClass: window.Wi
   }
   meow(`settings.getValueSync "window_pcmode_switch_status" = ${val}`, 'getUpdateFreeWindowMode', meowLevel.INFO);
   return free;
+}
+
+// Layout mode
+
+@ObservedV2
+export class meowLayoutModeStatus {
+  @Trace wideMode: boolean;
+  @Trace width: number;
+  @Trace height: number;
+
+  constructor(wideMode: boolean, width: number, height: number) {
+    this.wideMode = wideMode;
+    this.width = width;
+    this.height = height;
+  }
 }

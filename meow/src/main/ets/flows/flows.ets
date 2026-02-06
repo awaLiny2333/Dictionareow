@@ -1,9 +1,11 @@
 import { AppStorageV2, window } from '@kit.ArkUI';
 import { meow, meowLevel } from '../utils/catsLogger';
 import lazy { sandboxCreateDir, sandboxReadArrayBufferConcurrent } from '../utils/storage';
-import { getUpdateAvoid, getUpdateFreeWindowMode, listenAvoid, listenFreeWindowMode } from '../utils/uiEnv';
+import { getUpdateAvoid, getUpdateFreeWindowMode, listenAvoid, listenFreeWindowMode, meowLayoutModeStatus, meowPx2vp } from '../utils/uiEnv';
 import { fileIo } from '@kit.CoreFileKit';
 import { meowDict, meowDictType } from '../hosts/meowDict';
+
+// Flows
 
 /**
  * Called in onWindowStageCreate, before windowStage.LoadContent
@@ -24,6 +26,35 @@ export async function aboutToLoadContent(windowStage: window.WindowStage, window
   initEnv(context);
 }
 
+/**
+ * Called immediately after windowStage.LoadContent
+ * @param window window.Window
+ * */
+export function onLoadContent(window: window.Window, context: Context) {
+  try {
+    window.setWindowDecorVisible(false);
+  } catch (e) {
+    meow(`window.setWindowDecorVisible(false) Failed: ${e}`, 'init', meowLevel.ERROR);
+  }
+
+  try {
+    const rect: window.Rect = window.getWindowProperties().windowRect;
+    const width = meowPx2vp(rect.width);
+    const height = meowPx2vp(rect.height);
+    const wideMode = width > 800;
+    AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode, width, height));
+  } catch (e) {
+    meow(`AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode)); Failed: ${e}`, 'init', meowLevel.ERROR);
+  }
+
+  getUpdateAvoid(window);
+  listenAvoid(window);
+
+  getUpdateFreeWindowMode(context, window);
+  listenFreeWindowMode(context, window);
+}
+
+// Actions
 
 /**
  * Inits the environment. Creates the folders and tries to read files.
@@ -39,6 +70,14 @@ export function initEnv(context: Context) {
   })
 }
 
+/**
+ * Reads an MDict file and store the meowDict file into appStorage of given key
+ * @param sandboxPath The sandbox path. With context.filesDir as base
+ * @param type meowDictType
+ * @param appStorageKey The key of appStorage record
+ * @param context Context
+ * @returns Nothing
+ * */
 async function readMDict(sandboxPath: string = '/woof/woof.mdx', type: meowDictType = meowDictType.MDX, appStorageKey: string = 'meowDictExampleMDX', context: Context) {
   try {
     const existMdd = fileIo.accessSync(context.filesDir + sandboxPath);
@@ -55,28 +94,4 @@ async function readMDict(sandboxPath: string = '/woof/woof.mdx', type: meowDictT
   } catch (e) {
     console.error(`[Meow][readMDict][${sandboxPath}] Check and load existing mdx failed: ${e}`);
   }
-}
-
-/**
- * Called immediately after windowStage.LoadContent
- * @param window window.Window
- * */
-export function onLoadContent(window: window.Window, context: Context) {
-  try {
-    window.setWindowDecorVisible(false);
-  } catch (e) {
-    meow(`window.setWindowDecorVisible(false) Failed: ${e}`, 'init', meowLevel.ERROR);
-  }
-
-  // try {
-  //   window.setWindowBackgroundColor('#' + context.resourceManager.getColorSync($r('sys.color.brand').id).toString(16));
-  // } catch (e) {
-  //   meow(`window.setWindowBackgroundColor($r('sys.color.brand') as ResourceColor as string) Failed: ${e}`, 'init', meowLevel.ERROR);
-  // }
-
-  getUpdateAvoid(window);
-  listenAvoid(window);
-
-  getUpdateFreeWindowMode(context, window);
-  listenFreeWindowMode(context, window);
 }
