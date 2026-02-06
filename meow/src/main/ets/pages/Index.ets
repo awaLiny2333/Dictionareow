@@ -116,7 +116,6 @@ struct Index {
                   }
                 })
                 .backgroundColor(Color.Transparent)
-                .id('web')
                 .onPageEnd(() => {
                   console.log(`[Meow][Web] extractWebColor!`);
                   setTimeout(() => {
@@ -126,7 +125,9 @@ struct Index {
 
               Row().height(this.myMeowAvoid.bottom)
             }
-          }.padding({ left: 5, right: 5 })
+          }
+          .padding({ left: 5, right: 5 })
+          .id('mainWeb')
 
           RelativeContainer() {
             Row({ space: 10 }) {
@@ -309,9 +310,9 @@ struct Index {
   }
 
   extractWebColor() {
-    this.getUIContext().getComponentSnapshot().get("web", (error: Error, pixmap: image.PixelMap) => {
+    this.getUIContext().getComponentSnapshot().get('mainWeb', (error, pixmap: image.PixelMap) => {
       if (error) {
-        console.error('[Meow][extractWebColor] error: ${JSON.stringify(error)}');
+        console.error(`[Meow][extractWebColor] error: ${JSON.stringify(error)}`);
         return;
       }
       effectKit.createColorPicker(pixmap)
