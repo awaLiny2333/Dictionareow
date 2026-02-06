@@ -121,12 +121,12 @@ struct Index {
                   console.log(`[Meow][Web] extractWebColor!`);
                   setTimeout(() => {
                     this.extractWebColor();
-                  }, 100)
+                  }, 250)
                 })
 
               Row().height(this.myMeowAvoid.bottom)
             }
-          }
+          }.padding({ left: 5, right: 5 })
 
           RelativeContainer() {
             Row({ space: 10 }) {
@@ -199,7 +199,7 @@ struct Index {
           .borderColor($r('sys.color.comp_background_tertiary'))
           .backgroundEffect({ radius: 100 })
           .padding(10)
-          .margin(10)
+          .margin({ left: 10, bottom: 10, right: 10 })
         }
       }
       .layoutWeight(1)
