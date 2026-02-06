@@ -28,8 +28,6 @@ struct Index {
   // Runtime UI
   @Local render: boolean = false;
   @Local firstPageLoaded: boolean = false;
-  @Local mainColor: string = '#00000000';
-  @Local isMainColorTransparent: boolean = true;
   @Local linearBlurOps: LinearGradientBlurOptions = this.constructLinearBlurOps();
   timeoutIdForAvoidReload: number | undefined;
   // Runtime Objects
@@ -39,183 +37,183 @@ struct Index {
     WithTheme({ theme: new meowTheme() }) {
       Stack({ alignContent: Alignment.TopStart }) {
         if (this.render) {
-          Web({ controller: this.webController, src: '' })
-            .darkMode(WebDarkMode.Auto)
-            .forceDarkAccess(true)
-            .javaScriptAccess(true)
-            .imageAccess(true)
-            .onlineImageAccess(true)
-            .mixedMode(MixedMode.All)
-            .fileAccess(true)
-            .domStorageAccess(true)
-            .databaseAccess(true)
-            .allowWindowOpenMethod(true)
-            .multiWindowAccess(true)
-            .onInterceptRequest((e) => {
-              const reqUrl = e.request.getRequestUrl();
-              const reqFilePath = reqUrl.split('/');
-              const reqFileName = reqFilePath[reqFilePath.length-1];
-              const reqFileScheme = reqFilePath[0];
+          Stack() {
+            Web({ controller: this.webController, src: '' })
+              .darkMode(WebDarkMode.Auto)
+              .forceDarkAccess(true)
+              .javaScriptAccess(true)
+              .imageAccess(true)
+              .onlineImageAccess(true)
+              .mixedMode(MixedMode.All)
+              .fileAccess(true)
+              .domStorageAccess(true)
+              .databaseAccess(true)
+              .allowWindowOpenMethod(true)
+              .multiWindowAccess(true)
+              .onInterceptRequest((e) => {
+                const reqUrl = e.request.getRequestUrl();
+                const reqFilePath = reqUrl.split('/');
+                const reqFileName = reqFilePath[reqFilePath.length-1];
+                const reqFileScheme = reqFilePath[0];
 
-              if (reqFileScheme == 'file:') {
-                fileIo.access(this.getUIContext().getHostContext()!.filesDir + '/meow/' + reqFileName).catch((e: BusinessError) => {
-                  console.error(`[Meow][Web][onInterceptRequest] fileIo.access() failed: ${e}`);
-                }).then((r) => {
-                  if (r) {
-                    // console.log(`[Meow][Web][onInterceptRequest] file '${reqFileName}' exist! Reusing...`);
-                    return;
-                  }
-
-                  if (reqUrl.length < 256) {
-                    console.warn(`[Meow][Web][onInterceptRequest] ${reqUrl}, reqFileScheme = ${reqFileScheme}, reqFileName = ${reqFileName}`);
-                  } else {
-                    console.warn(`[Meow][Web][onInterceptRequest][long] reqFileScheme = ${reqFileScheme}`);
-                  }
-
-                  // Read
-                  this.extractFile(this.meowDictExampleMDD, '\\' + reqFileName).then((r) => {
-                    if (!r) {
-                      console.error(`[Meow][Web][refreshForResourcesTimeout] Reource not found! Not going to refresh!`);
+                if (reqFileScheme == 'file:') {
+                  fileIo.access(this.getUIContext().getHostContext()!.filesDir + '/meow/' + reqFileName).catch((e: BusinessError) => {
+                    console.error(`[Meow][Web][onInterceptRequest] fileIo.access() failed: ${e}`);
+                  }).then((r) => {
+                    if (r) {
+                      // console.log(`[Meow][Web][onInterceptRequest] file '${reqFileName}' exist! Reusing...`);
                       return;
                     }
-                    // Loaded resource
-                    clearTimeout(this.refreshForResourcesTimeout);
-                    this.refreshForResourcesTimeout = setTimeout(() => {
-                      try {
-                        console.warn(`[Meow][Web][refreshForResourcesTimeout] Refresh!`);
-                        this.refreshForResourcesTimeout = undefined;
-                        this.webController.refresh();
-                      } catch (e) {
-                        console.error(`[Meow][Web][refreshForResourcesTimeout] failed: ${e}`);
+
+                    if (reqUrl.length < 256) {
+                      console.warn(`[Meow][Web][onInterceptRequest] ${reqUrl}, reqFileScheme = ${reqFileScheme}, reqFileName = ${reqFileName}`);
+                    } else {
+                      console.warn(`[Meow][Web][onInterceptRequest][long] reqFileScheme = ${reqFileScheme}`);
+                    }
+
+                    // Read
+                    this.extractFile(this.meowDictExampleMDD, '\\' + reqFileName).then((r) => {
+                      if (!r) {
+                        console.error(`[Meow][Web][refreshForResourcesTimeout] Reource not found! Not going to refresh!`);
+                        return;
                       }
-                    }, 100);
+                      // Loaded resource
+                      clearTimeout(this.refreshForResourcesTimeout);
+                      this.refreshForResourcesTimeout = setTimeout(() => {
+                        try {
+                          console.warn(`[Meow][Web][refreshForResourcesTimeout] Refresh!`);
+                          this.refreshForResourcesTimeout = undefined;
+                          this.webController.refresh();
+                        } catch (e) {
+                          console.error(`[Meow][Web][refreshForResourcesTimeout] failed: ${e}`);
+                        }
+                      }, 100);
+                    })
                   })
-                })
-              } else if (reqFileScheme == 'entry:') {
-                clearTimeout(this.refreshForResourcesTimeout);
-                this.search(this.meowDictExampleMDX, decodeURIComponent(reqFileName));
-                this.lookUpWordMDX = decodeURIComponent(reqFileName);
-              }
+                } else if (reqFileScheme == 'entry:') {
+                  clearTimeout(this.refreshForResourcesTimeout);
+                  this.search(this.meowDictExampleMDX, decodeURIComponent(reqFileName));
+                  this.lookUpWordMDX = decodeURIComponent(reqFileName);
+                }
 
-              return null;
-            })
-            .onControllerAttached(() => {
-              if (!this.firstPageLoaded) {
-                console.log(`[Meow][MDX] Woof! From onControllerAttached!`);
-                this.firstPageLoaded = true;
-                this.loadWeb(this.meowDictExampleMDX.header?.toHtml());
-              }
-            })
-            .borderRadius(15)
-            .backgroundColor(Color.Transparent)
-            .id('mainWeb')
-            .linearGradientBlur(100, this.linearBlurOps)
+                return null;
+              })
+              .onControllerAttached(() => {
+                if (!this.firstPageLoaded) {
+                  console.log(`[Meow][MDX] Woof! From onControllerAttached!`);
+                  this.firstPageLoaded = true;
+                  this.loadWeb(this.meowDictExampleMDX.header?.toHtml());
+                }
+              })
+              .borderRadius(15)
+              .backgroundColor(Color.Transparent)
+              .id('mainWeb')
+              .linearGradientBlur(100, this.linearBlurOps)
 
-          RelativeContainer() {
-            Scroll() {
+            RelativeContainer() {
+              Scroll() {
+                Row({ space: 10 }) {
+                  Button(this.meowDictExampleMDX?.header ? 'MDX  󰀓' : '󰀵 MDX')
+                    .onClick(() => {
+                      fileDocumentPick2ArrayBuffer(['.mdx']).then((r) => {
+                        if (r.succeed) {
+                          this.meowDictExampleMDX = new meowDict(meowDictType.MDX, r.buf!);
+                          sandboxCreateDir('meow', this.getUIContext().getHostContext()!, true).then(() => {
+                            sandboxSaveSync('woof/woof.mdx', r.buf!, this.getUIContext().getHostContext()!, true);
+                          })
+                        }
+                      })
+                    })
+                  Button(this.meowDictExampleMDD?.header ? 'MDD  󰀓' : '󰀵 MDD')
+                    .onClick(() => {
+                      fileDocumentPick2ArrayBuffer(['.mdd']).then((r) => {
+                        if (r.succeed) {
+                          this.meowDictExampleMDD = new meowDict(meowDictType.MDD, r.buf!);
+                          sandboxSaveSync('woof/woof.mdd', r.buf!, this.getUIContext().getHostContext()!, true);
+                        }
+                      })
+                    })
+                  Button('󰀵 Extra')
+                    .onClick(() => {
+                      fileDocumentPick2ArrayBuffer(['.css', '.js', '.jpg', '.jpeg', '.png', '.svg']).then((r) => {
+                        if (r.succeed) {
+                          sandboxSaveSync('meow/' + r.fileName!, r.buf!, this.getUIContext().getHostContext()!, true);
+                        }
+                      })
+                    })
+                } // Buttons
+              }
+              .scrollable(ScrollDirection.Horizontal)
+              .scrollBar(BarState.Off)
+              .edgeEffect(EdgeEffect.Spring)
+              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+              .id('fileControlButtons')
+              .alignRules({ left: { anchor: '__container__', align: HorizontalAlign.Start }, top: { anchor: '__container__', align: VerticalAlign.Top } })
+              .animation(defaultAnima)
+
               Row({ space: 10 }) {
-                Button(this.meowDictExampleMDX?.header ? 'MDX  󰀓' : '󰀵 MDX')
-                  .onClick(() => {
-                    fileDocumentPick2ArrayBuffer(['.mdx']).then((r) => {
-                      if (r.succeed) {
-                        this.meowDictExampleMDX = new meowDict(meowDictType.MDX, r.buf!);
-                        sandboxCreateDir('meow', this.getUIContext().getHostContext()!, true).then(() => {
-                          sandboxSaveSync('woof/woof.mdx', r.buf!, this.getUIContext().getHostContext()!, true);
-                        })
-                      }
+                TextInput({ placeholder: `󰀩 ${this.meowDictExampleMDX.header?.Title || ''}`, text: this.lookUpWordMDX })
+                  .layoutWeight(1)
+                  .onChange((e) => {
+                    this.lookUpWordMDX = e;
+                  })
+                  .onSubmit(() => {
+                    clearTimeout(this.refreshForResourcesTimeout);
+                    this.search(this.meowDictExampleMDX, this.lookUpWordMDX).then((result) => {
+                      this.lookUpResult = result;
                     })
                   })
-                Button(this.meowDictExampleMDD?.header ? 'MDD  󰀓' : '󰀵 MDD')
+                  .selectAll(true)
+                  .selectedBackgroundColor($r('sys.color.font'))
+                  .keyboardAppearance(KeyboardAppearance.IMMERSIVE)
+
+                Button(`${this.lookUpResult ? '' : '¯\\_(ツ)_/¯  '}󰈱`)
                   .onClick(() => {
-                    fileDocumentPick2ArrayBuffer(['.mdd']).then((r) => {
-                      if (r.succeed) {
-                        this.meowDictExampleMDD = new meowDict(meowDictType.MDD, r.buf!);
-                        sandboxSaveSync('woof/woof.mdd', r.buf!, this.getUIContext().getHostContext()!, true);
-                      }
+                    clearTimeout(this.refreshForResourcesTimeout);
+                    this.search(this.meowDictExampleMDX, this.lookUpWordMDX).then((result) => {
+                      this.lookUpResult = result;
                     })
                   })
-                Button('󰀵 Extra')
-                  .onClick(() => {
-                    fileDocumentPick2ArrayBuffer(['.css', '.js', '.jpg', '.jpeg', '.png', '.svg']).then((r) => {
-                      if (r.succeed) {
-                        sandboxSaveSync('meow/' + r.fileName!, r.buf!, this.getUIContext().getHostContext()!, true);
-                      }
-                    })
-                  })
-              } // Buttons
-            }
-            .scrollable(ScrollDirection.Horizontal)
-            .scrollBar(BarState.Off)
-            .edgeEffect(EdgeEffect.Spring)
-            .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
-            .id('fileControlButtons')
-            .alignRules({ left: { anchor: '__container__', align: HorizontalAlign.Start }, top: { anchor: '__container__', align: VerticalAlign.Top } })
+              } // Search bar
+              .padding(this.myMeowLayout.wideMode ? { left: 10 } : {})
+              .id('searchBar')
+              .alignRules(this.myMeowLayout.wideMode ?
+                { left: { anchor: 'fileControlButtons', align: HorizontalAlign.End }, right: { anchor: '__container__', align: HorizontalAlign.End }, bottom: { anchor: '__container__', align: VerticalAlign.Bottom } } :
+                { left: { anchor: '__container__', align: HorizontalAlign.Start }, right: { anchor: '__container__', align: HorizontalAlign.End }, bottom: { anchor: '__container__', align: VerticalAlign.Bottom } })
+              .animation(defaultAnima)
+
+            } // Title
+            .height(this.titleHeight())
             .animation(defaultAnima)
-
-            Row({ space: 10 }) {
-              TextInput({ placeholder: `󰀩 ${this.meowDictExampleMDX.header?.Title || ''}`, text: this.lookUpWordMDX })
-                .layoutWeight(1)
-                .onChange((e) => {
-                  this.lookUpWordMDX = e;
-                })
-                .onSubmit(() => {
-                  clearTimeout(this.refreshForResourcesTimeout);
-                  this.search(this.meowDictExampleMDX, this.lookUpWordMDX).then((result) => {
-                    this.lookUpResult = result;
-                  })
-                })
-                .selectAll(true)
-                .selectedBackgroundColor($r('sys.color.font'))
-                .keyboardAppearance(KeyboardAppearance.IMMERSIVE)
-
-              Button(`${this.lookUpResult ? '' : '¯\\_(ツ)_/¯  '}󰈱`)
-                .onClick(() => {
-                  clearTimeout(this.refreshForResourcesTimeout);
-                  this.search(this.meowDictExampleMDX, this.lookUpWordMDX).then((result) => {
-                    this.lookUpResult = result;
-                  })
-                })
-            } // Search bar
-            .padding(this.myMeowLayout.wideMode ? { left: 10 } : {})
-            .id('searchBar')
-            .alignRules(this.myMeowLayout.wideMode ?
-              { left: { anchor: 'fileControlButtons', align: HorizontalAlign.End }, right: { anchor: '__container__', align: HorizontalAlign.End }, bottom: { anchor: '__container__', align: VerticalAlign.Bottom } } :
-              { left: { anchor: '__container__', align: HorizontalAlign.Start }, right: { anchor: '__container__', align: HorizontalAlign.End }, bottom: { anchor: '__container__', align: VerticalAlign.Bottom } })
-            .animation(defaultAnima)
-
-          } // Title
-          .height(this.titleHeight())
-          .animation(defaultAnima)
-          .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
-          .borderWidth(1)
-          .borderColor($r('sys.color.comp_background_tertiary'))
-          .backgroundEffect({ radius: 60, color: $r('app.color.blur_background') })
-          .padding(10)
-          .margin({
-            left: 10,
-            bottom: this.myMeowAvoid.bottom,
-            right: 10,
-            top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0)
-          })
-          .shadow(ShadowStyle.OUTER_DEFAULT_LG)
-        }
-
-        if (this.myMeowLayout.wideMode || this.myMeowFreeWindowModeStatus.on) {
-          Text(this.meowDictExampleMDX?.header?.Title)
+            .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
+            .borderWidth(1)
+            .borderColor($r('sys.color.comp_background_tertiary'))
+            .backgroundEffect({ radius: 60, color: $r('app.color.blur_background') })
             .padding(10)
-            .width('100%')
-            .height('100%')
-            .textAlign(TextAlign.Center)
-            .textVerticalAlign(TextVerticalAlign.TOP)
-            .align(Alignment.Top)
-            .hitTestBehavior(HitTestMode.Transparent)
+            .margin({
+              left: 10,
+              bottom: this.myMeowAvoid.bottom,
+              right: 10,
+              top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0)
+            })
+            .shadow(ShadowStyle.OUTER_DEFAULT_LG)
+          }
+          .alignContent(this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode ? Alignment.Top : Alignment.Bottom)
+          .animation(defaultAnima)
+
+          if (this.myMeowLayout.wideMode || this.myMeowFreeWindowModeStatus.on) {
+            Text(this.meowDictExampleMDX?.header?.Title)
+              .padding(10)
+              .width('100%')
+              .textAlign(TextAlign.Center)
+              .textVerticalAlign(TextVerticalAlign.TOP)
+              .align(Alignment.Top)
+          }
         }
       }
-      .alignContent(this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode ? Alignment.Top : Alignment.Bottom)
       .useEffect(this.myMeowFreeWindowModeStatus.on, EffectType.WINDOW_EFFECT)
       .width('100%')
       .height('100%')
-      .backgroundColor(this.isMainColorTransparent && this.myMeowFreeWindowModeStatus.on ? undefined : this.mainColor)
       .animation(defaultAnima)
       .onAreaChange((o, n) => {
         if (o.width != n.width) {
