@@ -55,7 +55,7 @@ export class meowDict {
 
     if (headerContent) {
       this.header = meowDictHeader.fromXMLString(headerContent);
-      // console.log(`[meowDictHeader][processHeader] Header converted: ${'\n'}${this.header.toXMLString()}`);
+      console.log(`[meowDictHeader][processHeader] Header converted: ${'\n'}${this.header.toXMLString()}`);
     } else {
       console.error(`[meowDictHeader][processHeader] Header is empty??? What is going on here?`);
     }

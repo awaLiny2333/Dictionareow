@@ -3,11 +3,12 @@ import { fileDocumentPick2ArrayBuffer, sandboxCreateDir, sandboxSaveSync } from 
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { AppStorageV2 } from '@kit.ArkUI';
-import { defaultAnima, defaultDecorHeight, meowAvoid, meowFreeWindowModeStatus, meowLayoutModeStatus } from '../utils/uiEnv';
+import { defaultAnima, defaultDecorHeight, meowAvoid, meowFreeWindowModeStatus, meowLayoutModeStatus, meowVp2px } from '../utils/uiEnv';
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import { keepOnlyAlphanumericGlobal } from '../utils/data';
 import { image } from '@kit.ImageKit';
 import { effectKit } from '@kit.ArkGraphics2D';
+import { meowTheme } from '../hosts/meowTheme';
 
 @Entry
 @ComponentV2
@@ -15,36 +16,41 @@ struct Index {
   @Local myMeowAvoid: meowAvoid = AppStorageV2.connect<meowAvoid>(meowAvoid)!;
   @Local myMeowFreeWindowModeStatus: meowFreeWindowModeStatus = AppStorageV2.connect<meowFreeWindowModeStatus>(meowFreeWindowModeStatus)!;
   @Local myMeowLayout: meowLayoutModeStatus = AppStorageV2.connect<meowLayoutModeStatus>(meowLayoutModeStatus)!;
+  @Local technicallyTopAvoid: number = this.onFreeWindowOrAvoidRefresh();
   // Data
   @Local meowDictExampleMDX: meowDict = AppStorageV2.connect<meowDict>(meowDict, 'meowDictExampleMDX', () => new meowDict(meowDictType.MDX))!;
   @Local meowDictExampleMDD: meowDict = AppStorageV2.connect<meowDict>(meowDict, 'meowDictExampleMDD', () => new meowDict(meowDictType.MDD))!;
-  // Runtime data
-  @Local render: boolean = false;
+  // Runtime interaction
   @Local lookUpWordMDX: string = '';
   @Local lookUpResult: boolean = true;
   @Local keywordsInSameIndexBlock: string[] = [];
   @Local keywordsInSameIndexBlockRelative: string[] = [];
-  @Local webHeight: number = 0;
+  refreshForResourcesTimeout: number | undefined;
+  // Runtime UI
+  @Local render: boolean = false;
   @Local firstPageLoaded: boolean = false;
   @Local mainColor: string = '#00000000';
   @Local isMainColorTransparent: boolean = true;
+  @Local linearBlurOps: LinearGradientBlurOptions = {
+    fractionStops: [
+      [1, 0],
+      // [0.8, this.technicallyTopAvoid / this.myMeowLayout.height],
+      [0, (this.technicallyTopAvoid + this.titleHeight()) / this.myMeowLayout.height]
+    ],
+    direction: GradientDirection.Bottom
+  };
+  // Runtime Objects
   webController: WebviewController = new webview.WebviewController();
-  refreshForResourcesTimeout: number | undefined;
 
   build() {
-    Column() {
-      if (this.myMeowFreeWindowModeStatus.on) {
-        Row() {
-          Text(this.meowDictExampleMDX?.header?.Title)
-        }
-        .padding(10)
-        .height(defaultDecorHeight)
-      }
+    WithTheme({ theme: new meowTheme() }) {
       Stack({ alignContent: Alignment.TopStart }) {
         if (this.render) {
           Scroll() {
             Column() {
-              Row().height(this.titleHeight() + 10)
+              Row()
+                .height(this.titleHeight() + this.myMeowAvoid.top + 10 + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0))
+                .animation(defaultAnima)
 
               Web({ controller: this.webController, src: '', renderMode: RenderMode.SYNC_RENDER })
                 .darkMode(WebDarkMode.Auto)
@@ -115,19 +121,25 @@ struct Index {
                     this.loadWeb(this.meowDictExampleMDX.header?.toHtml());
                   }
                 })
-                .backgroundColor(Color.Transparent)
+                .borderRadius(15)
+                // .backgroundColor(Color.Transparent)
                 .onPageEnd(() => {
-                  console.log(`[Meow][Web] extractWebColor!`);
                   setTimeout(() => {
                     this.extractWebColor();
-                  }, 250)
+                  }, 500)
                 })
+                .margin(this.myMeowFreeWindowModeStatus.on ? {} : { left: this.myMeowAvoid.left, right: this.myMeowAvoid.right })
+                .id('mainWeb')
 
-              Row().height(this.myMeowAvoid.bottom)
+              Row()
+                .height(this.myMeowAvoid.bottom)
+                .animation(defaultAnima)
+
             }
           }
-          .padding({ left: 5, right: 5 })
-          .id('mainWeb')
+          .padding({ left: 10, right: 10 })
+          .linearGradientBlur(100, this.linearBlurOps)
+          .id('mainWebFrame')
 
           RelativeContainer() {
             Row({ space: 10 }) {
@@ -178,6 +190,8 @@ struct Index {
                   })
                 })
                 .selectAll(true)
+                .selectedBackgroundColor($r('sys.color.font'))
+
               Button(`${this.lookUpResult ? '' : '¯\\_(ツ)_/¯  '}󰈱`)
                 .onClick(() => {
                   clearTimeout(this.refreshForResourcesTimeout);
@@ -198,16 +212,27 @@ struct Index {
           .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
           .borderWidth(1)
           .borderColor($r('sys.color.comp_background_tertiary'))
-          .backgroundEffect({ radius: 100, color: $r('app.color.blur_background')})
+          .backgroundEffect({ radius: 60, color: $r('app.color.blur_background') })
           .padding(10)
-          .margin({ left: 10, bottom: 10, right: 10 })
+          .margin({
+            left: 10,
+            bottom: this.myMeowAvoid.bottom,
+            right: 10,
+            top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0)
+          })
           .shadow(ShadowStyle.OUTER_DEFAULT_LG)
+
+          Text(this.meowDictExampleMDX?.header?.Title)
+            .padding(10)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+            .align(Alignment.Top)
         }
       }
-      .layoutWeight(1)
-      .enabled(this.render)
-      .opacity(this.render ? 1 : 0.5)
-      .margin(this.myMeowFreeWindowModeStatus.on ? {} : { top: this.myMeowAvoid.top, left: this.myMeowAvoid.left, right: this.myMeowAvoid.right })
+      .width('100%')
+      .height('100%')
+      .backgroundColor(this.isMainColorTransparent && this.myMeowFreeWindowModeStatus.on ? undefined : this.mainColor)
+      .animation(defaultAnima)
       .onAreaChange((o, n) => {
         if (o.width != n.width) {
           this.myMeowLayout.width = n.width as number;
@@ -217,14 +242,10 @@ struct Index {
           this.myMeowLayout.height = n.height as number;
         }
       })
+      .onAppear(() => {
+        this.render = true;
+      })
     }
-    .backgroundColor(this.isMainColorTransparent && this.myMeowFreeWindowModeStatus.on ? undefined : this.mainColor)
-    .animation(defaultAnima)
-    .useEffect(this.isMainColorTransparent && this.myMeowFreeWindowModeStatus.on, EffectType.WINDOW_EFFECT)
-    .onAppear(() => {
-      this.render = true;
-    })
-
   }
 
   // Actions
@@ -311,45 +332,72 @@ struct Index {
   }
 
   extractWebColor() {
-    this.getUIContext().getComponentSnapshot().get('mainWeb', (error, pixmap: image.PixelMap) => {
-      if (error) {
-        console.error(`[Meow][extractWebColor] error: ${JSON.stringify(error)}`);
+    this.getUIContext().getComponentSnapshot().get('mainWeb', (e, pixmap: image.PixelMap) => {
+      if (e) {
+        console.error(`[Meow][extractWebColor][Web] error: ${e}`);
+
+        // Retry from frame
+        this.getUIContext().getComponentSnapshot().get('mainWebFrame', (e, pixmap: image.PixelMap) => {
+          if (e) {
+            console.error(`[Meow][Frame][extractWebColor] error: ${e}`);
+            return;
+          }
+          console.log(`[Meow][extractWebColor][Frame] extractWebColor from frame!`);
+          this.pickerGetColor(pixmap);
+        }, {
+          waitUntilRenderFinished: true,
+          region: {
+            left: meowVp2px(10),
+            right: meowVp2px(this.myMeowLayout.width - 10),
+            top: meowVp2px(this.titleHeight() + this.myMeowAvoid.top + 20 + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0)),
+            bottom: meowVp2px(this.myMeowLayout.height - this.myMeowAvoid.bottom - 10)
+          }
+        });
+
         return;
+
+      } else {
+        console.log(`[Meow][extractWebColor][Web] extractWebColor from web!`);
+        this.pickerGetColor(pixmap);
       }
-      effectKit.createColorPicker(pixmap)
-        .then(colorPicker => {
-          colorPicker.getMainColor().then((mainColor) => {
-            let a = mainColor.alpha.toString(16);
+    }, {
+      waitUntilRenderFinished: true,
+    });
+  }
 
-            let r = mainColor.red.toString(16);
-            let g = mainColor.green.toString(16);
-            let b = mainColor.blue.toString(16);
+  pickerGetColor(pixelMap: image.PixelMap) {
+    effectKit.createColorPicker(pixelMap)
+      .then(colorPicker => {
+        colorPicker.getMainColor().then((mainColor) => {
+          let a = mainColor.alpha.toString(16);
 
-            if (a == '0') {
-              a = '00';
-            }
-            if (r == '0') {
-              r = '00';
-            }
-            if (g == '0') {
-              g = '00';
-            }
-            if (b == '0') {
-              b = '00';
-            }
+          let r = mainColor.red.toString(16);
+          let g = mainColor.green.toString(16);
+          let b = mainColor.blue.toString(16);
 
-            let hexColor = `#${a}${r}${g}${b}`;
-            console.log(`[Meow][extractWebColor] Extracted Color: ${hexColor}`);
-            this.mainColor = hexColor;
+          if (a == '0') {
+            a = '00';
+          }
+          if (r == '0') {
+            r = '00';
+          }
+          if (g == '0') {
+            g = '00';
+          }
+          if (b == '0') {
+            b = '00';
+          }
 
-            this.isMainColorTransparent = mainColor.alpha == 0;
-          })
+          let hexColor = `#${a}${r}${g}${b}`;
+          console.log(`[Meow][extractWebColor] Extracted Color: ${hexColor}`);
+          this.mainColor = hexColor;
+
+          this.isMainColorTransparent = mainColor.alpha == 0;
         })
-        .catch((reason: BusinessError) => {
-          console.error("[Meow][extractWebColor] effectKit.createColorPicker(pixmap) error = " + reason.message);
-        })
-
-    }, { waitUntilRenderFinished: true });
+      })
+      .catch((reason: BusinessError) => {
+        console.error("[Meow][extractWebColor] effectKit.createColorPicker(pixmap) error = " + reason.message);
+      })
   }
 
   // Data
@@ -365,5 +413,25 @@ struct Index {
   onDictRefresh() {
     console.log(`[Meow][MDX] Woof!`);
     this.firstPageLoaded = this.loadWeb(this.meowDictExampleMDX.header?.toHtml());
+  }
+
+  @Monitor('myMeowFreeWindowModeStatus.on', 'myMeowAvoid.top', 'myMeowLayout.height')
+  onFreeWindowOrAvoidRefresh() {
+    if (this.myMeowFreeWindowModeStatus.on) {
+      this.technicallyTopAvoid = defaultDecorHeight;
+    } else {
+      this.technicallyTopAvoid = this.myMeowAvoid.top;
+    }
+
+    this.linearBlurOps = {
+      fractionStops: [
+        [1, 0],
+        [0.8, this.technicallyTopAvoid / this.myMeowLayout.height],
+        [0, (this.technicallyTopAvoid + this.titleHeight()) / this.myMeowLayout.height]
+      ],
+      direction: GradientDirection.Bottom
+    };
+
+    return this.technicallyTopAvoid;
   }
 }

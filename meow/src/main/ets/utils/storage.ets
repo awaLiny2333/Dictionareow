@@ -48,7 +48,7 @@ export async function fileDocumentPick2ArrayBuffer(fileSuffixFilters: string[] =
           fileName = targetPathSplit[targetPathSplit.length-1];
 
         } catch (e) {
-          console.error(`[file_document_reader] Read file from ${selected_uri[0]} failed! ${e} Returning undefined...`);
+          console.error(`[file_document_reader] Read file from ${selected_uri[0]} failed! ${e}! Returning undefined...`);
         }
 
         return { succeed: true, buf: resultBuffer, fileName: fileName } as meowReadPickResult;
