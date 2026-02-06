@@ -33,6 +33,23 @@ export function meowVp2px(vp: number) {
 }
 
 /**
+ * Converts vp to inch.
+ * @param vp The true vp.
+ * @returns The equivalent inch.
+ * */
+export function meowVp2In(vp: number) {
+  try {
+    let dpi = display.getDefaultDisplaySync().densityDPI;
+    let px = meowVp2px(vp);
+    let inch = px / dpi;
+    return inch;
+  } catch (e) {
+    meow(`Error: ${e}, returned in vp.`, 'meowVp2In', meowLevel.ERROR);
+    return vp;
+  }
+}
+
+/**
  * Returns the text's height.
  * @param text The text.
  * @param uiContext The UIContext.
@@ -98,7 +115,12 @@ export function listenAvoid(windowClass: window.Window) {
       }
       if (data.type == window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR) {
         let bottom = meowPx2vp(data.area.bottomRect.height);
-        avoid.bottom = bottom;
+        let free = AppStorageV2.connect(meowFreeWindowModeStatus);
+        if (free && !free.on) {
+          avoid.bottom = Math.max(bottom, 10);
+        } else {
+          avoid.bottom = bottom;
+        }
       }
       if (data.type == window.AvoidAreaType.TYPE_CUTOUT) {
         let left = meowPx2vp(data.area.leftRect.width);
