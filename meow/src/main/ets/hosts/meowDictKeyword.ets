@@ -316,7 +316,7 @@ export class meowDictKeywordIndexEntry {
   decompSize: number;
   builtBlock: meowDictKeywordBlock | undefined;
 
-  constructor(bufferBuffer: fastbuffer.FastBuffer, encoding: string, offset: number) {
+  constructor(bufferBuffer: fastbuffer.FastBuffer | buffer.Buffer, encoding: string, offset: number) {
 
     let ul = getUnitEncodingLength(encoding); // 1 byte for UTF-8
     // console.warn(`[meowDictKeyword][IndexEntry] encoding = ${encoding}, encodingUnitLength = ${ul}`);

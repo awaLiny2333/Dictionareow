@@ -1,5 +1,6 @@
 import { arrayBuffer2Int64BE, bufferBuffer2Int64BE, decompress } from '../utils/data';
 import { buffer, fastbuffer } from '@kit.ArkTS';
+import { BusinessError } from '@kit.BasicServicesKit';
 
 @ObservedV2
 export class meowDictRecord {
@@ -86,24 +87,29 @@ export class meowDictRecord {
     console.log(`[meowDictRecord][getRecordEntry] Locked range: record block #${startRecordIdx} to #${endRecordIdx}`);
 
     // Decompress them
-    let decompressed: fastbuffer.FastBuffer[] = [];
+    let decompressed: buffer.Buffer[] = [];
 
     for (let index = startRecordIdx; index <= endRecordIdx; index++) {
       let startRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[index];
       let endRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[index + 1];
-      await decompress(this.globalRawData.slice(startRecordGlobalOffset, endRecordGlobalOffset), this.decompSizes[index], '    [meowDictRecord][getRecordEntry][build!]').then((arrayBuffer) => {
-        try {
-          decompressed.push(fastbuffer.from(arrayBuffer));
-        } catch (e) {
-          console.error(`[meowDictRecord][getRecordEntry] decompressed[index-startRecordIdx] = fastbuffer.from(arrayBuffer); Failed: ${e}`);
-        }
-      })
+      await decompress(this.globalRawData.slice(startRecordGlobalOffset, endRecordGlobalOffset), this.decompSizes[index],
+        `    [meowDictRecord][getRecordEntry][build!][${index}]`)
+        .then((arrayBuffer) => {
+          try {
+            decompressed.push(buffer.from(arrayBuffer));
+          } catch (e) {
+            console.error(`[meowDictRecord][getRecordEntry] decompressed[index-startRecordIdx] = fastbuffer.from(arrayBuffer); Failed: ${e}`);
+          }
+        })
+        .catch((e:BusinessError)=>{
+          console.error(`[meowDictRecord][getRecordEntry][${index}] Failed: ${e}`);
+        })
     }
 
-    console.log(`[meowDictRecord][getRecordEntry] Length of decompressed[]: ${decompressed.length}`);
-
     try {
-      const longBufferBuffer = fastbuffer.concat(decompressed);
+      console.log(`[meowDictRecord][getRecordEntry] Length of decompressed[]: ${decompressed.length}`);
+
+      const longBufferBuffer = buffer.concat(decompressed);
       const recordOffsetStartInBuffer = recordOffsetStart - this.decompSizesCumulative[startRecordIdx];
       let recordOffsetEndInBuffer: number | undefined;
       if (recordOffsetEnd) {

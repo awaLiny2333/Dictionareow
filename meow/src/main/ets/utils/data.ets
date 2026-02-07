@@ -207,7 +207,7 @@ export function getUnitEncodingLength(encoding: string): number {
 // Compressed
 
 export async function decompress(rawData: ArrayBuffer, decompLen: number, logTag: string = '') {
-  const compType = new Uint8Array(rawData, 0, 4).toString();
+  const compType = new Uint8Array(rawData.slice(0, 4)).toString();
   console.log(`${logTag}[decompress] compType = ${compType}, compLen = ${rawData.byteLength}, decompLen = ${decompLen}`);
 
   const compChecksumBuffer = rawData.slice(4, 8);
