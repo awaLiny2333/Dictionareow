@@ -10,7 +10,7 @@ import {
   isUint8ArrayZero,
   keepOnlyAlphanumericGlobal as keepOnlyAlphanumeric
 } from '../utils/data';
-import { buffer, taskpool } from '@kit.ArkTS';
+import { buffer, fastbuffer, taskpool } from '@kit.ArkTS';
 
 export class meowDictKeyword {
   globalRawData: ArrayBuffer;
@@ -290,7 +290,7 @@ export class meowDictKeywordIndex {
     let offset = 0;
     // console.log(`[meowDictKeyword][IndexEntry] Offset starts with: ${offset}`);
     try {
-      const bufferBuffer = buffer.from(this.decompData);
+      const bufferBuffer = fastbuffer.from(this.decompData);
 
       for (let index = 0; index < this.numBlocks; index++) {
         let entry = new meowDictKeywordIndexEntry(bufferBuffer, encoding, offset);
@@ -316,7 +316,7 @@ export class meowDictKeywordIndexEntry {
   decompSize: number;
   builtBlock: meowDictKeywordBlock | undefined;
 
-  constructor(bufferBuffer: buffer.Buffer, encoding: string, offset: number) {
+  constructor(bufferBuffer: fastbuffer.FastBuffer, encoding: string, offset: number) {
 
     let ul = getUnitEncodingLength(encoding); // 1 byte for UTF-8
     // console.warn(`[meowDictKeyword][IndexEntry] encoding = ${encoding}, encodingUnitLength = ${ul}`);
@@ -400,7 +400,7 @@ function splitBuild(rawData: ArrayBuffer, encoding: string) {
   let encodingUnitLength = getUnitEncodingLength(encoding); // 1 byte for UTF-8
   let pointer = 0;
   try {
-    const rawDataBufferBuffer = buffer.from(rawData);
+    const rawDataBufferBuffer = fastbuffer.from(rawData);
 
     while (pointer < rawData.byteLength) {
       const offsetNumber = bufferBuffer2Int64BE(rawDataBufferBuffer, pointer) || 0;

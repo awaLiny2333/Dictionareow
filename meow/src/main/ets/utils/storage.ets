@@ -142,17 +142,23 @@ function sandboxReadArrayBufferSync(filePath: string, context: Context) {
     return undefined;
   }
 
-  let file = fileIo.openSync(fullDirectory, fileIo.OpenMode.READ_WRITE);
-  let stat = fileIo.statSync(fullDirectory);
-  let buf = new ArrayBuffer(stat.size);
-  let l = fileIo.readSync(file.fd, buf);
-  let readLen = l;
-  let result = buf.slice(0, readLen);
-  fileIo.close(file).catch((e: BusinessError) => {
-    console.error(`[sandboxReadArrayBuffer] fileIo.close(file) failed: ${e}`);
-  })
-  console.info(`[sandboxReadArrayBuffer] read [${filePath}] succeed, length: ${readLen} (${Date.now() - startTime} ms)`);
-  return result;
+  try {
+    let file = fileIo.openSync(fullDirectory, fileIo.OpenMode.READ_WRITE);
+    let stat = fileIo.statSync(fullDirectory);
+    let buf = new ArrayBuffer(stat.size);
+    let l = fileIo.readSync(file.fd, buf);
+    let readLen = l;
+    let result = buf.slice(0, readLen);
+    fileIo.close(file).catch((e: BusinessError) => {
+      console.error(`[sandboxReadArrayBuffer] fileIo.close(file) failed: ${e}`);
+    })
+    console.info(`[sandboxReadArrayBuffer] read [${filePath}] succeed, length: ${readLen} (${Date.now() - startTime} ms)`);
+    return result;
+
+  } catch (e) {
+    console.error(`[sandboxReadArrayBuffer] file operation failed: ${e}. Return undefined.`);
+    return undefined;
+  }
 }
 
 /**

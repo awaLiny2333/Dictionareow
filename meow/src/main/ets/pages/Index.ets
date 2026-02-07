@@ -303,7 +303,12 @@ struct Index {
         return false;
       }
       if (dict.type == meowDictType.MDX) {
-        let resultText = resultBuffer.toString(dict.header!.Encoding);
+        let resultText = 'Error??';
+        try {
+          resultText = resultBuffer.toString(dict.header!.Encoding);
+        } catch (e) {
+          console.error(`[Meow][MDX] resultText = resultBuffer.toString(dict.header!.Encoding); Failed: ${e}`);
+        }
         this.loadWeb(resultText);
         console.log(`[Meow][MDX] Got result!`);
 

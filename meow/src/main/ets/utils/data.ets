@@ -1,4 +1,4 @@
-import { buffer, fastbuffer } from '@kit.ArkTS';
+import { buffer } from '@kit.ArkTS';
 import { lzoDecompress } from './lzo';
 import { zlib } from '@kit.BasicServicesKit';
 import { alder32ChecksumVerify } from './alder32';
@@ -14,7 +14,7 @@ export interface meowWrapHtmlOptions {
 
 // Numbers
 
-export function bufferBuffer2Int64BE(rawData: buffer.Buffer | fastbuffer.FastBuffer, offset: number) {
+export function bufferBuffer2Int64BE(rawData: buffer.Buffer, offset: number) {
   try {
     let result = rawData.readBigInt64BE(offset);
     // console.log(`[arrayBuffer2BigInt64BE] result is ${result}, Number(result) is ${Number(result)}`);
@@ -68,8 +68,7 @@ export function arrayBuffer2Int16BE(rawData: ArrayBuffer) {
     return undefined;
   }
 }
-
-export function bufferBuffer2Int16BE(rawData: buffer.Buffer | fastbuffer.FastBuffer, offset: number) {
+export function bufferBuffer2Int16BE(rawData: buffer.Buffer, offset: number) {
   try {
     let result = rawData.readInt16BE(offset);
     // console.log(`[bufferBuffer2Int16BE] result is ${result}`);
@@ -115,7 +114,7 @@ export function arrayBuffer2String(rawData: ArrayBuffer, encoding: string) {
   }
 }
 
-export function bufferBuffer2UTF8(rawData: buffer.Buffer | fastbuffer.FastBuffer, offset: number, end: number) {
+export function bufferBuffer2UTF8(rawData: buffer.Buffer, offset: number, end: number) {
   try {
     let result = rawData.toString('utf-8', offset, end);
     // console.log(`[arrayBuffer2UTF8] result is ${result}`);
@@ -126,7 +125,7 @@ export function bufferBuffer2UTF8(rawData: buffer.Buffer | fastbuffer.FastBuffer
   }
 }
 
-export function bufferBuffer2String(rawData: buffer.Buffer | fastbuffer.FastBuffer, offset: number, end: number, encoding: string) {
+export function bufferBuffer2String(rawData: buffer.Buffer, offset: number, end: number, encoding: string) {
   try {
     let result = rawData.toString(encoding, offset, end);
     // console.log(`[bufferBuffer2String] result is ${result}`);
