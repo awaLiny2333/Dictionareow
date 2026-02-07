@@ -93,7 +93,7 @@ export class meowDictRecord {
       let startRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[index];
       let endRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[index + 1];
       await decompress(this.globalRawData.slice(startRecordGlobalOffset, endRecordGlobalOffset), this.decompSizes[index],
-        `    [meowDictRecord][getRecordEntry][build!][${index}]`)
+        `    [meowDictRecord][getRecordEntry][build!][${index}]`, { type: '0' })
         .then((arrayBuffer) => {
           try {
             decompressed.push(buffer.from(arrayBuffer));

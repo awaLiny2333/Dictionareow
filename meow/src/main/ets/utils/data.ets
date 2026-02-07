@@ -2,6 +2,7 @@ import { buffer, fastbuffer } from '@kit.ArkTS';
 import { lzoDecompress } from './lzo';
 import { zlib } from '@kit.BasicServicesKit';
 import { alder32ChecksumVerify } from './alder32';
+import { decryptKeywordIndex, getEncryptionKey } from './decryption';
 
 export interface meowWrapHtmlOptions {
   title?: string;
@@ -206,16 +207,28 @@ export function getUnitEncodingLength(encoding: string): number {
 
 // Compressed
 
-export async function decompress(rawData: ArrayBuffer, decompLen: number, logTag: string = '') {
+export interface decompressDecryptConfig {
+  type: string;
+  regCode?: string;
+  userId?: string;
+}
+
+export async function decompress(rawData: ArrayBuffer, decompLen: number, logTag: string = '', dec: decompressDecryptConfig) {
   const compType = new Uint8Array(rawData.slice(0, 4)).toString();
   console.log(`${logTag}[decompress] compType = ${compType}, compLen = ${rawData.byteLength}, decompLen = ${decompLen}`);
 
   const compChecksumBuffer = rawData.slice(4, 8);
   const compChecksumNumber = arrayBuffer2Int32BE(compChecksumBuffer) || 0;
 
-  const compData = rawData.slice(8);
+  let compData = rawData.slice(8);
   console.log(`${logTag}[decompress] compData.byteLength = ${compData.byteLength}`);
 
+  if (dec.type == '2') {
+    console.log(`${logTag} Type 2 encryption! Decrypting...`);
+    const compKey = getEncryptionKey(compChecksumBuffer);
+    compData = decryptKeywordIndex(new Uint8Array(compData), new Uint8Array(compKey));
+    console.log(`${logTag}[decompress][type2Decrypted] compData.byteLength = ${compData.byteLength}`);
+  }
 
   let decompData: ArrayBuffer = new ArrayBuffer(0);
   if (compType == '0,0,0,0') {

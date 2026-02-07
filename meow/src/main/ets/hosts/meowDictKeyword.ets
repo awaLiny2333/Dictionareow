@@ -5,6 +5,7 @@ import {
   bufferBuffer2Int64BE,
   bufferBuffer2String,
   decompress,
+  decompressDecryptConfig,
   getUnitEncodingLength,
   isStringBetween,
   isUint8ArrayZero,
@@ -25,12 +26,12 @@ export class meowDictKeyword {
   index: meowDictKeywordIndex | undefined;
   lookUpBlockIndex: number = 0;
 
-  constructor(globalOffset: number, globalRawData: ArrayBuffer, globalEncoding: string) {
+  constructor(globalOffset: number, globalRawData: ArrayBuffer, globalEncoding: string, type2Encrypted: boolean) {
     this.globalOffset = globalOffset;
     this.globalRawData = globalRawData;
     this.globalEncoding = globalEncoding;
     this.processMetadata();
-    this.processIndex();
+    this.processIndex(type2Encrypted);
   }
 
   private processMetadata() {
@@ -72,10 +73,16 @@ export class meowDictKeyword {
     this.headerChecksum = headerChecksum;
   }
 
-  private processIndex() {
+  private processIndex(type2Encrypted: boolean) {
     const startTime = Date.now();
     let index = new meowDictKeywordIndex(this.globalOffset + 44, this.globalRawData, this.keyIndexDecompLen, this.keyIndexCompLen, this.numBlocks);
-    index.init(this.globalEncoding).then(() => {
+
+    let config: decompressDecryptConfig = { type: '0' };
+    if (type2Encrypted) {
+      config = { type: '2' };
+    }
+
+    index.init(this.globalEncoding, config).then(() => {
       this.index = index;
       console.log(`[meowDictKeyword][Index][init] Index loaded! (${Date.now() - startTime} ms)`);
     })
@@ -167,7 +174,7 @@ export class meowDictKeyword {
 
     console.log(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] offsetFromRawHead = ${offsetFromRawHead}, thisBlockCompSize = ${thisBlockCompSize}, thisBlockDecompSize = ${thisBlockDecompSize}`);
 
-    return decompress(compBlock, thisBlockDecompSize, '[meowDictKeyword][Index][getKeyBlockArrayBuffer]').then((decompBlock) => {
+    return decompress(compBlock, thisBlockDecompSize, '[meowDictKeyword][Index][getKeyBlockArrayBuffer]', { type: '0' }).then((decompBlock) => {
       let block = new meowDictKeywordBlock();
       return block.init(decompBlock, this.globalEncoding).then(() => {
         this.index!.indexEntries[indexInBlocks].builtBlock = block;
@@ -278,8 +285,8 @@ export class meowDictKeywordIndex {
     // this.init();
   }
 
-  async init(encoding: string) {
-    this.decompData = await decompress(this.rawData.slice(this.offset, this.offset + this.keyIndexCompLen), this.keyIndexDecompLen, '[meowDictKeyword][Index][init]');
+  async init(encoding: string, dec: decompressDecryptConfig) {
+    this.decompData = await decompress(this.rawData.slice(this.offset, this.offset + this.keyIndexCompLen), this.keyIndexDecompLen, '[meowDictKeyword][Index][init]',dec);
     this.processIndexEntry(encoding);
   }
 
