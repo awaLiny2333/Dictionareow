@@ -10,7 +10,7 @@ import {
   isUint8ArrayZero,
   keepOnlyAlphanumericGlobal as keepOnlyAlphanumeric
 } from '../utils/data';
-import { buffer } from '@kit.ArkTS';
+import { buffer, taskpool } from '@kit.ArkTS';
 
 export class meowDictKeyword {
   globalRawData: ArrayBuffer;
@@ -158,9 +158,11 @@ export class meowDictKeyword {
 
     const compBlock = this.globalRawData.slice(offsetFromRawHead, offsetFromRawHead + thisBlockCompSize);
     return decompress(compBlock, thisBlockDecompSize, '[meowDictKeyword][Index][getKeyBlockArrayBuffer]').then((decompBlock) => {
-      const block = new meowDictKeywordBlock(decompBlock, this.globalEncoding);
-      this.index!.indexEntries[indexInBlocks].builtBlock = block;
-      return block;
+      const block = new meowDictKeywordBlock();
+      return block.init(decompBlock, this.globalEncoding).then(() => {
+        this.index!.indexEntries[indexInBlocks].builtBlock = block;
+        return block;
+      })
     });
   }
 
@@ -340,47 +342,67 @@ export class meowDictKeywordIndexEntry {
   }
 }
 
+interface meowDictKeywordBlockSplitBuildResult {
+  offsets: number[];
+  keywords: string[];
+}
+
+@Concurrent
+function splitBuild(rawData: ArrayBuffer, encoding: string) {
+  const startTime = Date.now();
+  const uintData = new Uint8Array(rawData);
+
+  let buildOffsets: number[] = [];
+  let buildKeywords: string[] = [];
+
+  let encodingUnitLength = getUnitEncodingLength(encoding); // 1 byte for UTF-8
+  let pointer = 0;
+  try {
+    const rawDataBufferBuffer = buffer.from(rawData);
+
+    while (pointer < rawData.byteLength) {
+      const offsetNumber = bufferBuffer2Int64BE(rawDataBufferBuffer, pointer) || 0;
+      buildOffsets.push(offsetNumber);
+
+      pointer += 8; // Now points at the start of the string
+      const startOfString = pointer;
+
+      while (!isUint8ArrayZero(uintData.subarray(pointer, pointer + encodingUnitLength))) {
+        pointer += encodingUnitLength;
+      }
+      const endOfString = pointer;
+
+      const keyword = bufferBuffer2String(rawDataBufferBuffer, startOfString, endOfString, encoding) || '';
+      buildKeywords.push(keyword);
+
+      // console.log(`[meowDictKeyword][IndexBlock][splitBuild] offsetNumber = ${offsetNumber}, keyword = ${keyword}`);
+
+      pointer += encodingUnitLength; // Skip null char
+    }
+  } catch (e) {
+    console.error(`[meowDictKeyword][IndexBlock][splitBuild] failed: ${e}`);
+  }
+
+  console.log(`[meowDictKeyword][IndexBlock][splitBuild] Used time ${Date.now() - startTime} ms.`);
+  return { offsets: buildOffsets, keywords: buildKeywords } as meowDictKeywordBlockSplitBuildResult;
+}
+
 export class meowDictKeywordBlock {
   // private rawData: ArrayBuffer;
   offsets: number[] = [];
   keywords: string[] = [];
 
-  constructor(rawData: ArrayBuffer, encoding: string) {
-    this.splitBuild(rawData, encoding);
-  }
-
-  private splitBuild(rawData: ArrayBuffer, encoding: string) {
-    const startTime = Date.now();
-    const uintData = new Uint8Array(rawData);
-
-    let encodingUnitLength = getUnitEncodingLength(encoding); // 1 byte for UTF-8
-    let pointer = 0;
+  async init(rawData: ArrayBuffer, encoding: string) {
+    let task: taskpool.Task = new taskpool.Task(splitBuild, rawData, encoding);
     try {
-      const rawDataBufferBuffer = buffer.from(rawData);
-
-      while (pointer < rawData.byteLength) {
-        const offsetNumber = bufferBuffer2Int64BE(rawDataBufferBuffer, pointer) || 0;
-        this.offsets.push(offsetNumber);
-
-        pointer += 8; // Now points at the start of the string
-        const startOfString = pointer;
-
-        while (!isUint8ArrayZero(uintData.subarray(pointer, pointer + encodingUnitLength))) {
-          pointer += encodingUnitLength;
-        }
-        const endOfString = pointer;
-
-        const keyword = bufferBuffer2String(rawDataBufferBuffer, startOfString, endOfString, encoding) || '';
-        this.keywords.push(keyword);
-
-        // console.log(`[meowDictKeyword][IndexBlock][splitBuild] offsetNumber = ${offsetNumber}, keyword = ${keyword}`);
-
-        pointer += encodingUnitLength; // Skip null char
-      }
+      const res = await taskpool.execute(task) as meowDictKeywordBlockSplitBuildResult;
+      console.info(`[meowDictKeywordBlock][init] taskpool.execute(task)!`);
+      this.offsets = res.offsets;
+      this.keywords = res.keywords;
+      return true;
     } catch (e) {
-      console.error(`[meowDictKeyword][IndexBlock][splitBuild] failed: ${e}`);
+      console.error(`[meowDictKeywordBlock][init] Failed: ${e}`);
+      return false;
     }
-
-    console.log(`[meowDictKeyword][IndexBlock][splitBuild] Used time ${Date.now() - startTime} ms.`);
   }
 }

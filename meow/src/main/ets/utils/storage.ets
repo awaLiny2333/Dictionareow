@@ -71,7 +71,7 @@ export async function fileDocumentPick2ArrayBuffer(fileSuffixFilters: string[] =
  * @param content A string or an ArrayBuffer, fills the file's content.
  * @param overwrite overwrite or not.
  * */
-export function sandboxSaveSync(filePath: string, content: string | ArrayBuffer, context: Context, overwrite = false) {
+export async function sandboxSaveHybrid(filePath: string, content: string | ArrayBuffer, context: Context, overwrite = false) {
   let filesDir: string = context.filesDir;
   let fullDirectory = filesDir + '/' + filePath;
   try {
@@ -80,16 +80,28 @@ export function sandboxSaveSync(filePath: string, content: string | ArrayBuffer,
         fileIo.unlinkSync(fullDirectory);
       } else {
         console.warn(`[sandboxSaveSync] file ${filePath} exist! Returned.`);
-        return;
+        return undefined;
       }
     }
     let file = fileIo.openSync(fullDirectory, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
-    let writeLen = fileIo.writeSync(file.fd, content);
-    fileIo.closeSync(file);
-
-    console.info(`[sandboxSaveSync] write to file ${filePath} succeed, size = ${writeLen}`);
+    return fileIo.write(file.fd, content)
+      .then((writeLen) => {
+        console.info(`[sandboxSaveSync] write to file ${filePath} succeed, size = ${writeLen}`);
+        return true;
+      })
+      .catch((e: BusinessError) => {
+        console.error(`[sandboxSaveSync] fileIo.write(file.fd, content) to file ${filePath} failed: ${e}`);
+        return false;
+      })
+      .finally(() => {
+        fileIo.close(file)
+          .catch((e: BusinessError) => {
+            console.error(`[sandboxSaveSync] fileIo.close(file) file ${filePath} failed: ${e}`);
+          });
+      })
   } catch (e) {
     console.error(`[sandboxSaveSync] write to file ${filePath} failed: ${e}`);
+    return false;
   }
 }
 

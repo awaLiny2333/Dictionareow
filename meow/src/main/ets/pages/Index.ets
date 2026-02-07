@@ -1,5 +1,5 @@
 import { meowDict, meowDictType } from '../hosts/meowDict';
-import { fileDocumentPick2ArrayBuffer, sandboxCreateDir, sandboxSaveSync } from '../utils/storage';
+import { fileDocumentPick2ArrayBuffer, sandboxCreateDir, sandboxSaveHybrid } from '../utils/storage';
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { AppStorageV2 } from '@kit.ArkUI';
@@ -14,7 +14,7 @@ struct Index {
   @Local myMeowAvoid: meowAvoid = AppStorageV2.connect<meowAvoid>(meowAvoid)!;
   @Local myMeowFreeWindowModeStatus: meowFreeWindowModeStatus = AppStorageV2.connect<meowFreeWindowModeStatus>(meowFreeWindowModeStatus)!;
   @Local myMeowLayout: meowLayoutModeStatus = AppStorageV2.connect<meowLayoutModeStatus>(meowLayoutModeStatus)!;
-  @Local technicallyTopAvoid: number = 0;
+  @Local windowTopAvoid: number = 0;
   // Data
   @Local meowDictExampleMDX: meowDict = AppStorageV2.connect<meowDict>(meowDict, 'meowDictExampleMDX', () => new meowDict(meowDictType.MDX))!;
   @Local meowDictExampleMDD: meowDict = AppStorageV2.connect<meowDict>(meowDict, 'meowDictExampleMDD', () => new meowDict(meowDictType.MDD))!;
@@ -26,6 +26,7 @@ struct Index {
   refreshForResourcesTimeout: number | undefined;
   currentContent: string = '';
   // Runtime UI
+  @Local topDown: boolean = this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode;
   @Local render: boolean = false;
   @Local firstPageLoaded: boolean = false;
   @Local linearBlurOps: LinearGradientBlurOptions = this.constructLinearBlurOps();
@@ -87,7 +88,7 @@ struct Index {
                         } catch (e) {
                           console.error(`[Meow][Web][refreshForResourcesTimeout] failed: ${e}`);
                         }
-                      }, 100);
+                      }, 500);
                     })
                   })
                 } else if (reqFileScheme == 'entry:') {
@@ -108,7 +109,7 @@ struct Index {
               .borderRadius(15)
               .backgroundColor(Color.Transparent)
               .id('mainWeb')
-              .linearGradientBlur(100, this.linearBlurOps)
+              .linearGradientBlur(30, this.linearBlurOps)
 
             RelativeContainer() {
               Scroll() {
@@ -119,7 +120,7 @@ struct Index {
                         if (r.succeed) {
                           this.meowDictExampleMDX = new meowDict(meowDictType.MDX, r.buf!);
                           sandboxCreateDir('meow', this.getUIContext().getHostContext()!, true).then(() => {
-                            sandboxSaveSync('woof/woof.mdx', r.buf!, this.getUIContext().getHostContext()!, true);
+                            sandboxSaveHybrid('woof/woof.mdx', r.buf!, this.getUIContext().getHostContext()!, true);
                           })
                         }
                       })
@@ -129,7 +130,7 @@ struct Index {
                       fileDocumentPick2ArrayBuffer(['.mdd']).then((r) => {
                         if (r.succeed) {
                           this.meowDictExampleMDD = new meowDict(meowDictType.MDD, r.buf!);
-                          sandboxSaveSync('woof/woof.mdd', r.buf!, this.getUIContext().getHostContext()!, true);
+                          sandboxSaveHybrid('woof/woof.mdd', r.buf!, this.getUIContext().getHostContext()!, true);
                         }
                       })
                     })
@@ -137,7 +138,7 @@ struct Index {
                     .onClick(() => {
                       fileDocumentPick2ArrayBuffer(['.css', '.js', '.jpg', '.jpeg', '.png', '.svg']).then((r) => {
                         if (r.succeed) {
-                          sandboxSaveSync('meow/' + r.fileName!, r.buf!, this.getUIContext().getHostContext()!, true);
+                          sandboxSaveHybrid('meow/' + r.fileName!, r.buf!, this.getUIContext().getHostContext()!, true);
                         }
                       })
                     })
@@ -188,7 +189,7 @@ struct Index {
             .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
             .borderWidth(1)
             .borderColor($r('sys.color.comp_background_tertiary'))
-            .backgroundEffect({ radius: 60, color: $r('app.color.blur_background') })
+            .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
             .padding(10)
             .margin({
               left: 10,
@@ -196,12 +197,12 @@ struct Index {
               right: 10,
               top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0)
             })
-            .shadow(ShadowStyle.OUTER_DEFAULT_LG)
+            .shadow(ShadowStyle.OUTER_DEFAULT_MD)
           }
-          .alignContent(this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode ? Alignment.Top : Alignment.Bottom)
+          .alignContent(this.topDown ? Alignment.Top : Alignment.Bottom)
           .animation(defaultAnima)
 
-          if (this.myMeowLayout.wideMode || this.myMeowFreeWindowModeStatus.on) {
+          if (this.topDown) {
             Text(this.meowDictExampleMDX?.header?.Title)
               .padding(10)
               .width('100%')
@@ -245,18 +246,10 @@ struct Index {
 
     this.currentContent = content;
 
-    // Not elegant
-    let topVp = this.technicallyTopAvoid;
-    let bottomVp = this.myMeowAvoid.bottom;
+    const avoidPercentages = this.constructWebAvoidPercentages();
 
-    if (this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode) {
-      topVp += this.titleHeight();
-    } else {
-      bottomVp += this.titleHeight();
-    }
-
-    const padTop = `<div style="height: ${topVp / this.myMeowLayout.height * 100}%"></div>`;
-    const padBottom = `<div style="height: ${bottomVp / this.myMeowLayout.height * 100}%"></div>`;
+    const padTop = `<div id='dictionareowTopAvoid' style="height: ${avoidPercentages[0]}%"></div>`;
+    const padBottom = `<div id='dictionareowBottomAvoid' style="height: ${avoidPercentages[1]}%"></div>`;
 
     try {
       this.webController.loadData(padTop + content + padBottom, 'text/html', 'UTF-8', 'file://' + this.getUIContext().getHostContext()!.filesDir + '/meow/', ' ');
@@ -319,13 +312,13 @@ struct Index {
         return false;
       }
       if (dict.type == meowDictType.MDD) {
-        // console.log(`[Meow][MDD] Got result! ${resultBuffer}`);
+        console.log(`[Meow][extractFile] Got result!`);
 
         let fileName = key;
         if (fileName.substring(0, 1) == '\\') {
           fileName = fileName.substring(1);
         }
-        sandboxSaveSync('meow/' + fileName, resultBuffer.buffer, this.getUIContext().getHostContext()!);
+        sandboxSaveHybrid('meow/' + fileName, resultBuffer.buffer, this.getUIContext().getHostContext()!);
       }
       return true;
     })
@@ -333,8 +326,47 @@ struct Index {
 
   // Data
 
+  /**
+   * Determines the title bar height.
+   * @returns 60 or 110.
+   * */
   titleHeight() {
     return (this.myMeowLayout.wideMode ? 60 : 110);
+  }
+
+  /**
+   * Constructs the linear blur options for top blur.
+   * @returns The options.
+   * */
+  constructLinearBlurOps() {
+    return {
+      fractionStops: [
+        [1, 0],
+        [1, this.windowTopAvoid / this.myMeowLayout.height],
+        [0, (this.windowTopAvoid + (this.topDown ? this.titleHeight() : 1)) / this.myMeowLayout.height],
+      ],
+      direction: GradientDirection.Bottom
+    } as LinearGradientBlurOptions;
+  }
+
+  /**
+   * Calculates the avoid params for web (including the title bar).
+   * @returns [topPercentage, bottomPercentage]
+   * */
+  constructWebAvoidPercentages() {
+    let topVp = this.windowTopAvoid;
+    let bottomVp = this.myMeowAvoid.bottom;
+
+    if (this.topDown) {
+      topVp += this.titleHeight() + 10;
+    } else {
+      bottomVp += this.titleHeight();
+    }
+
+    const topPercentage = topVp / this.myMeowLayout.height * 100;
+    const bottomPercentage = bottomVp / this.myMeowLayout.height * 100;
+
+    return [topPercentage, bottomPercentage];
   }
 
   // Events
@@ -348,28 +380,25 @@ struct Index {
 
   @Monitor('myMeowFreeWindowModeStatus.on', 'myMeowAvoid.top', 'myMeowLayout.height', 'myMeowLayout.width', 'myMeowLayout.wideMode')
   refreshUIParams() {
-    this.technicallyTopAvoid = this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : this.myMeowAvoid.top;
-
+    // console.log(`[Meow][web][refreshUIParams] !`);
+    this.topDown = this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode;
+    this.windowTopAvoid = this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : this.myMeowAvoid.top;
     this.linearBlurOps = this.constructLinearBlurOps();
-  }
-
-  constructLinearBlurOps() {
-    const topDown = this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode;
-    return {
-      fractionStops: [
-        [1, 0],
-        [1, this.technicallyTopAvoid / this.myMeowLayout.height],
-        [0, (this.technicallyTopAvoid + (topDown ? this.titleHeight() : 1)) / this.myMeowLayout.height]
-      ],
-      direction: GradientDirection.Bottom
-    } as LinearGradientBlurOptions;
   }
 
   @Monitor('myMeowAvoid.top')
   refreshWebToUpdateAvoid() {
+    // console.log(`[Meow][web][refreshWebToUpdateAvoid] !`);
     clearTimeout(this.timeoutIdForAvoidReload);
     this.timeoutIdForAvoidReload = setTimeout(() => {
-      this.loadWeb(this.currentContent);
-    }, 100);
+      // this.loadWeb(this.currentContent);
+      const avoidPercentages = this.constructWebAvoidPercentages();
+      this.webController.runJavaScript(`document.getElementById('dictionareowTopAvoid').style.height = "${avoidPercentages[0]}%"`).catch((e: BusinessError) => {
+        console.error(`[Meow][web][refreshWebToUpdateAvoid] this.webController.runJavaScript Top failed: ${e}`);
+      });
+      this.webController.runJavaScript(`document.getElementById('dictionareowBottomAvoid').style.height = "${avoidPercentages[1]}%"`).catch((e: BusinessError) => {
+        console.error(`[Meow][web][refreshWebToUpdateAvoid] this.webController.runJavaScript Bottom failed: ${e}`);
+      });
+    }, 10);
   }
 }
