@@ -6,6 +6,7 @@ export interface meowReadPickResult {
   succeed: boolean;
   buf?: ArrayBuffer;
   fileName?: string;
+  sourcePath?: string;
 }
 
 /**
@@ -51,7 +52,12 @@ export async function fileDocumentPick2ArrayBuffer(fileSuffixFilters: string[] =
           console.error(`[file_document_reader] Read file from ${selected_uri[0]} failed! ${e}! Returning undefined...`);
         }
 
-        return { succeed: true, buf: resultBuffer, fileName: fileName } as meowReadPickResult;
+        return {
+          succeed: true,
+          buf: resultBuffer,
+          fileName: fileName,
+          sourcePath: uri_2_path(selected_uri[0])
+        } as meowReadPickResult;
       })
       .catch((e: BusinessError) => {
         console.error(`[file_document_reader] DocumentViewPicker.select failed with err: ${e}`);
@@ -83,6 +89,13 @@ export async function sandboxSaveHybrid(filePath: string, content: string | Arra
         return undefined;
       }
     }
+
+    if (typeof content == 'string') {
+      console.info(`[sandboxSaveSync] about to write to file ${filePath}, content length = ${content.length}`);
+    } else {
+      console.info(`[sandboxSaveSync] about to write to file ${filePath}, content length = ${content.byteLength}`);
+    }
+
     let file = fileIo.openSync(fullDirectory, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
     return fileIo.write(file.fd, content)
       .then((writeLen) => {
@@ -204,4 +217,23 @@ export function sandboxCreateDir(dirPath: string, context: Context, overwrite = 
   }).catch((e: BusinessError) => {
     console.error(`[sandboxCreateDir] mkdirSync ${dirPath} fileIo.access(fullDirectory, fileIo.AccessModeType.EXIST) failed: ${e}`);
   })
+}
+
+
+/**
+ * Converts a uri to path.
+ * @param uri The uri.
+ * @returns Its path.
+ * */
+export function uri_2_path(uri: string) {
+  return new fileUri.FileUri(uri).path;
+}
+
+/**
+ * Converts a path to uri.
+ * @param path The path.
+ * @returns Its uri.
+ * */
+export function path_2_uri(path: string) {
+  return fileUri.getUriFromPath(path);
 }

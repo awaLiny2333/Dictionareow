@@ -15,7 +15,7 @@ export class meowDict {
   rawData: ArrayBuffer | undefined;
   @Trace header: meowDictHeader | undefined;
   keyword: meowDictKeyword | undefined;
-  record: meowDictRecord | undefined;
+  @Trace record: meowDictRecord | undefined;
 
   constructor(type: meowDictType, rawData?: ArrayBuffer) {
     this.type = type;
@@ -27,13 +27,15 @@ export class meowDict {
   }
 
   init() {
+    const startTime: number = Date.now();
+
     let globalOffset: number = 0;
     globalOffset += this.processHeader();
     globalOffset += this.processKeyword(globalOffset);
     this.processRecord(globalOffset);
 
     // Ending mark
-    console.log(`[meowDict][${this.type}] READY!
+    console.log(`[meowDict][${this.type}] READY! (${Date.now() - startTime} ms)
     `);
   }
 
@@ -42,6 +44,8 @@ export class meowDict {
    * @returns The length of header section (in bytes).
    * */
   private processHeader() {
+    const startTime: number = Date.now();
+
     let headerContentLength = arrayBuffer2Int32BE(this.rawData!.slice(0, 4)) || 0;
 
     const headerContentBuffer = this.rawData!.slice(4, 4 + headerContentLength);
@@ -55,27 +59,27 @@ export class meowDict {
 
     if (headerContent) {
       this.header = meowDictHeader.fromXMLString(headerContent);
-      console.log(`[meowDictHeader][processHeader] Header converted: ${'\n'}${this.header.toXMLString()}`);
+      console.log(`[meowDict][processHeader] Header converted: ${'\n'}${this.header.toXMLString()}`);
     } else {
-      console.error(`[meowDictHeader][processHeader] Header is empty??? What is going on here?`);
+      console.error(`[meowDict][processHeader] Header is empty??? What is going on here?`);
     }
 
     if (this.type == meowDictType.MDD) {
       // Use UTF-16
       if (this.header) {
         this.header.Encoding = 'utf-16le';
-        console.warn(`[meowDictHeader][processHeader] Is MDD! Use utf-16le! UnitLength = ${getUnitEncodingLength(this.header.Encoding)}`);
+        console.warn(`[meowDict][processHeader] Is MDD! Use utf-16le! UnitLength = ${getUnitEncodingLength(this.header.Encoding)}`);
       }
     }
 
     const verify = alder32ChecksumVerify(headerContentBuffer, headerChecksumNumber);
     if (verify) {
-      console.log(`[meowDictHeader][processHeader] Checksum verify: ${verify}`);
+      console.log(`[meowDict][processHeader] Checksum verify: ${verify}`);
     } else {
-      console.warn(`[meowDictHeader][processHeader] Checksum verify: ${verify}`);
+      console.warn(`[meowDict][processHeader] Checksum verify: ${verify}`);
     }
 
-    console.log(`[meowDictHeader][processHeader] Header total length: ${8 + headerContentLength}`);
+    console.log(`[meowDict][processHeader] Header total length: ${8 + headerContentLength} (${Date.now() - startTime} ms)`);
     return 8 + headerContentLength;
   }
 
@@ -84,7 +88,11 @@ export class meowDict {
    * @returns The length of keyword section (in bytes).
    * */
   private processKeyword(baseBytesOffset: number) {
+    const startTime: number = Date.now();
+
     this.keyword = new meowDictKeyword(baseBytesOffset, this.rawData!, this.header!.Encoding);
+
+    console.log(`[meowDict][processKeyword] Keyword OK! Total length: ${44 + this.keyword.keyIndexCompLen + this.keyword.keyBlocksLen} (${Date.now() - startTime} ms)`);
     return 44 + this.keyword.keyIndexCompLen + this.keyword.keyBlocksLen; // THIS NEEDS FURTHER CARE // I think this is correct.
   }
 
@@ -92,7 +100,10 @@ export class meowDict {
    * Process the record section
    * */
   private processRecord(baseBytesOffset: number) {
+    const startTime: number = Date.now();
+
     this.record = new meowDictRecord(baseBytesOffset, this.rawData!, this.header!.Encoding);
+    console.log(`[meowDict][processRecord] Record OK! (${Date.now() - startTime} ms)`);
   }
 
   /**
@@ -101,7 +112,7 @@ export class meowDict {
    * @returns The ArrayBuffer of content
    * */
   async lookUpKey(key: string, fuzzyInclusive: boolean = false) {
-    if (!(this.keyword && this.keyword.index && this.header && this.record)) {
+    if (!(this.keyword && this.keyword.index && this.header && this.record?.ready)) {
       console.warn(`[meowDictHeader][lookUpWord] Rejected. Uninitialized!`);
       return;
     }

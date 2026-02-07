@@ -1,6 +1,7 @@
 import { arrayBuffer2Int64BE, bufferBuffer2Int64BE, decompress } from '../utils/data';
-import { buffer } from '@kit.ArkTS';
+import { buffer, taskpool } from '@kit.ArkTS';
 
+@ObservedV2
 export class meowDictRecord {
   globalRawData: ArrayBuffer;
   globalOffset: number; // The offset from the head of the entire raw data.
@@ -14,6 +15,7 @@ export class meowDictRecord {
   compSizesCumulative: number[] = []; // Actually is equivalent the local offset
   decompSizesCumulative: number[] = [];
   recBlocksHeadOffset: number = 0;
+  @Trace ready: boolean = false;
 
   constructor(globalOffset: number, globalRawData: ArrayBuffer, globalEncoding: string) {
     this.globalOffset = globalOffset;
@@ -22,7 +24,7 @@ export class meowDictRecord {
     this.processMetaData();
   }
 
-  private processMetaData() {
+  private async processMetaData() {
     // Number items in record_blocks. Does not need to equal the number of keyword blocks. Big-endian.
     let numBlocks = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 0, this.globalOffset + 8));
     if (numBlocks !== undefined) {
@@ -42,34 +44,21 @@ export class meowDictRecord {
     // Total size of the rec_block[i] sections, in bytes. Big-endian.
     this.blocksLen = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 24, this.globalOffset + 32)) || 0;
 
+    // let task: taskpool.Task = new taskpool.Task(calculateMetaDataSync, this.globalRawData, this.globalOffset, numBlocks);
+
+    let task: taskpool.Task = new taskpool.Task(calculateMetaDataSync, this.globalRawData.slice(0), this.globalOffset, numBlocks);
     try {
-      const bufferBufferRawData = buffer.from(this.globalRawData);
-      let sumCompSize = 0;
-      let sumDecompSize = 0;
-      let readCompDecompIndex = 0;
-      for (readCompDecompIndex = 0; readCompDecompIndex < this.numBlocks; readCompDecompIndex++) {
-        this.compSizesCumulative.push(sumCompSize);
-        this.decompSizesCumulative.push(sumDecompSize);
-
-        const localOffset = 32 + readCompDecompIndex * 8 * 2;
-        const compSizeOffset = localOffset + this.globalOffset;
-        const decompSizeOffset = localOffset + this.globalOffset + 8;
-
-        const compSize = bufferBuffer2Int64BE(bufferBufferRawData, compSizeOffset) || 0;
-        const decompSize = bufferBuffer2Int64BE(bufferBufferRawData, decompSizeOffset) || 0;
-        sumCompSize += compSize;
-        sumDecompSize += decompSize;
-        this.compSizes.push(compSize);
-        this.decompSizes.push(decompSize);
-        // console.log(`[meowDictRecord][processMetadata][${readCompDecompIndex}] compSize = ${compSize}, decompSize = ${decompSize}, decompSizeOffset = ${decompSizeOffset}`);
-      }
-
+      const res = await taskpool.execute(task) as calculateMetaDataSyncResult;
+      this.compSizes = res.compSizes;
+      this.decompSizes = res.decompSizes;
+      this.compSizesCumulative = res.compSizesCumulative;
+      this.decompSizesCumulative = res.decompSizesCumulative;
+      this.recBlocksHeadOffset = res.recBlocksHeadOffset;
+      this.ready = true;
+      console.warn(`[meowDictRecord][processMetadata] taskpool.execute(task) OK!`);
     } catch (e) {
-      console.error(`[meowDictRecord][processMetadata] read compSizes[] and decompSizes[] failed! ${e}`);
+      console.error(`[meowDictRecord][processMetadata] Failed: ${e}`);
     }
-
-    this.recBlocksHeadOffset = this.globalOffset + 32 + 16 * numBlocks;
-    console.warn(`[meowDictRecord][processMetadata] recBlocksHeadOffset = ${this.recBlocksHeadOffset}`);
   }
 
   /**
@@ -150,4 +139,61 @@ export class meowDictRecord {
     // 循环结束时，result 保存的就是最后一个满足条件的索引
     return result;
   }
+}
+
+interface calculateMetaDataSyncResult {
+  compSizes: number[];
+  decompSizes: number[];
+  compSizesCumulative: number[]; // Actually is equivalent the local offset
+  decompSizesCumulative: number[];
+  recBlocksHeadOffset: number;
+}
+
+@Concurrent
+function calculateMetaDataSync(rawData: ArrayBuffer, offset: number, numBlocks: number) {
+  const startTime: number = Date.now();
+
+  let compSizes: number[] = [];
+  let decompSizes: number[] = [];
+  let compSizesCumulative: number[] = []; // Actually is equivalent the local offset
+  let decompSizesCumulative: number[] = [];
+
+  try {
+    const bufferBufferRawData = buffer.from(rawData);
+
+    let sumCompSize = 0;
+    let sumDecompSize = 0;
+    let readCompDecompIndex = 0;
+
+    // TODO: find a way to optimize this sequential process of record block info
+    for (readCompDecompIndex = 0; readCompDecompIndex < numBlocks; readCompDecompIndex++) {
+      compSizesCumulative.push(sumCompSize);
+      decompSizesCumulative.push(sumDecompSize);
+
+      const localOffset = 32 + readCompDecompIndex * 16;
+      const compSizeOffset = localOffset + offset;
+      const decompSizeOffset = localOffset + 8 + offset;
+
+      const compSize = bufferBuffer2Int64BE(bufferBufferRawData, compSizeOffset) || 0;
+      const decompSize = bufferBuffer2Int64BE(bufferBufferRawData, decompSizeOffset) || 0;
+      sumCompSize += compSize;
+      sumDecompSize += decompSize;
+      compSizes.push(compSize);
+      decompSizes.push(decompSize);
+      // console.log(`[meowDictRecord][processMetadata][${readCompDecompIndex}] compSize = ${compSize}, decompSize = ${decompSize}, decompSizeOffset = ${decompSizeOffset}`);
+    }
+  } catch (e) {
+    console.error(`[meowDictRecord][calculateMetaDataSync] read compSizes[] and decompSizes[] failed! ${e}`);
+  }
+
+  let recBlocksHeadOffset = 32 + 16 * numBlocks + offset;
+  console.warn(`[meowDictRecord][calculateMetaDataSync] OK! recBlocksHeadOffset = ${recBlocksHeadOffset} (${Date.now() - startTime} ms)`);
+
+  return {
+    compSizes: compSizes,
+    decompSizes: decompSizes,
+    compSizesCumulative: compSizesCumulative,
+    decompSizesCumulative: decompSizesCumulative,
+    recBlocksHeadOffset: recBlocksHeadOffset,
+  } as calculateMetaDataSyncResult;
 }

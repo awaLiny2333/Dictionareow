@@ -30,6 +30,7 @@ struct Index {
   @Local render: boolean = false;
   @Local firstPageLoaded: boolean = false;
   @Local linearBlurOps: LinearGradientBlurOptions = this.constructLinearBlurOps();
+  @Local showingInfo: boolean = false;
   timeoutIdForAvoidReload: number | undefined;
   // Runtime Objects
   webController: WebviewController = new webview.WebviewController();
@@ -114,18 +115,21 @@ struct Index {
             RelativeContainer() {
               Scroll() {
                 Row({ space: 10 }) {
-                  Button(this.meowDictExampleMDX?.header ? 'MDX  󰀓' : '󰀵 MDX')
+                  Button(this.meowDictExampleMDX?.record?.ready ? 'MDX  󰀓' : '󰀵 MDX')
                     .onClick(() => {
                       fileDocumentPick2ArrayBuffer(['.mdx']).then((r) => {
                         if (r.succeed) {
                           this.meowDictExampleMDX = new meowDict(meowDictType.MDX, r.buf!);
                           sandboxCreateDir('meow', this.getUIContext().getHostContext()!, true).then(() => {
-                            sandboxSaveHybrid('woof/woof.mdx', r.buf!, this.getUIContext().getHostContext()!, true);
+                            fileIo.copyFile(r.sourcePath!, this.getUIContext().getHostContext()!.filesDir + '/woof/woof.mdx').catch((e: BusinessError) => {
+                              console.error(`[Meow][MDX] fileIo.copyFile failed: ${e}`);
+                            });
+                            // sandboxSaveHybrid('woof/woof.mdx', r.buf!, this.getUIContext().getHostContext()!, true);
                           })
                         }
                       })
                     })
-                  Button(this.meowDictExampleMDD?.header ? 'MDD  󰀓' : '󰀵 MDD')
+                  Button(this.meowDictExampleMDD?.record?.ready ? 'MDD  󰀓' : '󰀵 MDD')
                     .onClick(() => {
                       fileDocumentPick2ArrayBuffer(['.mdd']).then((r) => {
                         if (r.succeed) {
@@ -134,7 +138,7 @@ struct Index {
                         }
                       })
                     })
-                  Button('󰀵 Extra')
+                  Button('󰀵 Files')
                     .onClick(() => {
                       fileDocumentPick2ArrayBuffer(['.css', '.js', '.jpg', '.jpeg', '.png', '.svg']).then((r) => {
                         if (r.succeed) {
@@ -142,6 +146,13 @@ struct Index {
                         }
                       })
                     })
+                  Button('󰊖 Info')
+                    .onClick(() => {
+                      this.showingInfo = !this.showingInfo;
+                    })
+                    .brightness(this.showingInfo ? 1.1 : 1)
+                    .border(this.showingInfo ? { width: 2, color: $r('sys.color.font') } : { width: 2, color: Color.Transparent })
+                    .animation(defaultAnima)
                 } // Buttons
               }
               .scrollable(ScrollDirection.Horizontal)
@@ -198,11 +209,30 @@ struct Index {
               top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0)
             })
             .shadow(ShadowStyle.OUTER_DEFAULT_MD)
+
+            RelativeContainer() {
+
+            }
+            .visibility(this.showingInfo ? Visibility.Visible : Visibility.None)
+            .height(0.5 * this.myMeowLayout.height)
+            .animation(defaultAnima)
+            .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
+            .borderWidth(1)
+            .borderColor($r('sys.color.comp_background_tertiary'))
+            .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
+            .padding(10)
+            .margin({
+              left: 10,
+              bottom: this.myMeowAvoid.bottom + this.titleHeight() + 10,
+              right: 10,
+              top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10
+            })
+            .shadow(ShadowStyle.OUTER_DEFAULT_MD)
           }
           .alignContent(this.topDown ? Alignment.Top : Alignment.Bottom)
           .animation(defaultAnima)
 
-          if (this.topDown) {
+          if (this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode) {
             Text(this.meowDictExampleMDX?.header?.Title)
               .padding(10)
               .width('100%')
@@ -360,7 +390,7 @@ struct Index {
     if (this.topDown) {
       topVp += this.titleHeight() + 10;
     } else {
-      bottomVp += this.titleHeight();
+      bottomVp += this.titleHeight() + 10;
     }
 
     const topPercentage = topVp / this.myMeowLayout.height * 100;
