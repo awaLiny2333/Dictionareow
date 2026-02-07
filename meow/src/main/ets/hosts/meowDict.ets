@@ -142,6 +142,9 @@ export class meowDict {
     if (!this.keyword.index) {
       return false;
     }
+    if (!this.record.ready) {
+      return false;
+    }
     return true;
   }
 }
