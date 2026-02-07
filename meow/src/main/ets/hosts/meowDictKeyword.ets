@@ -342,11 +342,37 @@ export class meowDictKeywordIndexEntry {
   }
 }
 
+export class meowDictKeywordBlock {
+  // private rawData: ArrayBuffer;
+  offsets: number[] = [];
+  keywords: string[] = [];
+
+  async init(rawData: ArrayBuffer, encoding: string) {
+    let task: taskpool.Task = new taskpool.Task(splitBuild, rawData, encoding);
+    try {
+      const res = await taskpool.execute(task) as meowDictKeywordBlockSplitBuildResult;
+      console.info(`[meowDictKeywordBlock][init] taskpool.execute(task)!`);
+      this.offsets = res.offsets;
+      this.keywords = res.keywords;
+      return true;
+    } catch (e) {
+      console.error(`[meowDictKeywordBlock][init] Failed: ${e}`);
+      return false;
+    }
+  }
+}
+
 interface meowDictKeywordBlockSplitBuildResult {
   offsets: number[];
   keywords: string[];
 }
 
+/**
+ * Splits the arrayBuffer and build a pair of parallel arrays of offsets and keywords.
+ * @param rawData The raw ArrayBuffer.
+ * @param encoding The encoding.
+ * @returns The meowDictKeywordBlockSplitBuildResult.
+ * */
 @Concurrent
 function splitBuild(rawData: ArrayBuffer, encoding: string) {
   const startTime = Date.now();
@@ -385,24 +411,4 @@ function splitBuild(rawData: ArrayBuffer, encoding: string) {
 
   console.log(`[meowDictKeyword][IndexBlock][splitBuild] Used time ${Date.now() - startTime} ms.`);
   return { offsets: buildOffsets, keywords: buildKeywords } as meowDictKeywordBlockSplitBuildResult;
-}
-
-export class meowDictKeywordBlock {
-  // private rawData: ArrayBuffer;
-  offsets: number[] = [];
-  keywords: string[] = [];
-
-  async init(rawData: ArrayBuffer, encoding: string) {
-    let task: taskpool.Task = new taskpool.Task(splitBuild, rawData, encoding);
-    try {
-      const res = await taskpool.execute(task) as meowDictKeywordBlockSplitBuildResult;
-      console.info(`[meowDictKeywordBlock][init] taskpool.execute(task)!`);
-      this.offsets = res.offsets;
-      this.keywords = res.keywords;
-      return true;
-    } catch (e) {
-      console.error(`[meowDictKeywordBlock][init] Failed: ${e}`);
-      return false;
-    }
-  }
 }
