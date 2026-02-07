@@ -12,18 +12,19 @@ import { meowDict, meowDictType } from '../hosts/meowDict';
  * @param window window.Window
  * */
 export async function aboutToLoadContent(windowStage: window.WindowStage, window: window.Window, context: Context) {
+  initEnv(context);
+
   windowStage.setWindowRectAutoSave(true).then(() => {
     meow('windowStage.setWindowRectAutoSave(true) Success!', 'init', meowLevel.INFO);
   }).catch((err: BusinessError) => {
     meow(`windowStage.setWindowRectAutoSave(true) Failed: ${err}`, 'init', meowLevel.ERROR);
   });
+
   try {
     window.setImmersiveModeEnabledState(true);
   } catch (e) {
     meow(`window.setImmersiveModeEnabledState(true) Failed: ${e}`, 'init', meowLevel.ERROR);
   }
-
-  initEnv(context);
 }
 
 /**
@@ -84,10 +85,14 @@ async function readMDict(sandboxPath: string = '/woof/woof.mdx', type: meowDictT
     if (existMdd) {
       return sandboxReadArrayBufferConcurrent(sandboxPath, context).then((arrayBuffer) => {
         if (arrayBuffer) {
+          console.log(`[Meow][readMDict][${sandboxPath}] ArrayBuffer length: ${arrayBuffer.byteLength}`);
           let a = AppStorageV2.connect<meowDict>(meowDict, appStorageKey, () => new meowDict(type))!;
           a.rawData = arrayBuffer;
           a.init();
+
           console.log(`[Meow][readMDict][${sandboxPath}] using existing mdx file!`);
+        } else {
+          console.warn(`[Meow][readMDict][${sandboxPath}] no exist!`);
         }
       })
     }

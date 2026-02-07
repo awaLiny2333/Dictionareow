@@ -77,7 +77,7 @@ export class meowDictKeyword {
     let index = new meowDictKeywordIndex(this.globalOffset + 44, this.globalRawData, this.keyIndexDecompLen, this.keyIndexCompLen, this.numBlocks);
     index.init(this.globalEncoding).then(() => {
       this.index = index;
-      console.log(`[meowDictKeyword][Index][init] Index loaded! Used time ${Date.now() - startTime} ms!`);
+      console.log(`[meowDictKeyword][Index][init] Index loaded! (${Date.now() - startTime} ms)`);
     })
   }
 
@@ -100,8 +100,9 @@ export class meowDictKeyword {
       const lastWord = theBlockEntry.lastWord;
 
       if (isStringBetween(key, firstWord, lastWord)) {
-        console.log(`[meowDictKeyword][Index][lookUp] Selected index block from '${firstWord}' to '${lastWord}'! Looking into this index block!`);
         this.lookUpBlockIndex = lookUpBlockIndex;
+
+        console.log(`[meowDictKeyword][Index][lookUp] Selected index block from '${firstWord}' to '${lastWord}'! Looking into this index block (#${lookUpBlockIndex})!`);
 
         return this.getKeyBlockArrayBuffer(lookUpBlockIndex).then((block) => {
           if (!block) {
@@ -109,6 +110,7 @@ export class meowDictKeyword {
             return undefined;
           }
 
+          console.log(`[meowDictKeyword][Index][lookUp] block.keywords.length = ${block.keywords.length}, block.offsets.length = ${block.offsets.length}.`);
           let offset = this.findOffsetByKeyword(key, block.keywords, block.offsets, fuzzyInclusive);
           if (offset === null) {
             console.warn(`[meowDictKeyword][Index][lookUp] Key '${key}' not found!`);
@@ -154,11 +156,19 @@ export class meowDictKeyword {
     const thisBlockCompSize = this.index.indexEntries[indexInBlocks].compSize;
     const thisBlockDecompSize = this.index.indexEntries[indexInBlocks].decompSize;
 
-    console.log(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] offsetFromRawHead = ${offsetFromRawHead}, thisBlockCompSize = ${thisBlockCompSize}, thisBlockDecompSize = ${thisBlockDecompSize}`);
+    try {
+      console.log(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] this.globalRawData.byteLength = ${this.globalRawData.byteLength},` +
+        ` offsetFromRawHead = ${offsetFromRawHead}, offsetFromRawHead + thisBlockCompSize = ${offsetFromRawHead + thisBlockCompSize}`);
+    } catch (e) {
+      console.error(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] Log failed: ${e}`);
+    }
 
     const compBlock = this.globalRawData.slice(offsetFromRawHead, offsetFromRawHead + thisBlockCompSize);
+
+    console.log(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] offsetFromRawHead = ${offsetFromRawHead}, thisBlockCompSize = ${thisBlockCompSize}, thisBlockDecompSize = ${thisBlockDecompSize}`);
+
     return decompress(compBlock, thisBlockDecompSize, '[meowDictKeyword][Index][getKeyBlockArrayBuffer]').then((decompBlock) => {
-      const block = new meowDictKeywordBlock();
+      let block = new meowDictKeywordBlock();
       return block.init(decompBlock, this.globalEncoding).then(() => {
         this.index!.indexEntries[indexInBlocks].builtBlock = block;
         return block;
@@ -274,6 +284,8 @@ export class meowDictKeywordIndex {
   }
 
   processIndexEntry(encoding: string) {
+    const startTime: number = Date.now();
+
     this.indexEntries = [];
     let offset = 0;
     // console.log(`[meowDictKeyword][IndexEntry] Offset starts with: ${offset}`);
@@ -290,6 +302,7 @@ export class meowDictKeywordIndex {
       console.error(`[meowDictKeyword][Index][init][processIndexEntry] Failed: ${e}`);
     }
 
+    console.log(`[meowDictKeywordIndex][init][processIndexEntry] OK! (${Date.now() - startTime} ms)`)
   }
 }
 
@@ -348,8 +361,11 @@ export class meowDictKeywordBlock {
   keywords: string[] = [];
 
   async init(rawData: ArrayBuffer, encoding: string) {
-    let task: taskpool.Task = new taskpool.Task(splitBuild, rawData, encoding);
+    console.info(`[meowDictKeywordBlock][init] about to go!`);
+
     try {
+      let task: taskpool.Task = new taskpool.Task(splitBuild, rawData, encoding);
+
       const res = await taskpool.execute(task) as meowDictKeywordBlockSplitBuildResult;
       console.info(`[meowDictKeywordBlock][init] taskpool.execute(task)!`);
       this.offsets = res.offsets;

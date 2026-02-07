@@ -64,7 +64,7 @@ export function measureTextHeight(text: string, uiContext: UIContext, fontSize: 
     .width as number)
 }
 
-export let defaultAnima: AnimateParam = { curve: Curve.FastOutSlowIn, duration: 250 };
+export let defaultAnima: AnimateParam = { curve: Curve.FastOutSlowIn, duration: 350 };
 
 // Decor (Free window mode)
 
