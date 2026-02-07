@@ -1,4 +1,4 @@
-import { buffer } from '@kit.ArkTS';
+import { buffer, fastbuffer } from '@kit.ArkTS';
 import { lzoDecompress } from './lzo';
 import { zlib } from '@kit.BasicServicesKit';
 import { alder32ChecksumVerify } from './alder32';
@@ -14,7 +14,7 @@ export interface meowWrapHtmlOptions {
 
 // Numbers
 
-export function bufferBuffer2Int64BE(rawData: buffer.Buffer, offset: number) {
+export function bufferBuffer2Int64BE(rawData: buffer.Buffer | fastbuffer.FastBuffer, offset: number) {
   try {
     let result = rawData.readBigInt64BE(offset);
     // console.log(`[arrayBuffer2BigInt64BE] result is ${result}, Number(result) is ${Number(result)}`);
@@ -27,7 +27,7 @@ export function bufferBuffer2Int64BE(rawData: buffer.Buffer, offset: number) {
 
 export function arrayBuffer2Int64BE(rawData: ArrayBuffer) {
   try {
-    let result = buffer.from(rawData).readBigInt64BE();
+    let result = fastbuffer.from(rawData).readBigInt64BE();
     // console.log(`[arrayBuffer2BigInt64BE] result is ${result}, Number(result) is ${Number(result)}`);
     return Number(result);
   } catch (e) {
@@ -38,7 +38,7 @@ export function arrayBuffer2Int64BE(rawData: ArrayBuffer) {
 
 export function arrayBuffer2Int32LE(rawData: ArrayBuffer) {
   try {
-    let result = buffer.from(rawData).readInt32LE();
+    let result = fastbuffer.from(rawData).readInt32LE();
     // console.log(`[arrayBuffer2Int32LE] result is ${result}`);
     return result;
   } catch (e) {
@@ -49,7 +49,7 @@ export function arrayBuffer2Int32LE(rawData: ArrayBuffer) {
 
 export function arrayBuffer2Int32BE(rawData: ArrayBuffer) {
   try {
-    let result = buffer.from(rawData).readInt32BE();
+    let result = fastbuffer.from(rawData).readInt32BE();
     // console.log(`[arrayBuffer2Int32BE] result is ${result}`);
     return result;
   } catch (e) {
@@ -58,17 +58,7 @@ export function arrayBuffer2Int32BE(rawData: ArrayBuffer) {
   }
 }
 
-export function arrayBuffer2Int16BE(rawData: ArrayBuffer) {
-  try {
-    let result = buffer.from(rawData).readInt16BE();
-    // console.log(`[arrayBuffer2Int16BE] result is ${result}`);
-    return result;
-  } catch (e) {
-    console.error(`[arrayBuffer2Int16BE] Read failed: ${e}`);
-    return undefined;
-  }
-}
-export function bufferBuffer2Int16BE(rawData: buffer.Buffer, offset: number) {
+export function bufferBuffer2Int16BE(rawData: buffer.Buffer | fastbuffer.FastBuffer, offset: number) {
   try {
     let result = rawData.readInt16BE(offset);
     // console.log(`[bufferBuffer2Int16BE] result is ${result}`);
@@ -79,22 +69,12 @@ export function bufferBuffer2Int16BE(rawData: buffer.Buffer, offset: number) {
   }
 }
 
-export function arrayBuffer2Int16LE(rawData: ArrayBuffer) {
-  try {
-    let result = buffer.from(rawData).readInt16LE();
-    // console.log(`[arrayBuffer2Int16BE] result is ${result}`);
-    return result;
-  } catch (e) {
-    console.error(`[arrayBuffer2Int16BE] Read failed: ${e}`);
-    return undefined;
-  }
-}
 
 // Strings
 
 export function arrayBuffer2UTF16LE(rawData: ArrayBuffer) {
   try {
-    let result = buffer.from(rawData).toString('ucs-2');
+    let result = fastbuffer.from(rawData).toString('ucs-2');
     // console.log(`[arrayBuffer2UTF16LE] result is ${result}`);
     return result;
   } catch (e) {
@@ -103,29 +83,7 @@ export function arrayBuffer2UTF16LE(rawData: ArrayBuffer) {
   }
 }
 
-export function arrayBuffer2String(rawData: ArrayBuffer, encoding: string) {
-  try {
-    let result = buffer.from(rawData).toString(encoding.toLowerCase());
-    // console.log(`[arrayBuffer2UTF8] result is ${result}`);
-    return result;
-  } catch (e) {
-    console.error(`[arrayBuffer2String] Read failed: ${e}`);
-    return undefined;
-  }
-}
-
-export function bufferBuffer2UTF8(rawData: buffer.Buffer, offset: number, end: number) {
-  try {
-    let result = rawData.toString('utf-8', offset, end);
-    // console.log(`[arrayBuffer2UTF8] result is ${result}`);
-    return result;
-  } catch (e) {
-    console.error(`[bufferBuffer2UTF8] Read failed: ${e}`);
-    return undefined;
-  }
-}
-
-export function bufferBuffer2String(rawData: buffer.Buffer, offset: number, end: number, encoding: string) {
+export function bufferBuffer2String(rawData: buffer.Buffer | fastbuffer.FastBuffer, offset: number, end: number, encoding: string) {
   try {
     let result = rawData.toString(encoding, offset, end);
     // console.log(`[bufferBuffer2String] result is ${result}`);
@@ -249,7 +207,7 @@ export function getUnitEncodingLength(encoding: string): number {
 // Compressed
 
 export async function decompress(rawData: ArrayBuffer, decompLen: number, logTag: string = '') {
-  const compType = new Uint8Array(rawData.slice(0, 4)).toString();
+  const compType = new Uint8Array(rawData, 0, 4).toString();
   console.log(`${logTag}[decompress] compType = ${compType}, compLen = ${rawData.byteLength}, decompLen = ${decompLen}`);
 
   const compChecksumBuffer = rawData.slice(4, 8);

@@ -30,6 +30,7 @@ struct Index {
   @Local render: boolean = false;
   @Local firstPageLoaded: boolean = false;
   @Local linearBlurOps: LinearGradientBlurOptions = this.constructLinearBlurOps();
+  @Local showInfo: boolean = false;
   timeoutIdForAvoidReload: number | undefined;
   // Runtime Objects
   webController: WebviewController = new webview.WebviewController();
@@ -111,6 +112,24 @@ struct Index {
               .id('mainWeb')
               .linearGradientBlur(30, this.linearBlurOps)
 
+            WaterFlow() {
+            }
+            .visibility(this.showInfo ? Visibility.Visible : Visibility.None)
+            .height(0.4 * this.myMeowLayout.height)
+            .animation(defaultAnima)
+            .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
+            .borderWidth(1)
+            .borderColor($r('sys.color.comp_background_tertiary'))
+            .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
+            .padding(10)
+            .margin({
+              left: 10,
+              bottom: this.myMeowAvoid.bottom + this.titleHeight() + 10,
+              right: 10,
+              top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10
+            })
+            .shadow(ShadowStyle.OUTER_DEFAULT_MD)
+
             RelativeContainer() {
               Scroll() {
                 Row({ space: 10 }) {
@@ -134,7 +153,7 @@ struct Index {
                         }
                       })
                     })
-                  Button('󰀵 Extra')
+                  Button('󰀵 Files')
                     .onClick(() => {
                       fileDocumentPick2ArrayBuffer(['.css', '.js', '.jpg', '.jpeg', '.png', '.svg']).then((r) => {
                         if (r.succeed) {
@@ -142,6 +161,13 @@ struct Index {
                         }
                       })
                     })
+                  Button('󰊖 Info')
+                    .onClick(() => {
+                      this.showInfo = !this.showInfo;
+                    })
+                    .border(this.showInfo ? { width: 2, color: $r('sys.color.font') } : { width: 2, color: Color.Transparent })
+                    .brightness(this.showInfo ? 1.1 : 1)
+                    .animation(defaultAnima)
                 } // Buttons
               }
               .scrollable(ScrollDirection.Horizontal)
@@ -202,7 +228,7 @@ struct Index {
           .alignContent(this.topDown ? Alignment.Top : Alignment.Bottom)
           .animation(defaultAnima)
 
-          if (this.topDown) {
+          if (this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode) {
             Text(this.meowDictExampleMDX?.header?.Title)
               .padding(10)
               .width('100%')
@@ -273,7 +299,12 @@ struct Index {
         return false;
       }
       if (dict.type == meowDictType.MDX) {
-        let resultText = resultBuffer.toString(dict.header!.Encoding);
+        let resultText = 'ERROR! ＞︿＜';
+        try {
+          resultText = resultBuffer.toString(dict.header!.Encoding);
+        } catch (e) {
+          console.error(`[Meow][MDX] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
+        }
         this.loadWeb(resultText);
         console.log(`[Meow][MDX] Got result!`);
 

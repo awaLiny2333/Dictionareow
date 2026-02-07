@@ -1,5 +1,5 @@
 import { arrayBuffer2Int64BE, bufferBuffer2Int64BE, decompress } from '../utils/data';
-import { buffer } from '@kit.ArkTS';
+import { buffer, fastbuffer } from '@kit.ArkTS';
 
 export class meowDictRecord {
   globalRawData: ArrayBuffer;
