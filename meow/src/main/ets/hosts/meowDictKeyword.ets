@@ -118,7 +118,6 @@ export class meowDictKeyword {
       if (isStringBetween(key.toLowerCase(), firstWord.toLowerCase(), lastWord.toLowerCase())) {
         // if (isStringBetween(keepOnlyAlphanumericGlobal(key.toLowerCase()), keepOnlyAlphanumericGlobal(firstWord.toLowerCase()), keepOnlyAlphanumericGlobal(lastWord.toLowerCase()))) {
         this.lookUpBlockIndex = lookUpBlockIndex;
-
         console.log(`[meowDictKeyword][Index][lookUp][${key}] Selected index block from '${firstWord}' to '${lastWord}'! Looking into this index block (#${lookUpBlockIndex})!`);
 
         return this.getKeyBlockArrayBuffer(lookUpBlockIndex).then((block) => {
@@ -369,7 +368,6 @@ export class meowDictKeywordIndexEntry {
 
     // console.log(`[meowDictKeyword][IndexEntry] Constructed: numEntries = ${this.numEntries}, firstSize = ${this.firstSize}, firstWord = ${this.firstWord}, ` +
     //   `lastSize = ${this.lastSize}, lastWord = ${this.lastWord}, compSize = ${this.compSize}, decompSize = ${this.decompSize}`);
-    // console.log(`[meowDictKeyword][IndexEntry] ${buffer.from(arrayBuffer.slice(0, 14 + this.firstSize + this.lastSize + 16))}`);
   }
 }
 

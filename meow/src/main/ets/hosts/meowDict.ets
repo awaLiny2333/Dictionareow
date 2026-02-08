@@ -6,7 +6,6 @@ import { meowDictRecord } from './meowDictRecord';
 import { sandboxReadArrayBufferSync, saveHybrid } from '../utils/storage';
 import { fileIo } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { buffer } from '@kit.ArkTS';
 
 export enum meowDictType {
   MDD = 0,
@@ -181,7 +180,7 @@ export class meowDictBundle {
   @Trace files: string[] = [];
   @Trace fileSizes: number[] = [];
   cacheKeys: string[] = []
-  cacheBufs: buffer.Buffer[] = []
+  cacheBufs: ArrayBuffer[] = []
 
   constructor(mdx?: meowDict) {
     if (mdx) {
@@ -190,6 +189,8 @@ export class meowDictBundle {
   }
 
   async lookUpResourceFromMDDs(key: string) {
+    const startTime: number = Date.now();
+
     const cacheIdx = this.cacheKeys.indexOf(key);
     if (cacheIdx >= 0) {
       console.log(`[meowDictBundle][lookUpResourceFromMDDs] Fetch from cache [${key}]`);
@@ -199,12 +200,12 @@ export class meowDictBundle {
     for (let index = 0; index < this.mdds.length; index++) {
       let meow = await this.mdds[index].lookUpKey(key);
       if (meow) {
-        // console.log(`[meowDictBundle][lookUpResourceFromMDDs] Found [${key}] in MDD [${this.mdds[index].fullPath}]!`);
-        if (meow.length > 100000) {
+        if (meow.byteLength > 100000) {
           this.cacheKeys.push(key);
           this.cacheBufs.push(meow);
-          console.log(`[meowDictBundle][lookUpResourceFromMDDs] Cached [${key}] (${addUnitsToSize(meow.length)})`);
+          console.log(`[meowDictBundle][lookUpResourceFromMDDs] Cached [${key}] (${addUnitsToSize(meow.byteLength)})`);
         }
+        console.log(`[meowDictBundle][lookUpResourceFromMDDs] Found [${key}] in MDD [${this.mdds[index].fullPath}]! (${Date.now() - startTime} ms)`);
         return meow;
       }
     }
@@ -226,12 +227,16 @@ export class meowDictBundle {
       }
 
       const path = context.tempDir + '/' + fileName;
-      saveHybrid(path, resultBuffer.buffer);
+      saveHybrid(path, resultBuffer);
 
       return path;
     })
   }
 
+  /**
+   * Updates the extra files additionally added.
+   * @param context Context.
+   * */
   updateFiles(context: Context) {
     // Files
     this.files = [];

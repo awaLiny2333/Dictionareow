@@ -9,12 +9,16 @@
       "value": "#77FFFFFF"
     },
     {
+      "name": "button_border",
+      "value": "#D0FF8D85"
+    },
+    {
       "name": "meow_brand",
-      "value": "#D0AE3428"
+      "value": "#D0A92323"
     },
     {
       "name": "meow_iconSubEmphasize",
-      "value": "#72AE3428"
+      "value": "#72A92323"
     }
   ]
 }

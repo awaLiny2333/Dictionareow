@@ -1,15 +1,16 @@
 import { meowDict, meowDictBundle, meowDictType } from '../hosts/meowDict';
-import { fileCopy, fileDocumentPick2Path, sandboxCreateDir } from '../utils/storage';
+import { fileCopy, fileDocumentPick2Path } from '../utils/storage';
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { AppStorageV2 } from '@kit.ArkUI';
 import { defaultAnima, defaultDecorHeight, meowAvoid, meowFreeWindowModeStatus, meowLayoutModeStatus } from '../utils/uiEnv';
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
-import { addUnitsToSize, keepOnlyAlphanumericGlobal, mimeOfFileName } from '../utils/data';
+import { addUnitsToSize, keepOnlyAlphanumericGlobal, mimeOfFileName, resource_to_string } from '../utils/data';
 import { meowTheme } from '../hosts/meowTheme';
 import MeowDictInfo from '../components/MeowDictInfo';
 import { playThisForMe } from '../utils/av';
 import MeowFileInfo from '../components/MeowFileInfo';
+import { buffer, fastbuffer } from '@kit.ArkTS';
 
 @Entry
 @ComponentV2
@@ -36,6 +37,7 @@ struct Index {
   timeoutIdForAvoidReload: number | undefined;
   // Runtime Objects
   webController: WebviewController = new webview.WebviewController();
+  context: Context = this.getUIContext().getHostContext()!;
 
   build() {
     WithTheme({ theme: new meowTheme() }) {
@@ -68,7 +70,7 @@ struct Index {
                   }
 
                   // Load
-                  this.meowDictExampleBundle.extractFileToTemp(reqFileName, this.getUIContext().getHostContext()!).then(async (r) => {
+                  this.meowDictExampleBundle.extractFileToTemp(reqFileName, this.context).then(async (r) => {
                     if (r) {
                       playThisForMe(r, `[Meow][Web][onLoadIntercept][Media][${reqUrl}]`);
                     } else {
@@ -88,7 +90,7 @@ struct Index {
 
                 // Process file name
                 let reqFileName = 'name';
-                const base = reqFileScheme + '//' + this.getUIContext().getHostContext()!.filesDir + '/meow/';
+                const base = reqFileScheme + '//' + this.context.filesDir + '/meow/';
                 if (reqUrl.indexOf(base) == 0) {
                   reqFileName = reqUrl.substring(base.length);
                 } else {
@@ -103,7 +105,7 @@ struct Index {
                   // Check existence
                   let exist = false;
                   try {
-                    exist = fileIo.accessSync(this.getUIContext().getHostContext()!.filesDir + '/meow/' + reqFileName);
+                    exist = fileIo.accessSync(this.context.filesDir + '/meow/' + reqFileName);
                   } catch (e) {
                     console.error(`[Meow][Web][onInterceptRequest] fileIo.accessSync() failed: ${e}`);
                   }
@@ -120,8 +122,8 @@ struct Index {
                   }
                   this.meowDictExampleBundle.lookUpResourceFromMDDs(regularFileName).then((resultBuffer) => {
                     if (resultBuffer) {
-                      console.log(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Loaded. (${addUnitsToSize(resultBuffer.length)})`);
-                      response.setResponseData(resultBuffer.buffer);
+                      console.log(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Loaded. (${addUnitsToSize(resultBuffer.byteLength)})`);
+                      response.setResponseData(resultBuffer);
                       response.setResponseMimeType(mimeOfFileName(regularFileName));
                     } else {
                       console.warn(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Not found.`);
@@ -152,10 +154,19 @@ struct Index {
               .id('mainWeb')
               .linearGradientBlur(30, this.linearBlurOps)
 
-            Row(){
+            Row() {
               WaterFlow() {
                 if (this.meowDictExampleBundle.mdx) {
-                  MeowDictInfo({ dict: this.meowDictExampleBundle.mdx })
+                  MeowDictInfo({
+                    dict: this.meowDictExampleBundle.mdx,
+                    deleteAction: () => {
+                      fileIo.unlink(this.meowDictExampleBundle.mdx!.fullPath)
+                        .catch((e: BusinessError) => {
+                          console.error(`[Meow][Info] fileIo.unlink(this.meowDictExampleBundle.mdds[index].fullPath) Failed: ${e}`);
+                        });
+                      this.meowDictExampleBundle.mdx = undefined;
+                    }
+                  })
                 }
                 ForEach(this.meowDictExampleBundle.mdds, ((mdd: meowDict, index: number) => {
                   MeowDictInfo({
@@ -178,7 +189,7 @@ struct Index {
                         .catch((e: BusinessError) => {
                           console.error(`[Meow][Info][Files] fileIo.unlink(path) Failed: ${e}`);
                         });
-                      this.meowDictExampleBundle.updateFiles(this.getUIContext().getHostContext()!);
+                      this.meowDictExampleBundle.updateFiles(this.context);
                     }
                   })
                 }))
@@ -206,7 +217,7 @@ struct Index {
               right: 10,
               top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10
             })
-            .shadow(ShadowStyle.OUTER_DEFAULT_MD)
+            .shadow(ShadowStyle.OUTER_DEFAULT_SM)
 
             RelativeContainer() {
               Scroll() {
@@ -215,16 +226,14 @@ struct Index {
                     .onClick(() => {
                       fileDocumentPick2Path(['.mdx'], 1).then((r) => {
                         if (r.succeed) {
-                          sandboxCreateDir('meow', this.getUIContext().getHostContext()!, true).then(() => {
-                            const sourcePath = r.sourcePaths![0];
-                            const destPath: string = this.getUIContext().getHostContext()!.filesDir + '/woof/woof.mdx';
-                            fileCopy(sourcePath, destPath).then(() => {
-                              this.meowDictExampleBundle.mdx = new meowDict(meowDictType.MDX, destPath);
-                              this.meowDictExampleBundle.mdx.init();
-                              console.log(`[Meow][Files][MDX][${sourcePath}][${destPath}]`);
-                            })
-                            // sandboxSaveHybrid('woof/woof.mdx', r.buf!, this.getUIContext().getHostContext()!, true);
+                          const sourcePath = r.sourcePaths![0];
+                          const destPath: string = this.context.filesDir + '/woof/woof.mdx';
+                          fileCopy(sourcePath, destPath).then(() => {
+                            this.meowDictExampleBundle.mdx = new meowDict(meowDictType.MDX, destPath);
+                            this.meowDictExampleBundle.mdx.init();
+                            console.log(`[Meow][Files][MDX][${sourcePath}][${destPath}]`);
                           })
+                          // sandboxSaveHybrid('woof/woof.mdx', r.buf!, this.context, true);
                         }
                       })
                     })
@@ -237,7 +246,7 @@ struct Index {
                             const sourcePath = r.sourcePaths![index];
                             const targetPathSplit = sourcePath.split('/');
                             const fileName: string | undefined = targetPathSplit[targetPathSplit.length-1];
-                            const destPath = this.getUIContext().getHostContext()!.filesDir + '/honk/' + fileName;
+                            const destPath = this.context.filesDir + '/honk/' + fileName;
                             fileCopy(sourcePath, destPath).then(() => {
                               // Create object
                               let mdd = new meowDict(meowDictType.MDD, destPath);
@@ -249,7 +258,7 @@ struct Index {
                         }
                       })
                     })
-                  Button(`󰀵 Files (${this.meowDictExampleBundle.files.length})`)
+                  Button(`󰀵 ${resource_to_string($r('app.string.add_files'), this.context)} (${this.meowDictExampleBundle.files.length})`)
                     .onClick(() => {
                       fileDocumentPick2Path([], 233).then((r) => {
                         if (r.succeed) {
@@ -257,23 +266,23 @@ struct Index {
                             const sourcePath = r.sourcePaths![index];
                             const targetPathSplit = sourcePath.split('/');
                             const fileName: string | undefined = targetPathSplit[targetPathSplit.length-1];
-                            fileCopy(sourcePath, this.getUIContext().getHostContext()!.filesDir + '/meow/' + fileName).then(() => {
+                            fileCopy(sourcePath, this.context.filesDir + '/meow/' + fileName).then(() => {
                               clearTimeout(this.refreshForRefreshFilesTimeout);
                               this.refreshForRefreshFilesTimeout = setTimeout(() => {
-                                this.meowDictExampleBundle.updateFiles(this.getUIContext().getHostContext()!);
+                                this.meowDictExampleBundle.updateFiles(this.context);
                               }, 200)
                             })
-                            // sandboxSaveHybrid('meow/' + r.fileName!, r.buf!, this.getUIContext().getHostContext()!, true);
+                            // sandboxSaveHybrid('meow/' + r.fileName!, r.buf!, this.context, true);
                             console.log(`[Meow][Files][${sourcePath}][${fileName}]`);
                           }
                         }
                       })
                     })
-                  Button('󰊖 Info')
+                  Button(`󰊖 ${resource_to_string($r('app.string.info'), this.context)}`)
                     .onClick(() => {
                       this.showInfo = !this.showInfo;
                     })
-                    .border(this.showInfo ? { width: 2, color: $r('sys.color.font') } : { width: 2, color: Color.Transparent })
+                    .border(this.showInfo ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
                     .brightness(this.showInfo ? 1.1 : 1)
                     .animation(defaultAnima)
                 } // Buttons
@@ -329,7 +338,7 @@ struct Index {
               right: 10,
               top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0)
             })
-            .shadow(ShadowStyle.OUTER_DEFAULT_MD)
+            .shadow(ShadowStyle.OUTER_DEFAULT_SM)
           }
           .alignContent(this.topDown ? Alignment.Top : Alignment.Bottom)
           .animation(defaultAnima)
@@ -351,7 +360,7 @@ struct Index {
       .onAreaChange((o, n) => {
         if (o.width != n.width) {
           this.myMeowLayout.width = n.width as number;
-          this.myMeowLayout.wideMode = this.myMeowLayout.width > 800;
+          this.myMeowLayout.wideMode = this.myMeowLayout.width > 900;
         }
         if (o.height != n.height) {
           this.myMeowLayout.height = n.height as number;
@@ -384,7 +393,7 @@ struct Index {
     const padBottom = `<div id='dictionareowBottomAvoid' style="height: ${avoidPercentages[1]}%"></div>`;
 
     try {
-      this.webController.loadData(padTop + content + padBottom, 'text/html', 'UTF-8', 'file://' + this.getUIContext().getHostContext()!.filesDir + '/meow/', ' ');
+      this.webController.loadData(padTop + content + padBottom, 'text/html', 'UTF-8', 'file://' + this.context.filesDir + '/meow/', ' ');
       console.log(content);
       return true;
     } catch (e) {
@@ -401,6 +410,10 @@ struct Index {
     while (key.substring(0, 8) == 'entry://') {
       key = key.substring(8);
     }
+
+    // TODO: Finish # Jumps
+    const keySplit = key.split('#');
+    key = keySplit[keySplit.length-1];
     if (this.lookUpWord != key) {
       this.lookUpWord = key;
     }
@@ -414,7 +427,7 @@ struct Index {
       if (bundle.mdx!.type == meowDictType.MDX) {
         let resultText = 'ERROR! ＞︿＜';
         try {
-          resultText = resultBuffer.toString(bundle.mdx!.header!.Encoding);
+          resultText = fastbuffer.from(resultBuffer).toString(bundle.mdx!.header!.Encoding);
         } catch (e) {
           console.error(`[Meow][MDX] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
         }

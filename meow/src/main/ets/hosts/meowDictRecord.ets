@@ -96,16 +96,14 @@ export class meowDictRecord {
       return decompress(block!, this.decompSizes[startRecordIdx], tag, { type: '0' })
         .then((arrayBuffer) => {
           try {
-            const longBufferBuffer = buffer.from(arrayBuffer);
             const recordOffsetStartInBuffer = recordOffsetStart - this.decompSizesCumulative[startRecordIdx];
-
             let recordOffsetEndInBuffer: number | undefined;
             if (recordOffsetEnd) {
               recordOffsetEndInBuffer = recordOffsetEnd - this.decompSizesCumulative[startRecordIdx];
             }
 
-            const bufferSlice = longBufferBuffer.subarray(recordOffsetStartInBuffer, recordOffsetEndInBuffer);
-            return bufferSlice;
+            const arrayBufferSliceWhat = arrayBuffer.slice(recordOffsetStartInBuffer, recordOffsetEndInBuffer);
+            return arrayBufferSliceWhat;
 
           } catch (e) {
             console.error(`[meowDictRecord][getRecordEntry] const longBufferBuffer = buffer.from(arrayBuffer) Failed: ${e}`);

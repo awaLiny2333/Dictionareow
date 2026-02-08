@@ -43,7 +43,7 @@ export function onLoadContent(window: window.Window, context: Context) {
     const rect: window.Rect = window.getWindowProperties().windowRect;
     const width = meowPx2vp(rect.width);
     const height = meowPx2vp(rect.height);
-    const wideMode = width > 800;
+    const wideMode = width > 900;
     AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode, width, height));
   } catch (e) {
     meow(`AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode)); Failed: ${e}`, 'init', meowLevel.ERROR);

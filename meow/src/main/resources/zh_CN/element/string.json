@@ -2,35 +2,35 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "Consume dictionary files nya!"
+      "value": "词典！喵！"
     },
     {
       "name": "MeowAbility_desc",
-      "value": "To read dictionaries!"
+      "value": "阅读词典！"
     },
     {
       "name": "MeowAbility_label",
-      "value": "Dictionareow"
+      "value": "词典喵"
     },
     {
       "name": "permission_reason_INTERNET",
-      "value": "To show perhaps web resources?"
+      "value": "也许会获得互联网资源？"
     },
     {
       "name": "add_files",
-      "value": "Files"
+      "value": "文件"
     },
     {
       "name": "info",
-      "value": "Info"
+      "value": "信息"
     },
     {
       "name": "delete",
-      "value": "Delete"
+      "value": "删除"
     },
     {
       "name": "entries",
-      "value": "Entries"
+      "value": "词汇"
     }
   ]
 }

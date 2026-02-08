@@ -100,7 +100,7 @@ export class meowDictHeader {
   }
 
   set Encoding(value: string) {
-    this.encoding = value;
+    this.encoding = value.toLowerCase();
   }
 
   get Format(): string {
@@ -108,7 +108,7 @@ export class meowDictHeader {
   }
 
   set Format(value: string) {
-    this.format = value;
+    this.format = value.toLowerCase();
   }
 
   get CreationDate(): string {
@@ -275,10 +275,10 @@ export class meowDictHeader {
           config.encrypted = value;
           break;
         case 'Encoding':
-          config.encoding = value;
+          config.encoding = value.toLowerCase();
           break;
         case 'Format':
-          config.format = value;
+          config.format = value.toLowerCase();
           break;
         case 'CreationDate':
           config.creationDate = value;
