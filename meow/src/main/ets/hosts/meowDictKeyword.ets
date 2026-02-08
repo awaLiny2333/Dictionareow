@@ -12,6 +12,8 @@ import {
   keepOnlyAlphanumericGlobal as keepOnlyAlphanumeric
 } from '../utils/data';
 import { buffer, fastbuffer, taskpool } from '@kit.ArkTS';
+import { meowDictHeader } from './meowDictHeader';
+import { decryptType1Block } from '../utils/decryption';
 
 export class meowDictKeyword {
   globalRawData: ArrayBuffer;
@@ -26,17 +28,24 @@ export class meowDictKeyword {
   index: meowDictKeywordIndex | undefined;
   lookUpBlockIndex: number = 0;
 
-  constructor(globalOffset: number, globalRawData: ArrayBuffer, globalEncoding: string, type2Encrypted: boolean) {
+  constructor(globalOffset: number, globalRawData: ArrayBuffer, header: meowDictHeader, type1Encrypted: boolean, type2Encrypted: boolean) {
     this.globalOffset = globalOffset;
     this.globalRawData = globalRawData;
-    this.globalEncoding = globalEncoding;
-    this.processMetadata();
+    this.globalEncoding = header.Encoding;
+    this.processMetadata(type1Encrypted, header);
     this.processIndex(type2Encrypted);
   }
 
-  private processMetadata() {
+  private processMetadata(type1Encrypted: boolean, header: meowDictHeader) {
+    let metaSlice = this.globalRawData.slice(this.globalOffset + 0, this.globalOffset + 40);
+
+    // TODO: Verify that this decryptType1Block works
+    if (type1Encrypted) {
+      metaSlice = decryptType1Block(metaSlice, header.RegisterBy, header.RegCode);
+    }
+
     // Number of items in key_blocks. Big-endian. Possibly encrypted, see below.
-    let numBlocks = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 0, this.globalOffset + 8));
+    let numBlocks = arrayBuffer2Int64BE(metaSlice.slice(0, 8));
     if (numBlocks !== undefined) {
       console.log(`[meowDictKeyword][processMetadata] numBlocks: ${numBlocks}`);
     } else {
@@ -44,20 +53,17 @@ export class meowDictKeyword {
       numBlocks = 0;
     }
 
-    // Don't care about encryption and move on first.
-    // TODO: Work on encryption and decryption
-
     // Total number of keywords. Big-endian. Possibly encrypted, see below.
-    let numEntries = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 8, this.globalOffset + 16)) || 0;
+    let numEntries = arrayBuffer2Int64BE(metaSlice.slice(8, 16)) || 0;
 
     // Number of bytes in decompressed version of key_index. Big-endian. Possibly encrypted, see below.
-    let keyIndexDecompLen = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 16, this.globalOffset + 24)) || 0;
+    let keyIndexDecompLen = arrayBuffer2Int64BE(metaSlice.slice(16, 24)) || 0;
 
     // Number of bytes in compressed version of key_index (including the comp_type and checksum parts). Big-endian. Possibly encrypted, see below.
-    let keyIndexCompLen = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 24, this.globalOffset + 32)) || 0;
+    let keyIndexCompLen = arrayBuffer2Int64BE(metaSlice.slice(24, 32)) || 0;
 
     // Number of bytes in compressed version of key_index (including the comp_type and checksum parts). Big-endian. Possibly encrypted, see below.
-    let keyBlocksLen = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 32, this.globalOffset + 40)) || 0;
+    let keyBlocksLen = arrayBuffer2Int64BE(metaSlice.slice(32, 40)) || 0;
 
     // ADLER32 checksum of the preceding 40 bytes. If those are encrypted, it is the checksum of the decrypted version. Big-endian.
     let headerChecksum = arrayBuffer2Int32BE(this.globalRawData.slice(this.globalOffset + 40, this.globalOffset + 44)) || 0;
@@ -286,7 +292,7 @@ export class meowDictKeywordIndex {
   }
 
   async init(encoding: string, dec: decompressDecryptConfig) {
-    this.decompData = await decompress(this.rawData.slice(this.offset, this.offset + this.keyIndexCompLen), this.keyIndexDecompLen, '[meowDictKeyword][Index][init]',dec);
+    this.decompData = await decompress(this.rawData.slice(this.offset, this.offset + this.keyIndexCompLen), this.keyIndexDecompLen, '[meowDictKeyword][Index][init]', dec);
     this.processIndexEntry(encoding);
   }
 

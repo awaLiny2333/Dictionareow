@@ -5,13 +5,14 @@
 
 import { buffer } from '@kit.ArkTS';
 
+// TODO: Verify that this works!
 /**
  * Salsa20/8 加密/解密类
  * 特点：使用 128-bit Key, 64-bit IV (全0), 8 轮变换
  * @author Gemini @ Feb 7 2026
  */
-export class Salsa20_8 {
-  private static SIGMA = [0x616c6574, 0x32342d6b, 0x696e6720, 0x65206279];
+class Salsa20_8 {
+  private static SIGMA = [0x61707865, 0x3120646e, 0x79622d36, 0x6b206574]; // Verified. Calculated manually.
 
   private static qr(x: Uint32Array, a: number, b: number, c: number, d: number): void {
     let v = 0;
@@ -37,7 +38,7 @@ export class Salsa20_8 {
     state[4] = key[12] | (key[13] << 8) | (key[14] << 16) | (key[15] << 24);
     state[5] = Salsa20_8.SIGMA[1];
     state[6] = 0;
-    state[7] = 0; // IV = 0
+    state[7] = 0;
     state[8] = 0;
     state[9] = 0; // Counter = 0
     state[10] = Salsa20_8.SIGMA[2];
@@ -88,18 +89,31 @@ export class Salsa20_8 {
  */
 class RIPEMD128Binary {
   private h = new Uint32Array([0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476]);
-
-  private readonly rL = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 7, 4, 13, 1, 10, 6, 15, 3, 12, 0, 9, 5, 2, 14, 11, 8, 3, 10, 14, 4, 9, 15, 8, 1, 2, 7, 0, 6, 13, 11, 5, 12, 1, 9, 11, 10, 0, 8, 12, 4, 13, 3, 7, 15, 14, 5, 6, 2];
-  private readonly rR = [5, 14, 7, 0, 9, 2, 11, 4, 13, 6, 15, 8, 1, 10, 3, 12, 6, 11, 3, 7, 0, 13, 5, 10, 14, 15, 8, 12, 4, 9, 1, 2, 15, 5, 1, 3, 7, 14, 6, 9, 11, 8, 12, 2, 10, 0, 4, 13, 8, 6, 4, 1, 3, 11, 15, 0, 5, 12, 2, 13, 9, 7, 10, 14];
-  private readonly sL = [11, 14, 15, 12, 5, 8, 7, 9, 11, 13, 14, 15, 6, 7, 9, 8, 7, 6, 8, 13, 11, 9, 7, 15, 7, 12, 15, 9, 11, 7, 13, 12, 11, 13, 6, 7, 14, 9, 13, 15, 14, 8, 13, 6, 5, 12, 7, 5, 11, 12, 14, 15, 14, 15, 9, 8, 9, 14, 5, 6, 8, 6, 5, 12];
-  private readonly sR = [8, 9, 9, 11, 13, 15, 15, 5, 7, 7, 8, 11, 14, 14, 12, 6, 9, 13, 15, 7, 12, 8, 9, 11, 7, 7, 12, 7, 6, 15, 13, 11, 9, 7, 15, 11, 8, 6, 6, 14, 12, 13, 5, 14, 13, 13, 7, 5, 15, 5, 8, 11, 14, 14, 6, 14, 6, 9, 12, 9, 12, 5, 15, 8];
+  private readonly rL =
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 7, 4, 13, 1, 10, 6, 15, 3, 12, 0, 9, 5, 2, 14, 11, 8, 3, 10, 14, 4, 9, 15, 8, 1, 2, 7, 0, 6, 13, 11, 5, 12, 1, 9, 11, 10, 0, 8, 12, 4, 13, 3, 7, 15, 14, 5, 6,
+      2];
+  private readonly rR =
+    [5, 14, 7, 0, 9, 2, 11, 4, 13, 6, 15, 8, 1, 10, 3, 12, 6, 11, 3, 7, 0, 13, 5, 10, 14, 15, 8, 12, 4, 9, 1, 2, 15, 5, 1, 3, 7, 14, 6, 9, 11, 8, 12, 2, 10, 0, 4, 13, 8, 6, 4, 1, 3, 11, 15, 0, 5, 12, 2, 13, 9, 7, 10,
+      14];
+  private readonly sL =
+    [11, 14, 15, 12, 5, 8, 7, 9, 11, 13, 14, 15, 6, 7, 9, 8, 7, 6, 8, 13, 11, 9, 7, 15, 7, 12, 15, 9, 11, 7, 13, 12, 11, 13, 6, 7, 14, 9, 13, 15, 14, 8, 13, 6, 5, 12, 7, 5, 11, 12, 14, 15, 14, 15, 9, 8, 9, 14, 5, 6, 8,
+      6, 5, 12];
+  private readonly sR =
+    [8, 9, 9, 11, 13, 15, 15, 5, 7, 7, 8, 11, 14, 14, 12, 6, 9, 13, 15, 7, 12, 8, 9, 11, 7, 7, 12, 7, 6, 15, 13, 11, 9, 7, 15, 11, 8, 6, 6, 14, 12, 13, 5, 14, 13, 13, 7, 5, 15, 5, 8, 11, 14, 14, 6, 14, 6, 9, 12, 9, 12,
+      5, 15, 8];
   private readonly KL = [0x00000000, 0x5a827999, 0x6ed9eba1, 0x8f1bbcdc];
   private readonly KR = [0x50a28be6, 0x5c4dd124, 0x6d703ef3, 0x00000000];
 
   private f(j: number, x: number, y: number, z: number): number {
-    if (j < 16) return x ^ y ^ z;
-    if (j < 32) return (x & y) | (~x & z);
-    if (j < 48) return (x | ~y) ^ z;
+    if (j < 16) {
+      return x ^ y ^ z;
+    }
+    if (j < 32) {
+      return (x & y) | (~x & z);
+    }
+    if (j < 48) {
+      return (x | ~y) ^ z;
+    }
     return (x & z) | (y & ~z);
   }
 
@@ -127,12 +141,16 @@ class RIPEMD128Binary {
       for (let j = 0; j < 64; j++) {
         // 左路径
         let tl = (al + this.f(j, bl, cl, dl) + block[this.rL[j]] + this.KL[j >> 4]) | 0;
-        al = dl; dl = cl; cl = bl;
+        al = dl;
+        dl = cl;
+        cl = bl;
         bl = this.rotl(tl, this.sL[j]);
 
         // 右路径
         let tr = (ar + this.f(63 - j, br, cr, dr) + block[this.rR[j]] + this.KR[j >> 4]) | 0;
-        ar = dr; dr = cr; cr = br;
+        ar = dr;
+        dr = cr;
+        cr = br;
         br = this.rotl(tr, this.sR[j]);
       }
 
@@ -177,21 +195,23 @@ class RIPEMD128Binary {
 }
 
 /**
- * 封装导出函数
- */
-function ripemd128Binary(buffer: ArrayBuffer): ArrayBuffer {
+ * Calculates the RIPEMD 128 hash.
+ * @param buffer The source content.
+ * @returns Another ArrayBuffer.
+ * */
+export function ripemd128(buffer: ArrayBuffer): ArrayBuffer {
   return new RIPEMD128Binary().digest(buffer);
 }
 
-export function decryptMDXBlock(encryptedBlock: ArrayBuffer, userId: string, regCodeHex: string): ArrayBuffer {
+// Keyword Header (Type 1)
+
+export function decryptType1Block(encryptedBlock: ArrayBuffer, userId: string, regCode: string): ArrayBuffer {
   // 1. 数据准备
   const encryptedBytes = new Uint8Array(encryptedBlock);
-  const regCodeBytes = new Uint8Array(
-    regCodeHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))
-  );
+  const regCodeBytes = new Uint8Array(buffer.from(regCode, 'hex').buffer);
 
   // 2. 生成 User ID 的哈希 (128-bit)
-  const userIdHash = new Uint8Array(ripemd128Binary(buffer.from(userId, 'ascii').buffer));
+  const userIdHash = new Uint8Array(ripemd128(buffer.from(userId, 'ascii').buffer));
 
   // 3. 解密 RegCode 以获取 Master Key Hash
   // 根据伪代码：reg_code 是被 userIdHash 加密的 masterKeyHash
@@ -202,6 +222,8 @@ export function decryptMDXBlock(encryptedBlock: ArrayBuffer, userId: string, reg
 
   return decryptedBytes.buffer;
 }
+
+// Keyword Index (Type 2)
 
 /**
  * 核心：计算 ripemd128(checksum + "\x95\x36\x00\x00")
@@ -218,7 +240,7 @@ export function getEncryptionKey(checksum: ArrayBuffer): ArrayBuffer {
   combined.set(suffix, checksum.byteLength);
 
   // 3. 调用之前实现的算法 (这里使用刚才定义的 RIPEMD128Binary 类)
-  return ripemd128Binary(combined.buffer as ArrayBuffer);
+  return ripemd128(combined.buffer as ArrayBuffer);
 }
 
 /**

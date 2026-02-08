@@ -52,6 +52,32 @@ struct Index {
               .databaseAccess(true)
               .allowWindowOpenMethod(true)
               .multiWindowAccess(true)
+              .onLoadIntercept((e) => {
+                const reqUrl = e.data.getRequestUrl();
+                const reqFilePath = reqUrl.split('/');
+                const reqFileName = reqFilePath.slice(1).join('\\');
+                const reqFileScheme = reqFilePath[0];
+
+                if (reqUrl.length < 256) {
+                  console.warn(`[Meow][Web][onLoadIntercept] ${reqUrl}, reqFileScheme = ${reqFileScheme}, reqFileName = ${reqFileName}`);
+                } else {
+                  console.warn(`[Meow][Web][onLoadIntercept][long] reqFileScheme = ${reqFileScheme}`);
+                }
+
+                if (['sound:'].includes(reqFileScheme)) {
+                  // Read
+                  this.extractFile(this.meowDictExampleMDD, reqFileName).then((r) => {
+                    if (!r) {
+                      console.error(`[Meow][Web][onLoadIntercept] Reource not found! Not going to refresh!`);
+                      return;
+                    }
+                  })
+
+                  return true;
+                }
+
+                return false;
+              })
               .onInterceptRequest((e) => {
                 const reqUrl = e.request.getRequestUrl();
                 const reqFilePath = reqUrl.split('/');
@@ -73,7 +99,7 @@ struct Index {
                       console.warn(`[Meow][Web][onInterceptRequest][long] reqFileScheme = ${reqFileScheme}`);
                     }
 
-                    // Read
+                    // Get the files
                     this.extractFile(this.meowDictExampleMDD, '\\' + reqFileName).then((r) => {
                       if (!r) {
                         console.error(`[Meow][Web][refreshForResourcesTimeout] Reource not found! Not going to refresh!`);

@@ -90,9 +90,17 @@ export class meowDict {
   private processKeyword(baseBytesOffset: number) {
     const startTime: number = Date.now();
 
+    const type1Encrypted = this.header!.Encrypted == '1';
     const type2Encrypted = this.header!.Encrypted == '2';
 
-    this.keyword = new meowDictKeyword(baseBytesOffset, this.rawData!, this.header!.Encoding, type2Encrypted);
+    if (type1Encrypted) {
+      this.keyword = new meowDictKeyword(baseBytesOffset, this.rawData!, this.header!, true, false);
+    } else if (type2Encrypted) {
+      this.keyword = new meowDictKeyword(baseBytesOffset, this.rawData!, this.header!, false, true);
+    } else {
+      // Not encrypted
+      this.keyword = new meowDictKeyword(baseBytesOffset, this.rawData!, this.header!, false, false);
+    }
 
     console.log(`[meowDict][processKeyword] Keyword OK! Total length: ${44 + this.keyword.keyIndexCompLen + this.keyword.keyBlocksLen} (${Date.now() - startTime} ms)`);
     return 44 + this.keyword.keyIndexCompLen + this.keyword.keyBlocksLen; // THIS NEEDS FURTHER CARE // I think this is correct.
