@@ -1,6 +1,6 @@
 import { AppStorageV2, window } from '@kit.ArkUI';
 import { meow, meowLevel } from '../utils/catsLogger';
-import lazy { sandboxCreateDir, sandboxReadArrayBufferConcurrent } from '../utils/storage';
+import lazy { sandboxCreateDir } from '../utils/storage';
 import { getUpdateAvoid, getUpdateFreeWindowMode, listenAvoid, listenFreeWindowMode, meowLayoutModeStatus, meowPx2vp } from '../utils/uiEnv';
 import { fileIo } from '@kit.CoreFileKit';
 import { meowDict, meowDictType } from '../hosts/meowDict';
@@ -83,18 +83,10 @@ async function readMDict(sandboxPath: string = '/woof/woof.mdx', type: meowDictT
   try {
     const existMdd = fileIo.accessSync(context.filesDir + sandboxPath);
     if (existMdd) {
-      return sandboxReadArrayBufferConcurrent(sandboxPath, context).then((arrayBuffer) => {
-        if (arrayBuffer) {
-          console.log(`[Meow][readMDict][${sandboxPath}] ArrayBuffer length: ${arrayBuffer.byteLength}`);
-          let a = AppStorageV2.connect<meowDict>(meowDict, appStorageKey, () => new meowDict(type))!;
-          a.rawData = arrayBuffer;
-          a.init();
-
-          console.log(`[Meow][readMDict][${sandboxPath}] using existing mdx file!`);
-        } else {
-          console.warn(`[Meow][readMDict][${sandboxPath}] no exist!`);
-        }
-      })
+      console.log(`[Meow][readMDict][${sandboxPath}] Exist!`);
+      let a = AppStorageV2.connect<meowDict>(meowDict, appStorageKey, () => new meowDict(type))!;
+      a.fullPath = context.filesDir + sandboxPath;
+      a.init();
     }
   } catch (e) {
     console.error(`[Meow][readMDict][${sandboxPath}] Check and load existing mdx failed: ${e}`);

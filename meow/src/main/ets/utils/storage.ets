@@ -4,71 +4,52 @@ import { taskpool } from '@kit.ArkTS';
 
 export interface meowReadPickResult {
   succeed: boolean;
-  buf?: ArrayBuffer;
-  fileName?: string;
-  sourcePath?: string;
+  sourcePaths?: string[];
 }
+
+// Picker
 
 /**
  * Pick a file from device storage, pulling up a DocumentViewPicker.
- * @returns An ArrayBuffer, of the chosen file's content.
+ * @returns Majorly the path.
  * */
-export async function fileDocumentPick2ArrayBuffer(fileSuffixFilters: string[] = [".meow"]): Promise<meowReadPickResult> {
-  let selected_uri: string[] = [];
-
+export async function fileDocumentPick2Path(fileSuffixFilters: string[] = [".meow"], maxSelectNumber: number = 1): Promise<meowReadPickResult> {
   if (canIUse("SystemCapability.FileManagement.UserFileService")) {
-    let documentPicker = new picker.DocumentViewPicker();
-    let resultBuffer: ArrayBuffer | undefined = undefined;
-
-    return documentPicker.select({
-      maxSelectNumber: 1,
+    return (new picker.DocumentViewPicker()).select({
+      maxSelectNumber: maxSelectNumber,
       fileSuffixFilters: fileSuffixFilters
     })
       .then((documentSelectResult) => {
+        let sourcePaths: string[] = [];
+
         if (documentSelectResult.length == 0) {
-          console.info(`[file_document_reader] DocumentViewPicker.select Selected nothing. documentSelectResult = ${documentSelectResult}`);
+          console.info(`[fileDocumentPick2Path] DocumentViewPicker.select Selected nothing. documentSelectResult = ${documentSelectResult}`);
           return { succeed: false } as meowReadPickResult;
         }
 
-        selected_uri = documentSelectResult;
-        console.info(`[file_document_reader] DocumentViewPicker.select successfully, documentSelectResult uri: ${selected_uri[0]}`);
-        let fileName: string | undefined = undefined;
-        try {
-          let file = fileIo.openSync(selected_uri[0], fileIo.OpenMode.READ_ONLY);
-          // let selected_path = (new fileUri.FileUri(selected_uri[0])).path;
-          let targetPath = (new fileUri.FileUri(selected_uri[0])).path;
-          let stat = fileIo.statSync(targetPath);
-          let size = stat.size;
-          resultBuffer = new ArrayBuffer(size);
-          fileIo.readSync(file.fd, resultBuffer);
-          fileIo.closeSync(file);
-          // fileIo.copyFileSync(selected_path, sand_path);
-          console.info(`[file_document_reader] Read file from ${selected_uri[0]} success! byteLength is ${resultBuffer?.byteLength}`);
-
-          let targetPathSplit = targetPath.split('/');
-          fileName = targetPathSplit[targetPathSplit.length-1];
-
-        } catch (e) {
-          console.error(`[file_document_reader] Read file from ${selected_uri[0]} failed! ${e}! Returning undefined...`);
+        for (let index = 0; index < documentSelectResult.length; index++) {
+          const sourcePath = uri_2_path(documentSelectResult[index]);
+          console.info(`[fileDocumentPick2Path] DocumentViewPicker.select successfully, documentSelectResult sourcePath[${index}]: ${sourcePath}`);
+          sourcePaths.push(sourcePath);
         }
 
         return {
           succeed: true,
-          buf: resultBuffer,
-          fileName: fileName,
-          sourcePath: uri_2_path(selected_uri[0])
+          sourcePaths: sourcePaths,
         } as meowReadPickResult;
       })
       .catch((e: BusinessError) => {
-        console.error(`[file_document_reader] DocumentViewPicker.select failed with err: ${e}`);
+        console.error(`[fileDocumentPick2Path] DocumentViewPicker.select failed with err: ${e}`);
         return { succeed: false } as meowReadPickResult;
       });
 
   } else {
-    console.error('[file_document_reader] DocumentViewPicker.select failed. canIUse("SystemCapability.FileManagement.UserFileService") is false!');
+    console.error('[fileDocumentPick2Path] DocumentViewPicker.select failed. canIUse("SystemCapability.FileManagement.UserFileService") is false!');
     return { succeed: false } as meowReadPickResult;
   }
 }
+
+// Save
 
 /**
  * Save a text file or ArrayBuffer to sandbox storage, overwrites whatever that was at that place.
@@ -118,41 +99,51 @@ export async function sandboxSaveHybrid(filePath: string, content: string | Arra
   }
 }
 
+export async function fileCopy(sourcePath: string, destPath: string) {
+  return fileIo.copyFile(sourcePath, destPath).catch((e: BusinessError) => {
+    console.error(`[fileCopy] fileIo.copyFile(${sourcePath}, ${destPath}) failed: ${e}`);
+  });
+}
+
+// Read
 
 /**
  * Read an ArrayBuffer file from sandbox storage in a sync way.
- * @param filePath the file path
+ * @param fullFilePath the file path
  * @param context the context
  * @returns An ArrayBuffer, of the requested file's content or undefined if the file doesn't exist.
  * */
 @Concurrent
-function sandboxReadArrayBufferSync(filePath: string, context: Context) {
+export function sandboxReadArrayBufferSync(fullFilePath: string, offset?: number, length?: number) {
   const startTime: number = Date.now();
 
-  let filesDir: string = context.filesDir;
-  let fullDirectory = filesDir + '/' + filePath;
   try {
-    if (!(fileIo.accessSync(fullDirectory))) {
+    if (!(fileIo.accessSync(fullFilePath))) {
       // file doesn't exist
-      console.warn(`[sandboxReadArrayBuffer] [${fullDirectory}] doesn't exist`);
+      console.warn(`[sandboxReadArrayBuffer][${fullFilePath}] doesn't exist`);
       return undefined;
     }
   } catch (e) {
-    console.error(`[sandboxReadArrayBuffer] fileIo.accessSync(fullDirectory) check failed: ${e}`);
+    console.error(`[sandboxReadArrayBuffer] fileIo.accessSync(filePath) check failed: ${e}`);
     return undefined;
   }
 
   try {
-    let file = fileIo.openSync(fullDirectory, fileIo.OpenMode.READ_WRITE);
-    let stat = fileIo.statSync(fullDirectory);
-    let buf = new ArrayBuffer(stat.size);
-    let l = fileIo.readSync(file.fd, buf);
+    let file = fileIo.openSync(fullFilePath, fileIo.OpenMode.READ_WRITE);
+    let stat = fileIo.statSync(fullFilePath);
+    let buf: ArrayBuffer;
+    if (length != undefined) {
+      buf = new ArrayBuffer(length);
+    } else {
+      buf = new ArrayBuffer(stat.size);
+    }
+    let l = fileIo.readSync(file.fd, buf, { offset: offset, length: length });
     let readLen = l;
     let result = buf.slice(0, readLen);
     fileIo.close(file).catch((e: BusinessError) => {
       console.error(`[sandboxReadArrayBuffer] fileIo.close(file) failed: ${e}`);
     })
-    console.info(`[sandboxReadArrayBuffer] read [${filePath}] succeed, length: ${readLen} (${Date.now() - startTime} ms)`);
+    console.info(`[sandboxReadArrayBuffer] read [${fullFilePath}][${offset}, ${length}] succeed, length: ${readLen} (${Date.now() - startTime} ms)`);
     return result;
 
   } catch (e) {
@@ -163,13 +154,18 @@ function sandboxReadArrayBufferSync(filePath: string, context: Context) {
 
 /**
  * Read an ArrayBuffer file from sandbox storage in a task pool way.
- * @param filePath the file path
+ * @param fullFilePath the file path
  * @param context the context
  * @returns An ArrayBuffer, of the requested file's content or undefined if the file doesn't exist.
  * */
-export async function sandboxReadArrayBufferConcurrent(filePath: string, context: Context) {
+export async function sandboxReadArrayBufferConcurrent(fullFilePath: string, offset?: number, length?: number) {
   // taskpool.execute(task)
-  let task: taskpool.Task = new taskpool.Task(sandboxReadArrayBufferSync, filePath, context);
+  let task: taskpool.Task;
+  if (offset) {
+    task = new taskpool.Task(sandboxReadArrayBufferSync, fullFilePath, offset!, length!);
+  } else {
+    task = new taskpool.Task(sandboxReadArrayBufferSync, fullFilePath);
+  }
   try {
     const result = await taskpool.execute(task);
     console.info(`[sandboxReadArrayBufferConcurrent] taskpool.execute(task)!`);
@@ -180,6 +176,8 @@ export async function sandboxReadArrayBufferConcurrent(filePath: string, context
   }
   // return undefined;
 }
+
+// Operations
 
 /**
  * Creates a directory in sandbox directory
@@ -225,6 +223,7 @@ export function sandboxCreateDir(dirPath: string, context: Context, overwrite = 
   })
 }
 
+// Utils
 
 /**
  * Converts a uri to path.

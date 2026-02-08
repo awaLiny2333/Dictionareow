@@ -14,11 +14,12 @@ import {
 import { buffer, fastbuffer, taskpool } from '@kit.ArkTS';
 import { meowDictHeader } from './meowDictHeader';
 import { decryptType1Block } from '../utils/decryption';
+import { sandboxReadArrayBufferSync } from '../utils/storage';
 
 export class meowDictKeyword {
-  globalRawData: ArrayBuffer;
   globalOffset: number; // The offset from the head of the entire raw data.
   globalEncoding: string;
+  fullPath: string;
   numBlocks: number = 0;
   numEntries: number = 0;
   keyIndexDecompLen: number = 0;
@@ -28,24 +29,25 @@ export class meowDictKeyword {
   index: meowDictKeywordIndex | undefined;
   lookUpBlockIndex: number = 0;
 
-  constructor(globalOffset: number, globalRawData: ArrayBuffer, header: meowDictHeader, type1Encrypted: boolean, type2Encrypted: boolean) {
+  constructor(globalOffset: number, fullPath: string, header: meowDictHeader, type1Encrypted: boolean, type2Encrypted: boolean) {
     this.globalOffset = globalOffset;
-    this.globalRawData = globalRawData;
     this.globalEncoding = header.Encoding;
+    this.fullPath = fullPath;
     this.processMetadata(type1Encrypted, header);
     this.processIndex(type2Encrypted);
   }
 
   private processMetadata(type1Encrypted: boolean, header: meowDictHeader) {
-    let metaSlice = this.globalRawData.slice(this.globalOffset + 0, this.globalOffset + 40);
+    let metaSlice40 = sandboxReadArrayBufferSync(this.fullPath, this.globalOffset, 40)!;
+    // let metaSlice = this.globalRawData.slice(this.globalOffset + 0, this.globalOffset + 40);
 
     // TODO: Verify that this decryptType1Block works
     if (type1Encrypted) {
-      metaSlice = decryptType1Block(metaSlice, header.RegisterBy, header.RegCode);
+      metaSlice40 = decryptType1Block(metaSlice40, header.RegisterBy, header.RegCode);
     }
 
     // Number of items in key_blocks. Big-endian. Possibly encrypted, see below.
-    let numBlocks = arrayBuffer2Int64BE(metaSlice.slice(0, 8));
+    let numBlocks = arrayBuffer2Int64BE(metaSlice40.slice(0, 8));
     if (numBlocks !== undefined) {
       console.log(`[meowDictKeyword][processMetadata] numBlocks: ${numBlocks}`);
     } else {
@@ -54,19 +56,20 @@ export class meowDictKeyword {
     }
 
     // Total number of keywords. Big-endian. Possibly encrypted, see below.
-    let numEntries = arrayBuffer2Int64BE(metaSlice.slice(8, 16)) || 0;
+    let numEntries = arrayBuffer2Int64BE(metaSlice40.slice(8, 16)) || 0;
 
     // Number of bytes in decompressed version of key_index. Big-endian. Possibly encrypted, see below.
-    let keyIndexDecompLen = arrayBuffer2Int64BE(metaSlice.slice(16, 24)) || 0;
+    let keyIndexDecompLen = arrayBuffer2Int64BE(metaSlice40.slice(16, 24)) || 0;
 
     // Number of bytes in compressed version of key_index (including the comp_type and checksum parts). Big-endian. Possibly encrypted, see below.
-    let keyIndexCompLen = arrayBuffer2Int64BE(metaSlice.slice(24, 32)) || 0;
+    let keyIndexCompLen = arrayBuffer2Int64BE(metaSlice40.slice(24, 32)) || 0;
 
     // Number of bytes in compressed version of key_index (including the comp_type and checksum parts). Big-endian. Possibly encrypted, see below.
-    let keyBlocksLen = arrayBuffer2Int64BE(metaSlice.slice(32, 40)) || 0;
+    let keyBlocksLen = arrayBuffer2Int64BE(metaSlice40.slice(32, 40)) || 0;
 
+    let headerChecksumSlice4 = sandboxReadArrayBufferSync(this.fullPath, this.globalOffset + 40, 4);
     // ADLER32 checksum of the preceding 40 bytes. If those are encrypted, it is the checksum of the decrypted version. Big-endian.
-    let headerChecksum = arrayBuffer2Int32BE(this.globalRawData.slice(this.globalOffset + 40, this.globalOffset + 44)) || 0;
+    let headerChecksum = arrayBuffer2Int32BE(headerChecksumSlice4) || 0;
 
     console.log(`[meowDictKeyword] Meta data for Keyword Section: numBlocks = ${numBlocks}, numEntries = ${numEntries}, keyIndexDecompLen = ${keyIndexDecompLen}, ` +
       `keyIndexCompLen = ${keyIndexCompLen}, keyBlocksLen = ${keyBlocksLen}, headerChecksum = ${headerChecksum}`);
@@ -81,7 +84,7 @@ export class meowDictKeyword {
 
   private processIndex(type2Encrypted: boolean) {
     const startTime = Date.now();
-    let index = new meowDictKeywordIndex(this.globalOffset + 44, this.globalRawData, this.keyIndexDecompLen, this.keyIndexCompLen, this.numBlocks);
+    let index = new meowDictKeywordIndex(this.globalOffset + 44, this.fullPath, this.keyIndexCompLen, this.keyIndexDecompLen, this.numBlocks);
 
     let config: decompressDecryptConfig = { type: '0' };
     if (type2Encrypted) {
@@ -170,17 +173,18 @@ export class meowDictKeyword {
     const thisBlockDecompSize = this.index.indexEntries[indexInBlocks].decompSize;
 
     try {
-      console.log(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] this.globalRawData.byteLength = ${this.globalRawData.byteLength},` +
+      console.log(`[meowDictKeyword][Index][getKeyBlockArrayBuffer]` +
         ` offsetFromRawHead = ${offsetFromRawHead}, offsetFromRawHead + thisBlockCompSize = ${offsetFromRawHead + thisBlockCompSize}`);
     } catch (e) {
       console.error(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] Log failed: ${e}`);
     }
 
-    const compBlock = this.globalRawData.slice(offsetFromRawHead, offsetFromRawHead + thisBlockCompSize);
+    // const compBlock = this.globalRawData.slice(offsetFromRawHead, offsetFromRawHead + thisBlockCompSize);
+    const compBlock = sandboxReadArrayBufferSync(this.fullPath, offsetFromRawHead, thisBlockCompSize);
 
     console.log(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] offsetFromRawHead = ${offsetFromRawHead}, thisBlockCompSize = ${thisBlockCompSize}, thisBlockDecompSize = ${thisBlockDecompSize}`);
 
-    return decompress(compBlock, thisBlockDecompSize, '[meowDictKeyword][Index][getKeyBlockArrayBuffer]', { type: '0' }).then((decompBlock) => {
+    return decompress(compBlock!, thisBlockDecompSize, '[meowDictKeyword][Index][getKeyBlockArrayBuffer]', { type: '0' }).then((decompBlock) => {
       let block = new meowDictKeywordBlock();
       return block.init(decompBlock, this.globalEncoding).then(() => {
         this.index!.indexEntries[indexInBlocks].builtBlock = block;
@@ -273,17 +277,17 @@ export class meowDictKeyword {
 }
 
 export class meowDictKeywordIndex {
-  rawData: ArrayBuffer;
+  rawData: ArrayBuffer | undefined;
   offset: number; // The offset from the head of the entire raw data.
   keyIndexCompLen: number;
   keyIndexDecompLen: number;
-  decompData: ArrayBuffer;
+  decompData: ArrayBuffer | undefined;
   numBlocks: number;
   indexEntries: meowDictKeywordIndexEntry[] = [];
 
-  constructor(offset: number, rawData: ArrayBuffer, keyIndexDecompLen: number, keyIndexCompLen: number, numBlocks: number) {
+  constructor(offset: number, fullPath: string, keyIndexCompLen: number, keyIndexDecompLen: number, numBlocks: number) {
     this.offset = offset;
-    this.rawData = rawData;
+    this.rawData = sandboxReadArrayBufferSync(fullPath, offset, keyIndexCompLen)!;
     this.keyIndexCompLen = keyIndexCompLen;
     this.keyIndexDecompLen = keyIndexDecompLen;
     this.numBlocks = numBlocks;
@@ -292,8 +296,9 @@ export class meowDictKeywordIndex {
   }
 
   async init(encoding: string, dec: decompressDecryptConfig) {
-    this.decompData = await decompress(this.rawData.slice(this.offset, this.offset + this.keyIndexCompLen), this.keyIndexDecompLen, '[meowDictKeyword][Index][init]', dec);
+    this.decompData = await decompress(this.rawData!, this.keyIndexDecompLen, '[meowDictKeyword][Index][init]', dec);
     this.processIndexEntry(encoding);
+    this.rawData = undefined; // Release memory
   }
 
   processIndexEntry(encoding: string) {
@@ -314,6 +319,8 @@ export class meowDictKeywordIndex {
     } catch (e) {
       console.error(`[meowDictKeyword][Index][init][processIndexEntry] Failed: ${e}`);
     }
+
+    this.decompData = undefined;
 
     console.log(`[meowDictKeywordIndex][init][processIndexEntry] OK! (${Date.now() - startTime} ms)`)
   }

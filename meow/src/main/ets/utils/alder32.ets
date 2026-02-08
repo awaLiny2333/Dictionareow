@@ -79,7 +79,10 @@ export class Adler32 {
 // const checksum = Adler32.checksum(data);
 // console.log(checksum.toString(16)); // 输出 Wikipedia 字符串的 Adler-32 值：11e60398
 
-export function alder32ChecksumVerify(dataBuffer: ArrayBuffer, checksumNumber: number) {
+export function alder32ChecksumVerify(dataBuffer: ArrayBuffer | undefined, checksumNumber: number) {
+  if (!dataBuffer) {
+    return false;
+  }
   const calcChecksum = Adler32.checksum(dataBuffer);
   return calcChecksum == checksumNumber;
 }

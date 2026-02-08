@@ -3,6 +3,7 @@ import { arrayBuffer2Int32BE, arrayBuffer2Int32LE, arrayBuffer2UTF16LE, getUnitE
 import { meowDictKeyword } from './meowDictKeyword';
 import { alder32ChecksumVerify } from '../utils/alder32';
 import { meowDictRecord } from './meowDictRecord';
+import { sandboxReadArrayBufferSync } from '../utils/storage';
 
 export enum meowDictType {
   MDD = 0,
@@ -11,26 +12,22 @@ export enum meowDictType {
 
 @ObservedV2
 export class meowDict {
+  fullPath: string | undefined;
   type: meowDictType;
-  rawData: ArrayBuffer | undefined;
   @Trace header: meowDictHeader | undefined;
   keyword: meowDictKeyword | undefined;
   @Trace record: meowDictRecord | undefined;
 
-  constructor(type: meowDictType, rawData?: ArrayBuffer) {
+  constructor(type: meowDictType, fullPath?: string) {
+    this.fullPath = fullPath;
     this.type = type;
-    this.rawData = rawData;
-
-    if (rawData) {
-      this.init();
-    }
   }
 
-  init() {
+  async init() {
     const startTime: number = Date.now();
 
     let globalOffset: number = 0;
-    globalOffset += this.processHeader();
+    globalOffset += await this.processHeader();
     globalOffset += this.processKeyword(globalOffset);
     this.processRecord(globalOffset);
 
@@ -43,15 +40,16 @@ export class meowDict {
    * Process the header section
    * @returns The length of header section (in bytes).
    * */
-  private processHeader() {
+  private async processHeader() {
     const startTime: number = Date.now();
 
-    let headerContentLength = arrayBuffer2Int32BE(this.rawData!.slice(0, 4)) || 0;
+    const block04 = sandboxReadArrayBufferSync(this.fullPath!, 0, 4);
+    const headerContentLength = arrayBuffer2Int32BE(block04) || 0;
 
-    const headerContentBuffer = this.rawData!.slice(4, 4 + headerContentLength);
-    let headerContent = arrayBuffer2UTF16LE(headerContentBuffer);
+    const headerContentBuffer = sandboxReadArrayBufferSync(this.fullPath!, 4, headerContentLength);
+    const headerContent = arrayBuffer2UTF16LE(headerContentBuffer);
 
-    const headerChecksumBuffer = this.rawData!.slice(4 + headerContentLength, 4 + headerContentLength + 4);
+    const headerChecksumBuffer = sandboxReadArrayBufferSync(this.fullPath!, 4 + headerContentLength, 4);
     const headerChecksumNumber = arrayBuffer2Int32LE(headerChecksumBuffer) || 0;
 
     // Header checksum in ADLER32, let's leave it here for a while
@@ -94,12 +92,12 @@ export class meowDict {
     const type2Encrypted = this.header!.Encrypted == '2';
 
     if (type1Encrypted) {
-      this.keyword = new meowDictKeyword(baseBytesOffset, this.rawData!, this.header!, true, false);
+      this.keyword = new meowDictKeyword(baseBytesOffset, this.fullPath!, this.header!, true, false);
     } else if (type2Encrypted) {
-      this.keyword = new meowDictKeyword(baseBytesOffset, this.rawData!, this.header!, false, true);
+      this.keyword = new meowDictKeyword(baseBytesOffset, this.fullPath!, this.header!, false, true);
     } else {
       // Not encrypted
-      this.keyword = new meowDictKeyword(baseBytesOffset, this.rawData!, this.header!, false, false);
+      this.keyword = new meowDictKeyword(baseBytesOffset, this.fullPath!, this.header!, false, false);
     }
 
     console.log(`[meowDict][processKeyword] Keyword OK! Total length: ${44 + this.keyword.keyIndexCompLen + this.keyword.keyBlocksLen} (${Date.now() - startTime} ms)`);
@@ -112,7 +110,7 @@ export class meowDict {
   private processRecord(baseBytesOffset: number) {
     const startTime: number = Date.now();
 
-    this.record = new meowDictRecord(baseBytesOffset, this.rawData!, this.header!.Encoding);
+    this.record = new meowDictRecord(baseBytesOffset, this.fullPath!, this.header!.Encoding);
     console.log(`[meowDict][processRecord] Record OK! (${Date.now() - startTime} ms)`);
   }
 

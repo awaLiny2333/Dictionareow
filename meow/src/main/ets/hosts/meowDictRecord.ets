@@ -1,10 +1,11 @@
 import { arrayBuffer2Int64BE, bufferBuffer2Int64BE, decompress } from '../utils/data';
 import { buffer, fastbuffer } from '@kit.ArkTS';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { sandboxReadArrayBufferSync } from '../utils/storage';
 
 @ObservedV2
 export class meowDictRecord {
-  globalRawData: ArrayBuffer;
+  fullPath: string;
   globalOffset: number; // The offset from the head of the entire raw data.
   globalEncoding: string;
   numBlocks: number = 0;
@@ -18,16 +19,18 @@ export class meowDictRecord {
   recBlocksHeadOffset: number = 0;
   @Trace ready: boolean = false;
 
-  constructor(globalOffset: number, globalRawData: ArrayBuffer, globalEncoding: string) {
+  constructor(globalOffset: number, fullPath: string, globalEncoding: string) {
     this.globalOffset = globalOffset;
-    this.globalRawData = globalRawData;
+    this.fullPath = fullPath;
     this.globalEncoding = globalEncoding;
     this.processMetaData();
   }
 
   private async processMetaData() {
+    const metaDataSlice32 = sandboxReadArrayBufferSync(this.fullPath, this.globalOffset, 32)!;
+
     // Number items in record_blocks. Does not need to equal the number of keyword blocks. Big-endian.
-    let numBlocks = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 0, this.globalOffset + 8));
+    let numBlocks = arrayBuffer2Int64BE(metaDataSlice32.slice(0, 8));
     if (numBlocks !== undefined) {
       console.log(`[meowDictRecord][processMetadata] numBlocks: ${numBlocks}`);
     } else {
@@ -37,13 +40,13 @@ export class meowDictRecord {
     this.numBlocks = numBlocks;
 
     // Total number of records in dictionary. Should be equal to keyword_sect.num_entries. Big-endian.
-    this.numEntries = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 8, this.globalOffset + 16)) || 0;
+    this.numEntries = arrayBuffer2Int64BE(metaDataSlice32.slice(8, 16)) || 0;
 
     // Total size of the comp_size[i] and decomp_size[i] variables, in bytes. In other words, should equal 16 times num_blocks. Big-endian.
-    this.indexLen = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 16, this.globalOffset + 24)) || 0;
+    this.indexLen = arrayBuffer2Int64BE(metaDataSlice32.slice(16, 24)) || 0;
 
     // Total size of the rec_block[i] sections, in bytes. Big-endian.
-    this.blocksLen = arrayBuffer2Int64BE(this.globalRawData.slice(this.globalOffset + 24, this.globalOffset + 32)) || 0;
+    this.blocksLen = arrayBuffer2Int64BE(metaDataSlice32.slice(24, 32)) || 0;
 
     // let task: taskpool.Task = new taskpool.Task(calculateMetaDataSync, this.globalRawData, this.globalOffset, numBlocks);
 
@@ -61,13 +64,15 @@ export class meowDictRecord {
     //   console.error(`[meowDictRecord][processMetadata] Failed: ${e}`);
     // }
 
+    const metaDataBlockSlice = sandboxReadArrayBufferSync(this.fullPath, this.globalOffset + 32, 16 * numBlocks)!;
+
     // Use less RAM
-    const res = calculateMetaDataSync(this.globalRawData, this.globalOffset, numBlocks);
+    const res = calculateMetaDataSync(metaDataBlockSlice, numBlocks);
     this.compSizes = res.compSizes;
     this.decompSizes = res.decompSizes;
     this.compSizesCumulative = res.compSizesCumulative;
     this.decompSizesCumulative = res.decompSizesCumulative;
-    this.recBlocksHeadOffset = res.recBlocksHeadOffset;
+    this.recBlocksHeadOffset = res.recBlocksHeadOffset + 32 + this.globalOffset;
     this.ready = true;
     console.warn(`[meowDictRecord][processMetadata] taskpool.execute(task) OK!`);
   }
@@ -90,10 +95,14 @@ export class meowDictRecord {
     let decompressed: buffer.Buffer[] = [];
 
     for (let index = startRecordIdx; index <= endRecordIdx; index++) {
-      let startRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[index];
-      let endRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[index + 1];
-      await decompress(this.globalRawData.slice(startRecordGlobalOffset, endRecordGlobalOffset), this.decompSizes[index],
-        `    [meowDictRecord][getRecordEntry][build!][${index}]`, { type: '0' })
+      const startRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[index];
+      const endRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[index + 1];
+      const tag = `    [meowDictRecord][getRecordEntry][build!][${index}]`;
+
+      const block = sandboxReadArrayBufferSync(this.fullPath, startRecordGlobalOffset, endRecordGlobalOffset - startRecordGlobalOffset)!;
+
+      // await decompress(this.globalRawData.slice(startRecordGlobalOffset, endRecordGlobalOffset), this.decompSizes[index], tag, { type: '0' })
+      await decompress(block, this.decompSizes[index], tag, { type: '0' })
         .then((arrayBuffer) => {
           try {
             decompressed.push(buffer.from(arrayBuffer));
@@ -101,7 +110,7 @@ export class meowDictRecord {
             console.error(`[meowDictRecord][getRecordEntry] decompressed[index-startRecordIdx] = fastbuffer.from(arrayBuffer); Failed: ${e}`);
           }
         })
-        .catch((e:BusinessError)=>{
+        .catch((e: BusinessError) => {
           console.error(`[meowDictRecord][getRecordEntry][${index}] Failed: ${e}`);
         })
     }
@@ -166,7 +175,7 @@ interface calculateMetaDataSyncResult {
 }
 
 @Concurrent
-function calculateMetaDataSync(rawData: ArrayBuffer, offset: number, numBlocks: number) {
+function calculateMetaDataSync(rawData: ArrayBuffer, numBlocks: number) {
   const startTime: number = Date.now();
 
   let compSizes: number[] = [];
@@ -186,9 +195,9 @@ function calculateMetaDataSync(rawData: ArrayBuffer, offset: number, numBlocks: 
       compSizesCumulative.push(sumCompSize);
       decompSizesCumulative.push(sumDecompSize);
 
-      const localOffset = 32 + readCompDecompIndex * 16;
-      const compSizeOffset = localOffset + offset;
-      const decompSizeOffset = localOffset + 8 + offset;
+      const localOffset = readCompDecompIndex * 16;
+      const compSizeOffset = localOffset;
+      const decompSizeOffset = localOffset + 8;
 
       const compSize = bufferBuffer2Int64BE(bufferBufferRawData, compSizeOffset) || 0;
       const decompSize = bufferBuffer2Int64BE(bufferBufferRawData, decompSizeOffset) || 0;
@@ -202,7 +211,7 @@ function calculateMetaDataSync(rawData: ArrayBuffer, offset: number, numBlocks: 
     console.error(`[meowDictRecord][calculateMetaDataSync] read compSizes[] and decompSizes[] failed! ${e}`);
   }
 
-  let recBlocksHeadOffset = 32 + 16 * numBlocks + offset;
+  let recBlocksHeadOffset = 16 * numBlocks;
   console.warn(`[meowDictRecord][calculateMetaDataSync] OK! recBlocksHeadOffset = ${recBlocksHeadOffset} (${Date.now() - startTime} ms)`);
 
   return {

@@ -1,5 +1,5 @@
 import { meowDict, meowDictType } from '../hosts/meowDict';
-import { fileDocumentPick2ArrayBuffer, sandboxCreateDir, sandboxSaveHybrid } from '../utils/storage';
+import { fileCopy, fileDocumentPick2Path, sandboxCreateDir, sandboxSaveHybrid } from '../utils/storage';
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { AppStorageV2 } from '@kit.ArkUI';
@@ -161,29 +161,40 @@ struct Index {
                 Row({ space: 10 }) {
                   Button(this.meowDictExampleMDX?.header ? 'MDX  󰀓' : '󰀵 MDX')
                     .onClick(() => {
-                      fileDocumentPick2ArrayBuffer(['.mdx']).then((r) => {
+                      fileDocumentPick2Path(['.mdx'], 1).then((r) => {
                         if (r.succeed) {
-                          this.meowDictExampleMDX = new meowDict(meowDictType.MDX, r.buf!);
+                          this.meowDictExampleMDX = new meowDict(meowDictType.MDX, r.sourcePaths![0]);
+                          this.meowDictExampleMDX.init();
                           sandboxCreateDir('meow', this.getUIContext().getHostContext()!, true).then(() => {
-                            sandboxSaveHybrid('woof/woof.mdx', r.buf!, this.getUIContext().getHostContext()!, true);
+                            fileCopy(r.sourcePaths![0], this.getUIContext().getHostContext()!.filesDir + '/woof/woof.mdx');
+                            // sandboxSaveHybrid('woof/woof.mdx', r.buf!, this.getUIContext().getHostContext()!, true);
                           })
                         }
                       })
                     })
                   Button(this.meowDictExampleMDD?.header ? 'MDD  󰀓' : '󰀵 MDD')
                     .onClick(() => {
-                      fileDocumentPick2ArrayBuffer(['.mdd']).then((r) => {
+                      fileDocumentPick2Path(['.mdd'], 233).then((r) => {
                         if (r.succeed) {
-                          this.meowDictExampleMDD = new meowDict(meowDictType.MDD, r.buf!);
-                          sandboxSaveHybrid('woof/woof.mdd', r.buf!, this.getUIContext().getHostContext()!, true);
+                          this.meowDictExampleMDD = new meowDict(meowDictType.MDD, r.sourcePaths![0]);
+                          this.meowDictExampleMDD.init();
+                          fileCopy(r.sourcePaths![0], this.getUIContext().getHostContext()!.filesDir + '/woof/woof.mdd');
+                          // sandboxSaveHybrid('woof/woof.mdd', r.buf!, this.getUIContext().getHostContext()!, true);
                         }
                       })
                     })
                   Button('󰀵 Files')
                     .onClick(() => {
-                      fileDocumentPick2ArrayBuffer(['.css', '.js', '.jpg', '.jpeg', '.png', '.svg']).then((r) => {
+                      fileDocumentPick2Path([], 233).then((r) => {
                         if (r.succeed) {
-                          sandboxSaveHybrid('meow/' + r.fileName!, r.buf!, this.getUIContext().getHostContext()!, true);
+                          for (let index = 0; index < r.sourcePaths!.length; index++) {
+                            const sourcePath = r.sourcePaths![index];
+                            const targetPathSplit = sourcePath.split('/');
+                            const fileName: string | undefined = targetPathSplit[targetPathSplit.length-1];
+                            fileCopy(sourcePath, this.getUIContext().getHostContext()!.filesDir + '/meow/' + fileName);
+                            // sandboxSaveHybrid('meow/' + r.fileName!, r.buf!, this.getUIContext().getHostContext()!, true);
+                            console.log(`[Meow][Files][${sourcePath}][${fileName}]`);
+                          }
                         }
                       })
                     })

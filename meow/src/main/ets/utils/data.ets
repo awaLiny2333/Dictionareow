@@ -26,7 +26,7 @@ export function bufferBuffer2Int64BE(rawData: buffer.Buffer | fastbuffer.FastBuf
   }
 }
 
-export function arrayBuffer2Int64BE(rawData: ArrayBuffer) {
+export function arrayBuffer2Int64BE(rawData: ArrayBuffer | undefined) {
   try {
     let result = fastbuffer.from(rawData).readBigInt64BE();
     // console.log(`[arrayBuffer2BigInt64BE] result is ${result}, Number(result) is ${Number(result)}`);
@@ -37,7 +37,7 @@ export function arrayBuffer2Int64BE(rawData: ArrayBuffer) {
   }
 }
 
-export function arrayBuffer2Int32LE(rawData: ArrayBuffer) {
+export function arrayBuffer2Int32LE(rawData: ArrayBuffer | undefined) {
   try {
     let result = fastbuffer.from(rawData).readInt32LE();
     // console.log(`[arrayBuffer2Int32LE] result is ${result}`);
@@ -48,7 +48,7 @@ export function arrayBuffer2Int32LE(rawData: ArrayBuffer) {
   }
 }
 
-export function arrayBuffer2Int32BE(rawData: ArrayBuffer) {
+export function arrayBuffer2Int32BE(rawData: ArrayBuffer | undefined) {
   try {
     let result = fastbuffer.from(rawData).readInt32BE();
     // console.log(`[arrayBuffer2Int32BE] result is ${result}`);
@@ -73,7 +73,7 @@ export function bufferBuffer2Int16BE(rawData: buffer.Buffer | fastbuffer.FastBuf
 
 // Strings
 
-export function arrayBuffer2UTF16LE(rawData: ArrayBuffer) {
+export function arrayBuffer2UTF16LE(rawData: ArrayBuffer | undefined) {
   try {
     let result = fastbuffer.from(rawData).toString('ucs-2');
     // console.log(`[arrayBuffer2UTF16LE] result is ${result}`);
