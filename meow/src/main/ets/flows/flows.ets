@@ -83,6 +83,8 @@ export function initEnv(context: Context) {
           .catch((e: BusinessError) => {
             console.error(`[Meow][initEnv] fileIo.listFile(context.filesDir + '/honk/') Failed: ${e}`);
           })
+        // Files
+        bundle.updateFiles(context);
         // readMDict('/woof/woof.mdd', meowDictType.MDD, 'meowDictExampleMDD', context);
       })
     })

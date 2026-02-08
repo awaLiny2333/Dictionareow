@@ -178,6 +178,8 @@ export class meowDict {
 export class meowDictBundle {
   @Trace mdx: meowDict | undefined;
   @Trace mdds: meowDict[] = [];
+  @Trace files: string[] = [];
+  @Trace fileSizes: number[] = [];
   cacheKeys: string[] = []
   cacheBufs: buffer.Buffer[] = []
 
@@ -228,5 +230,26 @@ export class meowDictBundle {
 
       return path;
     })
+  }
+
+  updateFiles(context: Context) {
+    // Files
+    this.files = [];
+    fileIo.listFile(context.filesDir + '/meow/')
+      .then((r) => {
+        for (let index = 0; index < r.length; index++) {
+          const path = context.filesDir + '/meow/' + r[index];
+          this.files.push(path);
+
+          fileIo.stat(path).then((r) => {
+            this.fileSizes.push(r.size);
+          }).catch((e: BusinessError) => {
+            console.error(`[Meow][initEnv] fileIo.stat(path) Failed: ${e}`);
+          })
+        }
+      })
+      .catch((e: BusinessError) => {
+        console.error(`[Meow][initEnv] fileIo.listFile(context.filesDir + '/honk/') Failed: ${e}`);
+      })
   }
 }
