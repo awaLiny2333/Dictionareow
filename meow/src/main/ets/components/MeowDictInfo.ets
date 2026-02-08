@@ -32,7 +32,7 @@ struct MeowDictInfo {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
-    .borderWidth(1)
+    .borderWidth(2)
     .borderColor($r('sys.color.comp_background_tertiary'))
     .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
     .padding(10)

@@ -152,43 +152,48 @@ struct Index {
               .id('mainWeb')
               .linearGradientBlur(30, this.linearBlurOps)
 
-            WaterFlow() {
-              if (this.meowDictExampleBundle.mdx) {
-                MeowDictInfo({ dict: this.meowDictExampleBundle.mdx })
-              }
-              ForEach(this.meowDictExampleBundle.mdds, ((mdd: meowDict, index: number) => {
-                MeowDictInfo({
-                  dict: mdd,
-                  deleteAction: () => {
-                    fileIo.unlink(this.meowDictExampleBundle.mdds[index].fullPath)
-                      .catch((e: BusinessError) => {
-                        console.error(`[Meow][Info] fileIo.unlink(this.meowDictExampleBundle.mdds[index].fullPath) Failed: ${e}`);
-                      });
-                    this.meowDictExampleBundle.mdds.splice(index, 1);
-                  }
-                })
-              }))
-              ForEach(this.meowDictExampleBundle.files, ((path: string, index: number) => {
-                MeowFileInfo({
-                  filePath: path,
-                  fileSize: this.meowDictExampleBundle.fileSizes[index],
-                  deleteAction: () => {
-                    fileIo.unlink(path)
-                      .catch((e: BusinessError) => {
-                        console.error(`[Meow][Info][Files] fileIo.unlink(path) Failed: ${e}`);
-                      });
-                    this.meowDictExampleBundle.updateFiles(this.getUIContext().getHostContext()!);
-                  }
-                })
-              }))
-            } // Info
-            .columnsGap(10)
-            .rowsGap(10)
-            .columnsTemplate("1fr ".repeat(Math.ceil(this.myMeowLayout.width / 500)))
+            Row(){
+              WaterFlow() {
+                if (this.meowDictExampleBundle.mdx) {
+                  MeowDictInfo({ dict: this.meowDictExampleBundle.mdx })
+                }
+                ForEach(this.meowDictExampleBundle.mdds, ((mdd: meowDict, index: number) => {
+                  MeowDictInfo({
+                    dict: mdd,
+                    deleteAction: () => {
+                      fileIo.unlink(this.meowDictExampleBundle.mdds[index].fullPath)
+                        .catch((e: BusinessError) => {
+                          console.error(`[Meow][Info] fileIo.unlink(this.meowDictExampleBundle.mdds[index].fullPath) Failed: ${e}`);
+                        });
+                      this.meowDictExampleBundle.mdds.splice(index, 1);
+                    }
+                  })
+                }))
+                ForEach(this.meowDictExampleBundle.files, ((path: string, index: number) => {
+                  MeowFileInfo({
+                    filePath: path,
+                    fileSize: this.meowDictExampleBundle.fileSizes[index],
+                    deleteAction: () => {
+                      fileIo.unlink(path)
+                        .catch((e: BusinessError) => {
+                          console.error(`[Meow][Info][Files] fileIo.unlink(path) Failed: ${e}`);
+                        });
+                      this.meowDictExampleBundle.updateFiles(this.getUIContext().getHostContext()!);
+                    }
+                  })
+                }))
+              } // Info
+              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+              .columnsGap(10)
+              .rowsGap(10)
+              .columnsTemplate("1fr ".repeat(Math.ceil(this.myMeowLayout.width / 500)))
+              .edgeEffect(EdgeEffect.Spring)
+              .animation(defaultAnima)
+
+            }
             .visibility(this.showInfo ? Visibility.Visible : Visibility.None)
             // .height(Math.min(0.8 * this.myMeowLayout.height, this.myMeowLayout.height - this.titleHeight() - 20 - this.windowTopAvoid))
             .constraintSize({ maxHeight: this.myMeowLayout.height - this.titleHeight() - 20 - this.windowTopAvoid })
-            .edgeEffect(EdgeEffect.Spring)
             .animation(defaultAnima)
             .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
             .borderWidth(1)
