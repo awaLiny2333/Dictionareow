@@ -9,7 +9,7 @@ import {
   getUnitEncodingLength,
   isStringBetween,
   isUint8ArrayZero,
-  keepOnlyAlphanumericGlobal as keepOnlyAlphanumeric
+  keepOnlyAlphanumericGlobal
 } from '../utils/data';
 import { buffer, fastbuffer, taskpool } from '@kit.ArkTS';
 import { meowDictHeader } from './meowDictHeader';
@@ -103,7 +103,7 @@ export class meowDictKeyword {
    * @param fuzzyInclusive Allow case and punctuation fuzzy
    * @returns [offsetStart, offsetEnd] local offsets with head of record as base
    * */
-  async lookUpRecordEntryOffset(key: string, fuzzyInclusive: boolean = false) {
+  async lookUpRecordEntryOffset(key: string) {
     if (!this.index) {
       console.warn(`[meowDictKeyword][Index][lookUp] Index uninitialized. Request rejected.`);
       return undefined;
@@ -115,10 +115,11 @@ export class meowDictKeyword {
       const firstWord = theBlockEntry.firstWord;
       const lastWord = theBlockEntry.lastWord;
 
-      if (isStringBetween(key, firstWord, lastWord)) {
+      if (isStringBetween(key.toLowerCase(), firstWord.toLowerCase(), lastWord.toLowerCase())) {
+        // if (isStringBetween(keepOnlyAlphanumericGlobal(key.toLowerCase()), keepOnlyAlphanumericGlobal(firstWord.toLowerCase()), keepOnlyAlphanumericGlobal(lastWord.toLowerCase()))) {
         this.lookUpBlockIndex = lookUpBlockIndex;
 
-        console.log(`[meowDictKeyword][Index][lookUp] Selected index block from '${firstWord}' to '${lastWord}'! Looking into this index block (#${lookUpBlockIndex})!`);
+        console.log(`[meowDictKeyword][Index][lookUp][${key}] Selected index block from '${firstWord}' to '${lastWord}'! Looking into this index block (#${lookUpBlockIndex})!`);
 
         return this.getKeyBlockArrayBuffer(lookUpBlockIndex).then((block) => {
           if (!block) {
@@ -126,28 +127,41 @@ export class meowDictKeyword {
             return undefined;
           }
 
-          console.log(`[meowDictKeyword][Index][lookUp] block.keywords.length = ${block.keywords.length}, block.offsets.length = ${block.offsets.length}.`);
-          let offset = this.findOffsetByKeyword(key, block.keywords, block.offsets, fuzzyInclusive);
+          console.log(`[meowDictKeyword][Index][lookUp][${key}] block.keywords.length = ${block.keywords.length}, block.offsets.length = ${block.offsets.length}.`);
+          let offset = this.findOffsetByKeyword(key, block.keywords, block.offsets);
           if (offset === null) {
-            console.warn(`[meowDictKeyword][Index][lookUp] Key '${key}' not found!`);
+            console.warn(`[meowDictKeyword][Index][lookUp] '${key}' not found!`);
+
+            if (block.keywords.length < 1000000) {
+              const tryPos = block.keywords.indexOf(key);
+
+              if (tryPos > 0) {
+                console.warn(`[meowDictKeyword][Index][lookUp] wait '${key}' is found @ ${tryPos}`);
+                // console.warn(`[meowDictKeyword][Index][lookUp] ${block.keywords.slice(tryPos - 20)}`);
+                if (tryPos == block.offsets.length - 1) {
+                  return [block.offsets[tryPos], -1]
+                }
+                return [block.offsets[tryPos], block.offsets[tryPos+1]]
+              }
+            }
+
           } else {
-            console.warn(`[meowDictKeyword][Index][lookUp] Found key '${key}', offset = [${offset}], used time ${(Date.now() - startTime)} ms!`);
+            console.log(`[meowDictKeyword][Index][lookUp] Found '${key}', offset = [${offset}], used time ${(Date.now() - startTime)} ms!`);
           }
           return offset;
-
         })
       } else {
-        if (lookUpBlockIndex < 10) {
-          console.log(`[meowDictKeyword][Index][lookUp][${lookUpBlockIndex}] Passed block from '${firstWord}' to '${lastWord}'.`);
-        } else {
-          if (lookUpBlockIndex % 10 == 0) {
-            console.log(`[meowDictKeyword][Index][lookUp][${lookUpBlockIndex}] Passed block from '${firstWord}' to '${lastWord}'.`);
-          }
-        }
+        // if (lookUpBlockIndex < 10) {
+        //   console.log(`[meowDictKeyword][Index][lookUp][${key}][${lookUpBlockIndex}] Passed block from '${firstWord}' to '${lastWord}'.`);
+        // } else {
+        //   if (lookUpBlockIndex % 10 == 0) {
+        //     console.log(`[meowDictKeyword][Index][lookUp][${key}][${lookUpBlockIndex}] Passed block from '${firstWord}' to '${lastWord}'.`);
+        //   }
+        // }
       }
     }
 
-    console.warn(`[meowDictKeyword][Index][lookUp] Key '${key}' not found in any of the blocks!`);
+    console.warn(`[meowDictKeyword][Index][lookUp][${this.fullPath}] Key '${key}' not found in any of the blocks!`);
     return undefined;
   }
 
@@ -203,11 +217,9 @@ export class meowDictKeyword {
    * @returns 找到则返回对应的 offset (number)，否则返回 null
    * @author Gemini 3 @ Feb 4 2026
    */
-  private findOffsetByKeyword(target: string, keywords: string[], offsets: number[], fuzzyInclusive: boolean = false): number[] | null {
+  private findOffsetByKeyword(target: string, keywords: string[], offsets: number[]): number[] | null {
     // const options: Intl.CollatorOptions = { sensitivity: 'accent' };
-    if (fuzzyInclusive) {
-      target = keepOnlyAlphanumeric(target.toLowerCase());
-    }
+    const targetFuzzy = keepOnlyAlphanumericGlobal(target.toLowerCase());
 
     let left = 0;
     let right = keywords.length - 1;
@@ -216,52 +228,38 @@ export class meowDictKeyword {
       // 使用 Math.floor 防止浮点数，并避免 (left + right) 可能的溢出
       let mid = left + Math.floor((right - left) / 2);
 
-      let midValue: string;
-      if (fuzzyInclusive) {
-        midValue = keepOnlyAlphanumeric(keywords[mid]).toLowerCase();
-      } else {
-        midValue = keywords[mid];
-      }
-      console.log(`[meow] Compared ${keywords[mid]} (${midValue})`)
+      const midValueFuzzy = keepOnlyAlphanumericGlobal(keywords[mid]).toLowerCase();
 
-      if (midValue === target) {
+      // console.log(`[meow][meowDictKeyword][Index][lookUp] Compared (${mid}) ${keywords[mid]} (${midValueFuzzy}) <=> ${target}`);
+
+      if (midValueFuzzy == targetFuzzy) {
         // 找到匹配项，返回对应的平行 offset
+        while (mid - 1 > 0 && keepOnlyAlphanumericGlobal(keywords[mid-1]).toLowerCase() == targetFuzzy) {
+          mid -= 1;
+        } // choose the first match
 
-        if (fuzzyInclusive) {
-          while (mid - 1 > 0 && keepOnlyAlphanumeric(keywords[mid-1]).toLowerCase() === target) {
-            mid -= 1;
-          } // choose the first match
-
-          if (mid == keywords.length - 1) {
-            // Is the last one
-            return [offsets[mid], -1];
-          }
-
-          const offsetStart = offsets[mid];
-
-          while (mid + 1 < keywords.length && keepOnlyAlphanumeric(keywords[mid+1]).toLowerCase() === target) {
-            mid += 1;
-          } // find the last match
-
-          if (mid == keywords.length - 1) {
-            // Is the last one
-            return [offsetStart, -1];
-          }
-
-          const offsetEnd = offsets[mid+1];
-
-          return [offsetStart, offsetEnd];
-
-        } else {
-
-          if (mid == keywords.length - 1) {
-            // Is the last one
-            return [offsets[mid], -1];
-          }
-          return [offsets[mid], offsets[mid+1]];
+        if (mid == keywords.length - 1) {
+          // Is the last one
+          return [offsets[mid], -1];
         }
 
-      } else if (midValue < target) {
+        const offsetStart = offsets[mid];
+
+        while (mid + 1 < keywords.length && keepOnlyAlphanumericGlobal(keywords[mid+1]).toLowerCase() == targetFuzzy) {
+          mid += 1;
+        } // find the last match
+
+        if (mid == keywords.length - 1) {
+          // Is the last one
+          return [offsetStart, -1];
+        }
+
+        const offsetEnd = offsets[mid+1];
+
+        return [offsetStart, offsetEnd];
+
+
+      } else if (midValueFuzzy < targetFuzzy) {
         // } else if (target.localeCompare(midValue, 'en', options) > 0) {
         // 目标在右半部分
         left = mid + 1;

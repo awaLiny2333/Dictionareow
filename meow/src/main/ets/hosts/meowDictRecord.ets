@@ -1,7 +1,7 @@
 import { arrayBuffer2Int64BE, bufferBuffer2Int64BE, decompress } from '../utils/data';
 import { buffer, fastbuffer } from '@kit.ArkTS';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { sandboxReadArrayBufferSync } from '../utils/storage';
+import { sandboxReadArrayBufferConcurrent, sandboxReadArrayBufferSync } from '../utils/storage';
 
 @ObservedV2
 export class meowDictRecord {
@@ -83,57 +83,40 @@ export class meowDictRecord {
    * @param recordOffsetEnd The local offset of the end of the record. Based on the head of the record blocks.
    * @returns The data result.
    * */
-  async getRecordEntry(recordOffsetStart: number, recordOffsetEnd?: number) {
+  getRecordEntry(recordOffsetStart: number, recordOffsetEnd?: number, key = '') {
     const startRecordIdx = Math.max(0, this.findLastIndexLessThanQuery(this.decompSizesCumulative, recordOffsetStart));
-    let endRecordIdx = this.numBlocks;
-    if (recordOffsetEnd) {
-      endRecordIdx = this.findLastIndexLessThanQuery(this.decompSizesCumulative, recordOffsetEnd);
-    }
-    console.log(`[meowDictRecord][getRecordEntry] Locked range: record block #${startRecordIdx} to #${endRecordIdx}`);
 
     // Decompress them
-    let decompressed: buffer.Buffer[] = [];
+    const startRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[startRecordIdx];
+    const endRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[startRecordIdx + 1];
+    const tag = `    [meowDictRecord][getRecordEntry][build!][${key}][${startRecordIdx}]`;
 
-    for (let index = startRecordIdx; index <= endRecordIdx; index++) {
-      const startRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[index];
-      const endRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[index + 1];
-      const tag = `    [meowDictRecord][getRecordEntry][build!][${index}]`;
-
-      const block = sandboxReadArrayBufferSync(this.fullPath, startRecordGlobalOffset, endRecordGlobalOffset - startRecordGlobalOffset)!;
-
-      // await decompress(this.globalRawData.slice(startRecordGlobalOffset, endRecordGlobalOffset), this.decompSizes[index], tag, { type: '0' })
-      await decompress(block, this.decompSizes[index], tag, { type: '0' })
+    // const block = sandboxReadArrayBufferSync(this.fullPath, startRecordGlobalOffset, endRecordGlobalOffset - startRecordGlobalOffset)!;
+    return sandboxReadArrayBufferConcurrent(this.fullPath, startRecordGlobalOffset, endRecordGlobalOffset - startRecordGlobalOffset).then((block) => {
+      return decompress(block!, this.decompSizes[startRecordIdx], tag, { type: '0' })
         .then((arrayBuffer) => {
           try {
-            decompressed.push(buffer.from(arrayBuffer));
+            const longBufferBuffer = buffer.from(arrayBuffer);
+            const recordOffsetStartInBuffer = recordOffsetStart - this.decompSizesCumulative[startRecordIdx];
+
+            let recordOffsetEndInBuffer: number | undefined;
+            if (recordOffsetEnd) {
+              recordOffsetEndInBuffer = recordOffsetEnd - this.decompSizesCumulative[startRecordIdx];
+            }
+
+            const bufferSlice = longBufferBuffer.subarray(recordOffsetStartInBuffer, recordOffsetEndInBuffer);
+            return bufferSlice;
+
           } catch (e) {
-            console.error(`[meowDictRecord][getRecordEntry] decompressed[index-startRecordIdx] = fastbuffer.from(arrayBuffer); Failed: ${e}`);
+            console.error(`[meowDictRecord][getRecordEntry] const longBufferBuffer = buffer.from(arrayBuffer) Failed: ${e}`);
+            return undefined;
           }
         })
         .catch((e: BusinessError) => {
-          console.error(`[meowDictRecord][getRecordEntry][${index}] Failed: ${e}`);
+          console.error(`[meowDictRecord][getRecordEntry][${startRecordIdx}] Failed: ${e}`);
+          return undefined;
         })
-    }
-
-    try {
-      console.log(`[meowDictRecord][getRecordEntry] Length of decompressed[]: ${decompressed.length}`);
-
-      const longBufferBuffer = buffer.concat(decompressed);
-      const recordOffsetStartInBuffer = recordOffsetStart - this.decompSizesCumulative[startRecordIdx];
-      let recordOffsetEndInBuffer: number | undefined;
-      if (recordOffsetEnd) {
-        recordOffsetEndInBuffer = recordOffsetEnd - this.decompSizesCumulative[startRecordIdx];
-      }
-      const bufferSlice = longBufferBuffer.subarray(recordOffsetStartInBuffer, recordOffsetEndInBuffer);
-
-      // const result = longBufferBuffer.toString(this.globalEncoding, recordOffsetStartInBuffer, recordOffsetEndInBuffer);
-      // console.log(`[meowDictRecord][getRecordEntry] Got result: ${result}`);
-      return bufferSlice;
-
-    } catch (e) {
-      console.error(`[meowDictRecord][getRecordEntry] const longBufferBuffer = buffer.concat(decompressed); Failed: ${e}`);
-      return undefined;
-    }
+    })
   }
 
   /**
@@ -207,6 +190,8 @@ function calculateMetaDataSync(rawData: ArrayBuffer, numBlocks: number) {
       decompSizes.push(decompSize);
       // console.log(`[meowDictRecord][processMetadata][${readCompDecompIndex}] compSize = ${compSize}, decompSize = ${decompSize}, decompSizeOffset = ${decompSizeOffset}`);
     }
+    compSizesCumulative.push(sumCompSize);
+    decompSizesCumulative.push(sumDecompSize);
   } catch (e) {
     console.error(`[meowDictRecord][calculateMetaDataSync] read compSizes[] and decompSizes[] failed! ${e}`);
   }

@@ -70,7 +70,6 @@ export function bufferBuffer2Int16BE(rawData: buffer.Buffer | fastbuffer.FastBuf
   }
 }
 
-
 // Strings
 
 export function arrayBuffer2UTF16LE(rawData: ArrayBuffer | undefined) {
@@ -115,8 +114,8 @@ export function isStringBetween(target: string, lowerBound: string, upperBound: 
  * @returns 处理后的字符串
  * */
 export function keepOnlyAlphanumericGlobal(str: string): string {
-  // [^\p{L}\p{N}] 匹配任何非字母（任何语言）和非数字的字符
-  return str.replace(/[^\p{L}\p{N}]/gu, '');
+  // [^\p{L}\p{N}_] 匹配任何非字母、非数字且非下划线的字符
+  return str.replace(/[^\p{L}\p{N}_@]/gu, '');
 }
 
 /**
@@ -204,7 +203,6 @@ export function getUnitEncodingLength(encoding: string): number {
   return encodingUnitLengthsMap.get(encoding) || 1;
 }
 
-
 // Compressed
 
 export interface decompressDecryptConfig {
@@ -221,7 +219,7 @@ export async function decompress(rawData: ArrayBuffer, decompLen: number, logTag
   const compChecksumNumber = arrayBuffer2Int32BE(compChecksumBuffer) || 0;
 
   let compData = rawData.slice(8);
-  console.log(`${logTag}[decompress] compData.byteLength = ${compData.byteLength}`);
+  // console.log(`${logTag}[decompress] compData.byteLength = ${compData.byteLength}`);
 
   if (dec.type == '2') {
     console.log(`${logTag} Type 2 encryption! Decrypting...`);
@@ -267,4 +265,118 @@ export async function decompress(rawData: ArrayBuffer, decompLen: number, logTag
     console.warn(`${logTag}[decompress] Checksum verify: ${verify}`);
   }
   return decompData;
+}
+
+// Other
+
+/**
+ * Adds a unit to a size in bytes.
+ * @param size_in_bytes A number or bigint, the size in bytes.
+ * @returns A string, the connected result of a number of size and its unit.
+ * */
+export function addUnitsToSize(size_in_bytes: number | bigint) {
+  if (size_in_bytes == undefined || size_in_bytes == null) {
+    return 'No Bytes!';
+  }
+  let units = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+  let result = BigInt(size_in_bytes);
+  let unit = 0;
+  while (result > 1000 * 1000 && unit < units.length - 2) {
+    result /= 1000n;
+    unit += 1;
+  }
+  // To keep decimal places
+  let numberResult = Number(result);
+  numberResult /= 1000;
+  unit += 1;
+  return numberResult.toFixed(2) + " " + units[unit];
+}
+
+/**
+ * 根据文件名或路径获取对应的 MIME 类型。
+ * @description
+ * 1. 自动处理大小写（如 .JPG -> image/jpeg）。
+ * 2. 能够正确处理包含路径的字符串（如 /path/to/file.txt）。
+ * 3. 排除无后缀或隐藏文件（如 .gitignore）。
+ * 4. 匹配失败时默认返回 'application/octet-stream'。
+ * @param {string} fileName - 文件名或完整路径 (例如: "image.png" 或 "/home/user/data.json")
+ * @returns {string} 对应的 MIME 类型字符串
+ * @author Gemini web @ Feb 8 2026
+ * @example
+ * mimeOfFileName('vacation.jpg');     // 'image/jpeg'
+ * mimeOfFileName('INDEX.HTML');      // 'text/html'
+ * mimeOfFileName('config');          // 'application/octet-stream'
+ * mimeOfFileName('.hidden-file');    // 'application/octet-stream'
+ */
+export function mimeOfFileName(fileName: string): string {
+  if (!fileName) {
+    return 'application/octet-stream';
+  }
+
+  // 1. 只取文件名部分，防止路径中的点号干扰 (例如 /path.to/my-file)
+  const baseName = fileName.split(/[\\/]/).pop() || '';
+
+  // 2. 提取后缀名
+  const lastDotIndex = baseName.lastIndexOf('.');
+
+  // 如果点号不存在，或者点号在开头（如 .gitignore），通常视为无后缀
+  if (lastDotIndex <= 0) {
+    return 'application/octet-stream';
+  }
+
+  const ext = baseName.slice(lastDotIndex + 1).toLowerCase();
+
+  // 3. 扩展后的 MIME 映射表
+  const mimeMap: Record<string, string> = {
+    // 文本
+    'txt': 'text/plain',
+    'html': 'text/html',
+    'htm': 'text/html',
+    'css': 'text/css',
+    'csv': 'text/csv',
+    'xml': 'application/xml',
+
+    // 脚本 & 数据
+    'js': 'application/javascript',
+    'mjs': 'application/javascript',
+    'ts': 'text/typescript',
+    'json': 'application/json',
+    'yaml': 'text/yaml',
+    'yml': 'text/yaml',
+
+    // 图片
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'svg': 'image/svg+xml',
+    'webp': 'image/webp',
+    'ico': 'image/x-icon',
+
+    // 视频 & 音频
+    'mp4': 'video/mp4',
+    'webm': 'video/webm',
+    'ogg': 'video/ogg',
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'flac': 'audio/flac',
+
+    // 文档
+    'pdf': 'application/pdf',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt': 'application/vnd.ms-powerpoint',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+
+    // 压缩包
+    'zip': 'application/zip',
+    'rar': 'application/x-rar-compressed',
+    '7z': 'application/x-7z-compressed',
+    'gz': 'application/gzip',
+    'tar': 'application/x-tar',
+  };
+
+  return mimeMap[ext] || 'application/octet-stream';
 }

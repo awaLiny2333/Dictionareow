@@ -48,7 +48,10 @@ export class meowDictHeader {
    * 构造函数
    * @param config 配置对象
    */
-  constructor(config: meowDictHeaderConfig = {}) {
+  constructor(config: meowDictHeaderConfig = {}, fullPath: string) {
+    const targetPathSplit = fullPath.split('/');
+    const fileName: string | undefined = targetPathSplit[targetPathSplit.length-1];
+
     // 设置默认值
     this.generatedByEngineVersion = config.generatedByEngineVersion || "2.0";
     this.requiredEngineVersion = config.requiredEngineVersion || "2.0";
@@ -60,7 +63,7 @@ export class meowDictHeader {
     this.compat = config.compat !== undefined ? config.compat : false;
     this.keyCaseSensitive = config.keyCaseSensitive !== undefined ? config.keyCaseSensitive : false;
     this.description = config.description || "This is a <i>test dictionary</i>.";
-    this.title = config.title || "Cat's dictionary";
+    this.title = config.title || fileName;
     this.dataSourceFormat = config.dataSourceFormat || "106";
     this.styleSheet = config.styleSheet || "";
     this.registerBy = config.registerBy || "Email";
@@ -251,7 +254,7 @@ export class meowDictHeader {
    * @param xmlString XML 字符串
    * @returns Dictionary 实例
    */
-  static fromXMLString(xmlString: string): meowDictHeader {
+  static fromXMLString(xmlString: string, fullPath: string): meowDictHeader {
     const regex = /(\w+)="([^"]*)"/g;
     const config: meowDictHeaderConfig = {};
 
@@ -313,7 +316,7 @@ export class meowDictHeader {
       }
     }
 
-    return new meowDictHeader(config);
+    return new meowDictHeader(config, fullPath);
   }
 
   /**

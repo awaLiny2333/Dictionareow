@@ -1,9 +1,12 @@
 import { meowDictHeader } from './meowDictHeader';
-import { arrayBuffer2Int32BE, arrayBuffer2Int32LE, arrayBuffer2UTF16LE, getUnitEncodingLength } from '../utils/data';
+import { addUnitsToSize, arrayBuffer2Int32BE, arrayBuffer2Int32LE, arrayBuffer2UTF16LE, getUnitEncodingLength } from '../utils/data';
 import { meowDictKeyword } from './meowDictKeyword';
 import { alder32ChecksumVerify } from '../utils/alder32';
 import { meowDictRecord } from './meowDictRecord';
-import { sandboxReadArrayBufferSync } from '../utils/storage';
+import { sandboxReadArrayBufferSync, saveHybrid } from '../utils/storage';
+import { fileIo } from '@kit.CoreFileKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+import { buffer } from '@kit.ArkTS';
 
 export enum meowDictType {
   MDD = 0,
@@ -12,15 +15,25 @@ export enum meowDictType {
 
 @ObservedV2
 export class meowDict {
-  fullPath: string | undefined;
+  fullPath: string;
+  size: number = -1;
   type: meowDictType;
   @Trace header: meowDictHeader | undefined;
   keyword: meowDictKeyword | undefined;
   @Trace record: meowDictRecord | undefined;
 
-  constructor(type: meowDictType, fullPath?: string) {
+  constructor(type: meowDictType, fullPath: string) {
     this.fullPath = fullPath;
     this.type = type;
+
+    // Get size
+    fileIo.stat(fullPath)
+      .then((r) => {
+        this.size = r.size;
+      })
+      .catch((e: BusinessError) => {
+        console.error(`[meowDict][${this.fullPath}] fileIo.stat(fullPath) failed: ${e}`);
+      })
   }
 
   async init() {
@@ -32,7 +45,7 @@ export class meowDict {
     this.processRecord(globalOffset);
 
     // Ending mark
-    console.log(`[meowDict][${this.type}] READY! (${Date.now() - startTime} ms)
+    console.log(`[meowDict][${this.fullPath}] READY! (${Date.now() - startTime} ms)
     `);
   }
 
@@ -56,7 +69,7 @@ export class meowDict {
     // TODO: finish up the checksum checker
 
     if (headerContent) {
-      this.header = meowDictHeader.fromXMLString(headerContent);
+      this.header = meowDictHeader.fromXMLString(headerContent, this.fullPath);
       console.log(`[meowDict][processHeader] Header converted: ${'\n'}${this.header.toXMLString()}`);
     } else {
       console.error(`[meowDict][processHeader] Header is empty??? What is going on here?`);
@@ -119,19 +132,23 @@ export class meowDict {
    * @param key The key
    * @returns The ArrayBuffer of content
    * */
-  async lookUpKey(key: string, fuzzyInclusive: boolean = false) {
+  lookUpKey(key: string) {
     if (!(this.keyword && this.keyword.index && this.header && this.record?.ready)) {
       console.warn(`[meowDictHeader][lookUpWord] Rejected. Uninitialized!`);
-      return;
+      return undefined;
     }
 
-    return this.keyword!.lookUpRecordEntryOffset(key, fuzzyInclusive).then(async (offsets) => {
+    return this.keyword!.lookUpRecordEntryOffset(key).then((offsets) => {
       if (offsets !== null && offsets !== undefined) {
         if (offsets[1] < 0) {
           // The last word in the entire dictionary?!
-          return await this.record!.getRecordEntry(offsets[0]);
+          return this.record!.getRecordEntry(offsets[0], undefined, key + ' <end>').then((buf) => {
+            return buf;
+          })
         }
-        return await this.record!.getRecordEntry(offsets[0], offsets[1]);
+        return this.record!.getRecordEntry(offsets[0], offsets[1], key).then((buf) => {
+          return buf;
+        })
       } else {
         console.warn(`[meowDict][lookUpWord] this.keyword!.lookUpRecordEntryOffset(word) is null or undefined??`);
         return undefined;
@@ -154,5 +171,62 @@ export class meowDict {
       return false;
     }
     return true;
+  }
+}
+
+@ObservedV2
+export class meowDictBundle {
+  @Trace mdx: meowDict | undefined;
+  @Trace mdds: meowDict[] = [];
+  cacheKeys: string[] = []
+  cacheBufs: buffer.Buffer[] = []
+
+  constructor(mdx?: meowDict) {
+    if (mdx) {
+      this.mdx = mdx;
+    }
+  }
+
+  async lookUpResourceFromMDDs(key: string) {
+    const cacheIdx = this.cacheKeys.indexOf(key);
+    if (cacheIdx >= 0) {
+      console.log(`[meowDictBundle][lookUpResourceFromMDDs] Fetch from cache [${key}]`);
+      return this.cacheBufs[cacheIdx];
+    }
+
+    for (let index = 0; index < this.mdds.length; index++) {
+      let meow = await this.mdds[index].lookUpKey(key);
+      if (meow) {
+        // console.log(`[meowDictBundle][lookUpResourceFromMDDs] Found [${key}] in MDD [${this.mdds[index].fullPath}]!`);
+        if (meow.length > 100000) {
+          this.cacheKeys.push(key);
+          this.cacheBufs.push(meow);
+          console.log(`[meowDictBundle][lookUpResourceFromMDDs] Cached [${key}] (${addUnitsToSize(meow.length)})`);
+        }
+        return meow;
+      }
+    }
+    console.error(`[meowDictBundle][lookUpResourceFromMDDs] [${key}] Not found in any MDD!`);
+    return undefined;
+  }
+
+  async extractFileToTemp(key: string, context: Context) {
+    return this.lookUpResourceFromMDDs(key).then((resultBuffer) => {
+      if (!resultBuffer) {
+        return undefined;
+      }
+
+      console.log(`[Meow][extractFile] Got result!`);
+
+      let fileName = key;
+      if (fileName.substring(0, 1) == '\\') {
+        fileName = fileName.substring(1);
+      }
+
+      const path = context.tempDir + '/' + fileName;
+      saveHybrid(path, resultBuffer.buffer);
+
+      return path;
+    })
   }
 }

@@ -1,12 +1,14 @@
-import { meowDict, meowDictType } from '../hosts/meowDict';
-import { fileCopy, fileDocumentPick2Path, sandboxCreateDir, sandboxSaveHybrid } from '../utils/storage';
+import { meowDict, meowDictBundle, meowDictType } from '../hosts/meowDict';
+import { fileCopy, fileDocumentPick2Path, sandboxCreateDir } from '../utils/storage';
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { AppStorageV2 } from '@kit.ArkUI';
 import { defaultAnima, defaultDecorHeight, meowAvoid, meowFreeWindowModeStatus, meowLayoutModeStatus } from '../utils/uiEnv';
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
-import { keepOnlyAlphanumericGlobal } from '../utils/data';
+import { addUnitsToSize, keepOnlyAlphanumericGlobal, mimeOfFileName } from '../utils/data';
 import { meowTheme } from '../hosts/meowTheme';
+import MeowDictInfo from '../components/MeowDictInfo';
+import { playThisForMe } from '../utils/av';
 
 @Entry
 @ComponentV2
@@ -16,13 +18,12 @@ struct Index {
   @Local myMeowLayout: meowLayoutModeStatus = AppStorageV2.connect<meowLayoutModeStatus>(meowLayoutModeStatus)!;
   @Local windowTopAvoid: number = 0;
   // Data
-  @Local meowDictExampleMDX: meowDict = AppStorageV2.connect<meowDict>(meowDict, 'meowDictExampleMDX', () => new meowDict(meowDictType.MDX))!;
-  @Local meowDictExampleMDD: meowDict = AppStorageV2.connect<meowDict>(meowDict, 'meowDictExampleMDD', () => new meowDict(meowDictType.MDD))!;
+  @Local meowDictExampleBundle: meowDictBundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
   // Runtime interaction
-  @Local lookUpWordMDX: string = '';
+  @Local lookUpWord: string = '';
   @Local lookUpResult: boolean = true;
   @Local keywordsInSameIndexBlock: string[] = [];
-  @Local keywordsInSameIndexBlockRelative: string[] = [];
+  @Local keywordsInSameIndexBlockRelevant: string[] = [];
   refreshForResourcesTimeout: number | undefined;
   currentContent: string = '';
   // Runtime UI
@@ -55,21 +56,22 @@ struct Index {
               .onLoadIntercept((e) => {
                 const reqUrl = e.data.getRequestUrl();
                 const reqFilePath = reqUrl.split('/');
-                const reqFileName = reqFilePath.slice(1).join('\\');
+                const reqFileName = decodeURIComponent(reqFilePath.slice(1).join('\\'));
                 const reqFileScheme = reqFilePath[0];
 
-                if (reqUrl.length < 256) {
-                  console.warn(`[Meow][Web][onLoadIntercept] ${reqUrl}, reqFileScheme = ${reqFileScheme}, reqFileName = ${reqFileName}`);
-                } else {
-                  console.warn(`[Meow][Web][onLoadIntercept][long] reqFileScheme = ${reqFileScheme}`);
-                }
-
                 if (['sound:'].includes(reqFileScheme)) {
-                  // Read
-                  this.extractFile(this.meowDictExampleMDD, reqFileName).then((r) => {
-                    if (!r) {
-                      console.error(`[Meow][Web][onLoadIntercept] Reource not found! Not going to refresh!`);
-                      return;
+                  if (reqUrl.length < 256) {
+                    console.warn(`[Meow][Web][onLoadIntercept][${reqUrl}], reqFileScheme = ${reqFileScheme}, reqFileName = ${reqFileName}`);
+                  } else {
+                    console.warn(`[Meow][Web][onLoadIntercept][long] reqFileScheme = ${reqFileScheme}`);
+                  }
+
+                  // Load
+                  this.meowDictExampleBundle.extractFileToTemp(reqFileName, this.getUIContext().getHostContext()!).then(async (r) => {
+                    if (r) {
+                      playThisForMe(r, `[Meow][Web][onLoadIntercept][Media][${reqUrl}]`);
+                    } else {
+                      console.warn(`[Meow][Web][onLoadIntercept][${reqUrl}] Not found.`);
                     }
                   })
 
@@ -81,47 +83,59 @@ struct Index {
               .onInterceptRequest((e) => {
                 const reqUrl = e.request.getRequestUrl();
                 const reqFilePath = reqUrl.split('/');
-                const reqFileName = reqFilePath[reqFilePath.length-1];
                 const reqFileScheme = reqFilePath[0];
 
+                // Process file name
+                let reqFileName = 'name';
+                const base = reqFileScheme + '//' + this.getUIContext().getHostContext()!.filesDir + '/meow/';
+                if (reqUrl.indexOf(base) == 0) {
+                  reqFileName = reqUrl.substring(base.length);
+                } else {
+                  reqFileName = reqUrl.substring((reqFileScheme + '//').length);
+                }
+                reqFileName = decodeURIComponent(reqFileName);
+
+                // Process according to schemes
                 if (reqFileScheme == 'file:') {
-                  fileIo.access(this.getUIContext().getHostContext()!.filesDir + '/meow/' + reqFileName).catch((e: BusinessError) => {
-                    console.error(`[Meow][Web][onInterceptRequest] fileIo.access() failed: ${e}`);
-                  }).then((r) => {
-                    if (r) {
-                      // console.log(`[Meow][Web][onInterceptRequest] file '${reqFileName}' exist! Reusing...`);
-                      return;
-                    }
+                  reqFileName = reqFileName.replaceAll('/', '\\');
 
-                    if (reqUrl.length < 256) {
-                      console.warn(`[Meow][Web][onInterceptRequest] ${reqUrl}, reqFileScheme = ${reqFileScheme}, reqFileName = ${reqFileName}`);
+                  // Check existence
+                  let exist = false;
+                  try {
+                    exist = fileIo.accessSync(this.getUIContext().getHostContext()!.filesDir + '/meow/' + reqFileName);
+                  } catch (e) {
+                    console.error(`[Meow][Web][onInterceptRequest] fileIo.accessSync() failed: ${e}`);
+                  }
+                  if (exist) {
+                    // console.log(`[Meow][Web][onInterceptRequest][${reqUrl}] file '${reqFileName}' exist!`);
+                    return null;
+                  }
+
+                  // Get the files
+                  let response = new WebResourceResponse();
+                  let regularFileName = reqFileName;
+                  if (regularFileName.substring(0, 1) != '\\') {
+                    regularFileName = '\\' + regularFileName;
+                  }
+                  this.meowDictExampleBundle.lookUpResourceFromMDDs(regularFileName).then((resultBuffer) => {
+                    if (resultBuffer) {
+                      console.log(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Loaded. (${addUnitsToSize(resultBuffer.length)})`);
+                      response.setResponseData(resultBuffer.buffer);
+                      response.setResponseMimeType(mimeOfFileName(regularFileName));
                     } else {
-                      console.warn(`[Meow][Web][onInterceptRequest][long] reqFileScheme = ${reqFileScheme}`);
+                      console.warn(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Not found.`);
                     }
-
-                    // Get the files
-                    this.extractFile(this.meowDictExampleMDD, '\\' + reqFileName).then((r) => {
-                      if (!r) {
-                        console.error(`[Meow][Web][refreshForResourcesTimeout] Reource not found! Not going to refresh!`);
-                        return;
-                      }
-                      // Loaded resource
-                      clearTimeout(this.refreshForResourcesTimeout);
-                      this.refreshForResourcesTimeout = setTimeout(() => {
-                        try {
-                          console.warn(`[Meow][Web][refreshForResourcesTimeout] Refresh!`);
-                          this.refreshForResourcesTimeout = undefined;
-                          this.webController.refresh();
-                        } catch (e) {
-                          console.error(`[Meow][Web][refreshForResourcesTimeout] failed: ${e}`);
-                        }
-                      }, 500);
-                    })
+                    response.setResponseIsReady(true);
                   })
-                } else if (reqFileScheme == 'entry:') {
+
+                  // Response
+                  response.setResponseIsReady(false);
+                  return response;
+                }
+
+                if (reqFileScheme == 'entry:') {
                   clearTimeout(this.refreshForResourcesTimeout);
-                  this.search(this.meowDictExampleMDX, decodeURIComponent(reqFileName));
-                  this.lookUpWordMDX = decodeURIComponent(reqFileName);
+                  this.searchMDX(this.meowDictExampleBundle, decodeURIComponent(reqFileName));
                 }
 
                 return null;
@@ -130,7 +144,7 @@ struct Index {
                 if (!this.firstPageLoaded) {
                   console.log(`[Meow][MDX] Woof! From onControllerAttached!`);
                   this.firstPageLoaded = true;
-                  this.loadWeb(this.meowDictExampleMDX.header?.toHtml());
+                  this.loadWeb(this.meowDictExampleBundle.mdx?.header?.toHtml());
                 }
               })
               .borderRadius(15)
@@ -139,9 +153,29 @@ struct Index {
               .linearGradientBlur(30, this.linearBlurOps)
 
             WaterFlow() {
-            }
+              if (this.meowDictExampleBundle.mdx) {
+                MeowDictInfo({ dict: this.meowDictExampleBundle.mdx })
+              }
+              ForEach(this.meowDictExampleBundle.mdds, ((mdd: meowDict, index: number) => {
+                MeowDictInfo({
+                  dict: mdd,
+                  deleteAction: () => {
+                    fileIo.unlink(this.meowDictExampleBundle.mdds[index].fullPath)
+                      .catch((e: BusinessError) => {
+                        console.error(`[Meow][Info] fileIo.unlink(this.meowDictExampleBundle.mdds[index].fullPath) Failed: ${e}`);
+                      });
+                    this.meowDictExampleBundle.mdds.splice(index, 1);
+                  }
+                })
+              }))
+            } // Info
+            .columnsGap(10)
+            .rowsGap(10)
+            .columnsTemplate("1fr ".repeat(Math.ceil(this.myMeowLayout.width / 600)))
             .visibility(this.showInfo ? Visibility.Visible : Visibility.None)
-            .height(0.4 * this.myMeowLayout.height)
+            // .height(Math.min(0.8 * this.myMeowLayout.height, this.myMeowLayout.height - this.titleHeight() - 20 - this.windowTopAvoid))
+            .constraintSize({ maxHeight: this.myMeowLayout.height - this.titleHeight() - 20 - this.windowTopAvoid })
+            .edgeEffect(EdgeEffect.Spring)
             .animation(defaultAnima)
             .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
             .borderWidth(1)
@@ -159,27 +193,41 @@ struct Index {
             RelativeContainer() {
               Scroll() {
                 Row({ space: 10 }) {
-                  Button(this.meowDictExampleMDX?.header ? 'MDX  󰀓' : '󰀵 MDX')
+                  Button(this.meowDictExampleBundle.mdx?.header ? 'MDX  󰀓' : '󰀵 MDX')
                     .onClick(() => {
                       fileDocumentPick2Path(['.mdx'], 1).then((r) => {
                         if (r.succeed) {
-                          this.meowDictExampleMDX = new meowDict(meowDictType.MDX, r.sourcePaths![0]);
-                          this.meowDictExampleMDX.init();
                           sandboxCreateDir('meow', this.getUIContext().getHostContext()!, true).then(() => {
-                            fileCopy(r.sourcePaths![0], this.getUIContext().getHostContext()!.filesDir + '/woof/woof.mdx');
+                            const sourcePath = r.sourcePaths![0];
+                            const destPath: string = this.getUIContext().getHostContext()!.filesDir + '/woof/woof.mdx';
+                            fileCopy(sourcePath, destPath).then(() => {
+                              this.meowDictExampleBundle.mdx = new meowDict(meowDictType.MDX, destPath);
+                              this.meowDictExampleBundle.mdx.init();
+                              console.log(`[Meow][Files][MDX][${sourcePath}][${destPath}]`);
+                            })
                             // sandboxSaveHybrid('woof/woof.mdx', r.buf!, this.getUIContext().getHostContext()!, true);
                           })
                         }
                       })
                     })
-                  Button(this.meowDictExampleMDD?.header ? 'MDD  󰀓' : '󰀵 MDD')
+                  Button(`󰀵 MDD (${this.meowDictExampleBundle.mdds?.length})`)
                     .onClick(() => {
                       fileDocumentPick2Path(['.mdd'], 233).then((r) => {
                         if (r.succeed) {
-                          this.meowDictExampleMDD = new meowDict(meowDictType.MDD, r.sourcePaths![0]);
-                          this.meowDictExampleMDD.init();
-                          fileCopy(r.sourcePaths![0], this.getUIContext().getHostContext()!.filesDir + '/woof/woof.mdd');
-                          // sandboxSaveHybrid('woof/woof.mdd', r.buf!, this.getUIContext().getHostContext()!, true);
+                          for (let index = 0; index < r.sourcePaths!.length; index++) {
+                            // Save (copy) file
+                            const sourcePath = r.sourcePaths![index];
+                            const targetPathSplit = sourcePath.split('/');
+                            const fileName: string | undefined = targetPathSplit[targetPathSplit.length-1];
+                            const destPath = this.getUIContext().getHostContext()!.filesDir + '/honk/' + fileName;
+                            fileCopy(sourcePath, destPath).then(() => {
+                              // Create object
+                              let mdd = new meowDict(meowDictType.MDD, destPath);
+                              this.meowDictExampleBundle.mdds.push(mdd);
+                              mdd.init();
+                              console.log(`[Meow][Files][MDD][${index}][${sourcePath}][${destPath}][${fileName}]`);
+                            })
+                          }
                         }
                       })
                     })
@@ -216,15 +264,15 @@ struct Index {
               .animation(defaultAnima)
 
               Row({ space: 10 }) {
-                TextInput({ placeholder: `󰀩 ${this.meowDictExampleMDX.header?.Title || ''}`, text: this.lookUpWordMDX })
+                TextInput({ placeholder: `󰀩 ${this.meowDictExampleBundle.mdx?.header?.Title || ''}`, text: this.lookUpWord })
                   .layoutWeight(1)
                   .onChange((e) => {
-                    this.lookUpWordMDX = e;
+                    this.lookUpWord = e;
                   })
                   .onSubmit(() => {
                     clearTimeout(this.refreshForResourcesTimeout);
-                    this.search(this.meowDictExampleMDX, this.lookUpWordMDX).then((result) => {
-                      this.lookUpResult = result;
+                    this.searchMDX(this.meowDictExampleBundle, this.lookUpWord).then((result) => {
+                      this.lookUpResult = result == true;
                     })
                   })
                   .selectAll(true)
@@ -234,8 +282,8 @@ struct Index {
                 Button(`${this.lookUpResult ? '' : '¯\\_(ツ)_/¯  '}󰈱`)
                   .onClick(() => {
                     clearTimeout(this.refreshForResourcesTimeout);
-                    this.search(this.meowDictExampleMDX, this.lookUpWordMDX).then((result) => {
-                      this.lookUpResult = result;
+                    this.searchMDX(this.meowDictExampleBundle, this.lookUpWord).then((result) => {
+                      this.lookUpResult = result == true;
                     })
                   })
               } // Search bar
@@ -266,7 +314,7 @@ struct Index {
           .animation(defaultAnima)
 
           if (this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode) {
-            Text(this.meowDictExampleMDX?.header?.Title)
+            Text(this.meowDictExampleBundle.mdx?.header?.Title)
               .padding(10)
               .width('100%')
               .textAlign(TextAlign.Center)
@@ -324,28 +372,35 @@ struct Index {
     }
   }
 
-  async search(dict: meowDict | undefined, key: string) {
-    if (!dict || !dict.isReady()) {
+  async searchMDX(bundle: meowDictBundle | undefined, key: string) {
+    if (!bundle || !bundle.mdx || !bundle.mdx.isReady()) {
       return false;
     }
 
+    while (key.substring(0, 8) == 'entry://') {
+      key = key.substring(8);
+    }
+    if (this.lookUpWord != key) {
+      this.lookUpWord = key;
+    }
+
     const query = keepOnlyAlphanumericGlobal(key.toLowerCase());
-    return dict.lookUpKey(query, true).then((resultBuffer) => {
+    return bundle.mdx.lookUpKey(query)?.then((resultBuffer) => {
       if (!resultBuffer) {
         // Not found
         return false;
       }
-      if (dict.type == meowDictType.MDX) {
+      if (bundle.mdx!.type == meowDictType.MDX) {
         let resultText = 'ERROR! ＞︿＜';
         try {
-          resultText = resultBuffer.toString(dict.header!.Encoding);
+          resultText = resultBuffer.toString(bundle.mdx!.header!.Encoding);
         } catch (e) {
           console.error(`[Meow][MDX] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
         }
         this.loadWeb(resultText);
-        console.log(`[Meow][MDX] Got result!`);
+        // console.log(`[Meow][MDX] Got result!`);
 
-        this.keywordsInSameIndexBlock = this.meowDictExampleMDX?.keyword?.index?.indexEntries[this.meowDictExampleMDX?.keyword?.lookUpBlockIndex].builtBlock?.keywords || [];
+        this.keywordsInSameIndexBlock = bundle.mdx?.keyword?.index?.indexEntries[bundle.mdx?.keyword?.lookUpBlockIndex].builtBlock?.keywords || [];
         console.log(`[Meow][MDX] this.keywordsInSameIndexBlock.length = ${this.keywordsInSameIndexBlock.length}`);
 
         let re: string[] = [];
@@ -355,13 +410,10 @@ struct Index {
             // console.log(`[Meow][MDX] Relative: ${this.keywordsInSameIndexBlock[wordIndex]}`);
           }
         }
-        this.keywordsInSameIndexBlockRelative = re;
-        const percentage = this.keywordsInSameIndexBlockRelative.length / this.keywordsInSameIndexBlock.length * 100;
-        console.log(`[Meow][MDX] this.keywordsInSameIndexBlockRelative.length = ${this.keywordsInSameIndexBlockRelative.length} (${percentage.toFixed(2)} %)`);
-        // console.log(`[Meow][MDX] this.keywordsInSameIndexBlockRelative: ${'\n' + this.keywordsInSameIndexBlockRelative}`);
-
-      } else if (dict.type == meowDictType.MDD) {
-        console.log(`[Meow][MDD] Got result!`);
+        this.keywordsInSameIndexBlockRelevant = re;
+        const percentage = this.keywordsInSameIndexBlockRelevant.length / this.keywordsInSameIndexBlock.length * 100;
+        console.log(`[Meow][MDX][${query}] this.keywordsInSameIndexBlockRelevant.length = ${this.keywordsInSameIndexBlockRelevant.length} (${percentage.toFixed(2)} %)`);
+        console.log(`[Meow][MDX][${query}] this.keywordsInSameIndexBlockRelevant: ${'\n' + this.keywordsInSameIndexBlockRelevant}`);
       }
 
       return true;
@@ -369,28 +421,11 @@ struct Index {
   }
 
   /**
-   * Extracts a file from a dictionary.
+   * Extracts a file from a dictionary to sandbox temp.
    * @param dict The dictionary.
    * @param key The key.
    * @returns True if success.
    * */
-  async extractFile(dict: meowDict | undefined, key: string) {
-    return dict?.lookUpKey(key, false).then((resultBuffer) => {
-      if (!resultBuffer) {
-        return false;
-      }
-      if (dict.type == meowDictType.MDD) {
-        console.log(`[Meow][extractFile] Got result!`);
-
-        let fileName = key;
-        if (fileName.substring(0, 1) == '\\') {
-          fileName = fileName.substring(1);
-        }
-        sandboxSaveHybrid('meow/' + fileName, resultBuffer.buffer, this.getUIContext().getHostContext()!);
-      }
-      return true;
-    })
-  }
 
   // Data
 
@@ -443,7 +478,7 @@ struct Index {
   // Why warning O.o
   onDictRefresh() {
     console.log(`[Meow][MDX] Woof!`);
-    this.firstPageLoaded = this.loadWeb(this.meowDictExampleMDX.header?.toHtml());
+    this.firstPageLoaded = this.loadWeb(this.meowDictExampleBundle.mdx?.header?.toHtml());
   }
 
   @Monitor('myMeowFreeWindowModeStatus.on', 'myMeowAvoid.top', 'myMeowLayout.height', 'myMeowLayout.width', 'myMeowLayout.wideMode')
