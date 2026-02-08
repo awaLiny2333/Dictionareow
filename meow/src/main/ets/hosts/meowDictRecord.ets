@@ -1,5 +1,5 @@
 import { arrayBuffer2Int64BE, bufferBuffer2Int64BE, decompress } from '../utils/data';
-import { buffer, fastbuffer } from '@kit.ArkTS';
+import { fastbuffer } from '@kit.ArkTS';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { sandboxReadArrayBufferConcurrent, sandboxReadArrayBufferSync } from '../utils/storage';
 
@@ -48,25 +48,8 @@ export class meowDictRecord {
     // Total size of the rec_block[i] sections, in bytes. Big-endian.
     this.blocksLen = arrayBuffer2Int64BE(metaDataSlice32.slice(24, 32)) || 0;
 
-    // let task: taskpool.Task = new taskpool.Task(calculateMetaDataSync, this.globalRawData, this.globalOffset, numBlocks);
-
-    // let task: taskpool.Task = new taskpool.Task(calculateMetaDataSync, this.globalRawData.slice(0), this.globalOffset, numBlocks);
-    // try {
-    //   const res = await taskpool.execute(task) as calculateMetaDataSyncResult;
-    //   this.compSizes = res.compSizes;
-    //   this.decompSizes = res.decompSizes;
-    //   this.compSizesCumulative = res.compSizesCumulative;
-    //   this.decompSizesCumulative = res.decompSizesCumulative;
-    //   this.recBlocksHeadOffset = res.recBlocksHeadOffset;
-    //   this.ready = true;
-    //   console.warn(`[meowDictRecord][processMetadata] taskpool.execute(task) OK!`);
-    // } catch (e) {
-    //   console.error(`[meowDictRecord][processMetadata] Failed: ${e}`);
-    // }
-
     const metaDataBlockSlice = sandboxReadArrayBufferSync(this.fullPath, this.globalOffset + 32, 16 * numBlocks)!;
 
-    // Use less RAM
     const res = calculateMetaDataSync(metaDataBlockSlice, numBlocks);
     this.compSizes = res.compSizes;
     this.decompSizes = res.decompSizes;
@@ -95,20 +78,13 @@ export class meowDictRecord {
     return sandboxReadArrayBufferConcurrent(this.fullPath, startRecordGlobalOffset, endRecordGlobalOffset - startRecordGlobalOffset).then((block) => {
       return decompress(block!, this.decompSizes[startRecordIdx], tag, { type: '0' })
         .then((arrayBuffer) => {
-          try {
-            const recordOffsetStartInBuffer = recordOffsetStart - this.decompSizesCumulative[startRecordIdx];
-            let recordOffsetEndInBuffer: number | undefined;
-            if (recordOffsetEnd) {
-              recordOffsetEndInBuffer = recordOffsetEnd - this.decompSizesCumulative[startRecordIdx];
-            }
-
-            const arrayBufferSliceWhat = arrayBuffer.slice(recordOffsetStartInBuffer, recordOffsetEndInBuffer);
-            return arrayBufferSliceWhat;
-
-          } catch (e) {
-            console.error(`[meowDictRecord][getRecordEntry] const longBufferBuffer = buffer.from(arrayBuffer) Failed: ${e}`);
-            return undefined;
+          const recordOffsetStartInBuffer = recordOffsetStart - this.decompSizesCumulative[startRecordIdx];
+          let recordOffsetEndInBuffer: number | undefined;
+          if (recordOffsetEnd) {
+            recordOffsetEndInBuffer = recordOffsetEnd - this.decompSizesCumulative[startRecordIdx];
           }
+          const arrayBufferSliceWhat = arrayBuffer.slice(recordOffsetStartInBuffer, recordOffsetEndInBuffer);
+          return arrayBufferSliceWhat;
         })
         .catch((e: BusinessError) => {
           console.error(`[meowDictRecord][getRecordEntry][${startRecordIdx}] Failed: ${e}`);

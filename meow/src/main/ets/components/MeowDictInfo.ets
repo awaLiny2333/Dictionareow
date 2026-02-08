@@ -11,6 +11,7 @@ struct MeowDictInfo {
   build() {
     Column({ space: 8 }) {
       Text(this.dict.header?.Title)
+        .fontWeight(FontWeight.Bold)
         .fontSize(24)
 
       Text(`${this.dict.keyword?.numEntries} ${resource_to_string($r('app.string.entries'), this.context)}`)
@@ -34,6 +35,7 @@ struct MeowDictInfo {
                 this.deleteAction();
               }
             })
+            // .backgroundColor(this.dict.type == meowDictType.MDX ? $r('app.color.blur_background') : $r('app.color.meow_brand'))
         }
         .width('100%')
         .justifyContent(FlexAlign.End)
@@ -44,7 +46,7 @@ struct MeowDictInfo {
     .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
     .borderWidth(1)
     .borderColor($r('sys.color.comp_background_tertiary'))
-    .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
+    .backgroundEffect({ radius: 30, color: this.dict.type == meowDictType.MDX ? $r('app.color.meow_iconSubEmphasize') : $r('app.color.blur_background') })
     .padding(10)
   }
 }

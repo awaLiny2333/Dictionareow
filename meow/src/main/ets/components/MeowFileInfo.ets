@@ -21,12 +21,14 @@ struct MeowFileInfo {
   build() {
     Column({ space: 8 }) {
       Text(this.name)
+        // .fontWeight(FontWeight.Medium)
         .fontSize(24)
+        .opacity(0.75)
 
       Text(this.filePath)
         .opacity(0.5)
       Text(addUnitsToSize(this.fileSize) + ' ' + this.type)
-        // .fontWeight(FontWeight.Bolder)
+      // .fontWeight(FontWeight.Bolder)
         .opacity(0.5)
 
       if (this.deleteAction) {
@@ -37,6 +39,7 @@ struct MeowFileInfo {
                 this.deleteAction();
               }
             })
+            .backgroundColor($r('app.color.blur_background'))
         }
         .width('100%')
         .justifyContent(FlexAlign.End)
