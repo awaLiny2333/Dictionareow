@@ -1,5 +1,4 @@
-import { meowDict, meowDictBundle, meowDictType } from '../hosts/meowDict';
-import { fileCopy, fileDocumentPick2Path } from '../utils/storage';
+import { meowDictType } from '../hosts/meowDict';
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { AppStorageV2 } from '@kit.ArkUI';
@@ -7,10 +6,11 @@ import { defaultAnima, defaultDecorHeight, meowAvoid, meowFreeWindowModeStatus, 
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import { addUnitsToSize, keepOnlyAlphanumericGlobal, mimeOfFileName, resource_to_string } from '../utils/data';
 import { meowTheme } from '../hosts/meowTheme';
-import MeowDictInfo from '../components/MeowDictInfo';
-import { playThisForMe } from '../utils/av';
-import MeowFileInfo from '../components/MeowFileInfo';
-import { buffer, fastbuffer } from '@kit.ArkTS';
+import lazy { playThisForMe } from '../utils/av';
+import lazy { fastbuffer } from '@kit.ArkTS';
+import meowBundleInfo from '../components/MeowBundleInfo';
+import { meowDictBundle } from '../hosts/meowDictBundle';
+import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
 
 @Entry
 @ComponentV2
@@ -21,13 +21,12 @@ struct Index {
   @Local windowTopAvoid: number = 0;
   // Data
   @Local meowDictExampleBundle: meowDictBundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
+  @Local meowLibrarian: meowDictBundleLibrarian = AppStorageV2.connect<meowDictBundleLibrarian>(meowDictBundleLibrarian, 'meowDictBundleLibrarian', () => new meowDictBundleLibrarian())!;
   // Runtime interaction
   @Local lookUpWord: string = '';
   @Local lookUpResult: boolean = true;
   @Local keywordsInSameIndexBlock: string[] = [];
   @Local keywordsInSameIndexBlockRelevant: string[] = [];
-  refreshForRefreshFilesTimeout: number | undefined;
-  currentContent: string = '';
   // Runtime UI
   @Local topDown: boolean = this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode;
   @Local render: boolean = false;
@@ -35,9 +34,11 @@ struct Index {
   @Local linearBlurOps: LinearGradientBlurOptions = this.constructLinearBlurOps();
   @Local showInfo: boolean = false;
   timeoutIdForAvoidReload: number | undefined;
+  @Local buttonsWidth: number = 0;
   // Runtime Objects
   webController: WebviewController = new webview.WebviewController();
   context: Context = this.getUIContext().getHostContext()!;
+  currentDictNo: number = 0;
 
   build() {
     WithTheme({ theme: new meowTheme() }) {
@@ -70,13 +71,14 @@ struct Index {
                   }
 
                   // Load
-                  this.meowDictExampleBundle.extractFileToTemp(reqFileName, this.context).then(async (r) => {
-                    if (r) {
-                      playThisForMe(r, `[Meow][Web][onLoadIntercept][Media][${reqUrl}]`);
-                    } else {
-                      console.warn(`[Meow][Web][onLoadIntercept][${reqUrl}] Not found.`);
-                    }
-                  })
+                  this.meowLibrarian.bundles[this.currentDictNo]?.extractFileToTemp(reqFileName, this.context)
+                    .then(async (r) => {
+                      if (r) {
+                        playThisForMe(r, `[Meow][Web][onLoadIntercept][Media][${reqUrl}]`);
+                      } else {
+                        console.warn(`[Meow][Web][onLoadIntercept][${reqUrl}] Not found.`);
+                      }
+                    })
 
                   return true;
                 }
@@ -90,13 +92,15 @@ struct Index {
 
                 // Process file name
                 let reqFileName = 'name';
-                const base = reqFileScheme + '//' + this.context.filesDir + '/meow/';
+                const base = reqFileScheme + '//' + this.currentBase();
                 if (reqUrl.indexOf(base) == 0) {
                   reqFileName = reqUrl.substring(base.length);
                 } else {
                   reqFileName = reqUrl.substring((reqFileScheme + '//').length);
                 }
                 reqFileName = decodeURIComponent(reqFileName);
+
+                console.log(`[Meow][Web][onInterceptRequest][${reqUrl}] ${reqFileName}`);
 
                 // Process according to schemes
                 if (reqFileScheme == 'file:') {
@@ -105,7 +109,7 @@ struct Index {
                   // Check existence
                   let exist = false;
                   try {
-                    exist = fileIo.accessSync(this.context.filesDir + '/meow/' + reqFileName);
+                    exist = fileIo.accessSync(this.currentBase() + reqFileName);
                   } catch (e) {
                     console.error(`[Meow][Web][onInterceptRequest] fileIo.accessSync() failed: ${e}`);
                   }
@@ -120,16 +124,17 @@ struct Index {
                   if (regularFileName.substring(0, 1) != '\\') {
                     regularFileName = '\\' + regularFileName;
                   }
-                  this.meowDictExampleBundle.lookUpResourceFromMDDs(regularFileName).then((resultBuffer) => {
-                    if (resultBuffer) {
-                      console.log(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Loaded. (${addUnitsToSize(resultBuffer.byteLength)})`);
-                      response.setResponseData(resultBuffer);
-                      response.setResponseMimeType(mimeOfFileName(regularFileName));
-                    } else {
-                      console.warn(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Not found.`);
-                    }
-                    response.setResponseIsReady(true);
-                  })
+                  this.meowLibrarian.bundles[this.currentDictNo]?.lookUpResourceFromMDDs(regularFileName)
+                    .then((resultBuffer) => {
+                      if (resultBuffer) {
+                        console.log(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Loaded. (${addUnitsToSize(resultBuffer.byteLength)})`);
+                        response.setResponseData(resultBuffer);
+                        response.setResponseMimeType(mimeOfFileName(regularFileName));
+                      } else {
+                        console.warn(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Not found.`);
+                      }
+                      response.setResponseIsReady(true);
+                    })
 
                   // Response
                   response.setResponseIsReady(false);
@@ -137,75 +142,68 @@ struct Index {
                 }
 
                 if (reqFileScheme == 'entry:') {
-                  this.searchMDX(this.meowDictExampleBundle, decodeURIComponent(reqFileName));
+                  this.searchMDX(this.meowLibrarian.bundles[this.currentDictNo], decodeURIComponent(reqFileName));
                 }
 
                 return null;
-              })
-              .onControllerAttached(() => {
-                if (!this.firstPageLoaded) {
-                  console.log(`[Meow][MDX] Woof! From onControllerAttached!`);
-                  this.firstPageLoaded = true;
-                  this.loadWeb(this.meowDictExampleBundle.mdx?.header?.toHtml());
-                }
               })
               .borderRadius(15)
               .backgroundColor(Color.Transparent)
               .id('mainWeb')
               .linearGradientBlur(30, this.linearBlurOps)
 
-            Row() {
-              WaterFlow() {
-                if (this.meowDictExampleBundle.mdx) {
-                  MeowDictInfo({
-                    dict: this.meowDictExampleBundle.mdx,
-                    deleteAction: () => {
-                      fileIo.unlink(this.meowDictExampleBundle.mdx!.fullPath)
-                        .catch((e: BusinessError) => {
-                          console.error(`[Meow][Info] fileIo.unlink(this.meowDictExampleBundle.mdds[index].fullPath) Failed: ${e}`);
-                        });
-                      this.meowDictExampleBundle.mdx = undefined;
-                    }
+            Column({ space: 8 }) {
+              Button(`󰀵 ${resource_to_string($r('app.string.new_dictionary'), this.context)}`)
+                .onClick(() => {
+                  this.meowLibrarian.createBundle(this.context);
+                })
+
+              Scroll() {
+                Column({ space: 8 }) {
+                  if (this.meowDictExampleBundle.mdx?.header) {
+                    meowBundleInfo({
+                      bundle: this.meowDictExampleBundle,
+                      deleteAction: () => {
+                        fileIo.rmdir(this.context.filesDir + '/meow/')
+                          .catch((e: BusinessError) => {
+                            console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/meow/') Failed: ${e}`);
+                          });
+                        fileIo.rmdir(this.context.filesDir + '/woof/')
+                          .catch((e: BusinessError) => {
+                            console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/woof/') Failed: ${e}`);
+                          });
+                        fileIo.rmdir(this.context.filesDir + '/honk/')
+                          .catch((e: BusinessError) => {
+                            console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/honk/') Failed: ${e}`);
+                          });
+                        this.meowDictExampleBundle = new meowDictBundle();
+                      }
+                    })
+                  }
+
+                  ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, idx: number) => {
+                    meowBundleInfo({
+                      bundle: bundle,
+                      deleteAction: () => {
+                        this.meowLibrarian.deleteBundle(idx, this.context);
+                      }
+                    })
+                  }, (bundle: meowDictBundle) => {
+                    return bundle.sandboxPathWithEndSlash;
                   })
                 }
-                ForEach(this.meowDictExampleBundle.mdds, ((mdd: meowDict, index: number) => {
-                  MeowDictInfo({
-                    dict: mdd,
-                    deleteAction: () => {
-                      fileIo.unlink(this.meowDictExampleBundle.mdds[index].fullPath)
-                        .catch((e: BusinessError) => {
-                          console.error(`[Meow][Info] fileIo.unlink(this.meowDictExampleBundle.mdds[index].fullPath) Failed: ${e}`);
-                        });
-                      this.meowDictExampleBundle.mdds.splice(index, 1);
-                    }
-                  })
-                }))
-                ForEach(this.meowDictExampleBundle.files, ((path: string, index: number) => {
-                  MeowFileInfo({
-                    filePath: path,
-                    fileSize: this.meowDictExampleBundle.fileSizes[index],
-                    deleteAction: () => {
-                      fileIo.unlink(path)
-                        .catch((e: BusinessError) => {
-                          console.error(`[Meow][Info][Files] fileIo.unlink(path) Failed: ${e}`);
-                        });
-                      this.meowDictExampleBundle.updateFiles(this.context);
-                    }
-                  })
-                }))
-              } // Info
-              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
-              .columnsGap(10)
-              .rowsGap(10)
-              .columnsTemplate("1fr ".repeat(Math.ceil(this.myMeowLayout.width / 500)))
+              }
+              .width('100%')
+              .align(Alignment.Top)
+              .layoutWeight(1)
+              .scrollable(ScrollDirection.Vertical)
               .edgeEffect(EdgeEffect.Spring)
-              .animation(defaultAnima)
-
-            }
+              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+            } // More panel
             .visibility(this.showInfo ? Visibility.Visible : Visibility.None)
-            // .height(Math.min(0.8 * this.myMeowLayout.height, this.myMeowLayout.height - this.titleHeight() - 20 - this.windowTopAvoid))
-            .constraintSize({ maxHeight: this.myMeowLayout.height - this.titleHeight() - 20 - this.windowTopAvoid })
+            // .constraintSize({ maxHeight: this.myMeowLayout.height - this.titleHeight() - 20 - this.windowTopAvoid })
             .animation(defaultAnima)
+            .alignItems(HorizontalAlign.Start)
             .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
             .borderWidth(1)
             .borderColor($r('sys.color.comp_background_tertiary'))
@@ -213,71 +211,15 @@ struct Index {
             .padding(10)
             .margin({
               left: 10,
-              bottom: this.myMeowAvoid.bottom + this.titleHeight() + 10,
+              bottom: this.topDown ? 10 : this.myMeowAvoid.bottom + this.titleHeight() + 10,
               right: 10,
-              top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10
+              top: this.topDown ? this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10 : 10
             })
             .shadow(ShadowStyle.OUTER_DEFAULT_SM)
 
             RelativeContainer() {
               Scroll() {
                 Row({ space: 10 }) {
-                  Button(this.meowDictExampleBundle.mdx?.header ? 'MDX  󰀓' : '󰀵 MDX')
-                    .onClick(() => {
-                      fileDocumentPick2Path(['.mdx'], 1).then((r) => {
-                        if (r.succeed) {
-                          const sourcePath = r.sourcePaths![0];
-                          const destPath: string = this.context.filesDir + '/woof/woof.mdx';
-                          fileCopy(sourcePath, destPath).then(() => {
-                            this.meowDictExampleBundle.mdx = new meowDict(meowDictType.MDX, destPath);
-                            this.meowDictExampleBundle.mdx.init();
-                            console.log(`[Meow][Files][MDX][${sourcePath}][${destPath}]`);
-                          })
-                          // sandboxSaveHybrid('woof/woof.mdx', r.buf!, this.context, true);
-                        }
-                      })
-                    })
-                  Button(`󰀵 MDD (${this.meowDictExampleBundle.mdds.length})`)
-                    .onClick(() => {
-                      fileDocumentPick2Path(['.mdd'], 233).then((r) => {
-                        if (r.succeed) {
-                          for (let index = 0; index < r.sourcePaths!.length; index++) {
-                            // Save (copy) file
-                            const sourcePath = r.sourcePaths![index];
-                            const targetPathSplit = sourcePath.split('/');
-                            const fileName: string | undefined = targetPathSplit[targetPathSplit.length-1];
-                            const destPath = this.context.filesDir + '/honk/' + fileName;
-                            fileCopy(sourcePath, destPath).then(() => {
-                              // Create object
-                              let mdd = new meowDict(meowDictType.MDD, destPath);
-                              this.meowDictExampleBundle.mdds.push(mdd);
-                              mdd.init();
-                              console.log(`[Meow][Files][MDD][${index}][${sourcePath}][${destPath}][${fileName}]`);
-                            })
-                          }
-                        }
-                      })
-                    })
-                  Button(`󰀵 ${resource_to_string($r('app.string.add_files'), this.context)} (${this.meowDictExampleBundle.files.length})`)
-                    .onClick(() => {
-                      fileDocumentPick2Path([], 233).then((r) => {
-                        if (r.succeed) {
-                          for (let index = 0; index < r.sourcePaths!.length; index++) {
-                            const sourcePath = r.sourcePaths![index];
-                            const targetPathSplit = sourcePath.split('/');
-                            const fileName: string | undefined = targetPathSplit[targetPathSplit.length-1];
-                            fileCopy(sourcePath, this.context.filesDir + '/meow/' + fileName).then(() => {
-                              clearTimeout(this.refreshForRefreshFilesTimeout);
-                              this.refreshForRefreshFilesTimeout = setTimeout(() => {
-                                this.meowDictExampleBundle.updateFiles(this.context);
-                              }, 200)
-                            })
-                            // sandboxSaveHybrid('meow/' + r.fileName!, r.buf!, this.context, true);
-                            console.log(`[Meow][Files][${sourcePath}][${fileName}]`);
-                          }
-                        }
-                      })
-                    })
                   Button(`󰊖 ${resource_to_string($r('app.string.info'), this.context)}`)
                     .onClick(() => {
                       this.showInfo = !this.showInfo;
@@ -285,7 +227,22 @@ struct Index {
                     .border(this.showInfo ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
                     .brightness(this.showInfo ? 1.1 : 1)
                     .animation(defaultAnima)
+
+                  ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, index: number) => {
+                    if (bundle.mdx) {
+                      Button(`${bundle.mdx?.header?.Title}`)
+                        .onClick(() => {
+                          this.currentDictNo = index;
+                          this.searchMDX(bundle, this.lookUpWord);
+                        })
+                    }
+                  })
                 } // Buttons
+                .onAreaChange((o, n) => {
+                  if (o.width != n.width) {
+                    this.buttonsWidth = n.width as number;
+                  }
+                })
               }
               .scrollable(ScrollDirection.Horizontal)
               .scrollBar(BarState.Off)
@@ -296,13 +253,14 @@ struct Index {
               .animation(defaultAnima)
 
               Row({ space: 10 }) {
-                TextInput({ placeholder: `󰀩 ${this.meowDictExampleBundle.mdx?.header?.Title || ''}`, text: this.lookUpWord })
+                TextInput({ placeholder: `󰀩 ${this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title || ''}`, text: this.lookUpWord })
                   .layoutWeight(1)
                   .onChange((e) => {
                     this.lookUpWord = e;
                   })
                   .onSubmit(() => {
-                    this.searchMDX(this.meowDictExampleBundle, this.lookUpWord).then((result) => {
+                    this.currentDictNo = 0;
+                    this.searchMDX(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord).then((result) => {
                       this.lookUpResult = result == true;
                     })
                   })
@@ -312,14 +270,15 @@ struct Index {
 
                 Button(`${this.lookUpResult ? '' : '¯\\_(ツ)_/¯  '}󰈱`)
                   .onClick(() => {
-                    this.searchMDX(this.meowDictExampleBundle, this.lookUpWord).then((result) => {
+                    this.currentDictNo = 0;
+                    this.searchMDX(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord).then((result) => {
                       this.lookUpResult = result == true;
                     })
                   })
               } // Search bar
-              .padding(this.myMeowLayout.wideMode ? { left: 10 } : {})
+              .padding(this.twoRows() ? { left: 10 } : {})
               .id('searchBar')
-              .alignRules(this.myMeowLayout.wideMode ?
+              .alignRules(this.twoRows() ?
                 { left: { anchor: 'fileControlButtons', align: HorizontalAlign.End }, right: { anchor: '__container__', align: HorizontalAlign.End }, bottom: { anchor: '__container__', align: VerticalAlign.Bottom } } :
                 { left: { anchor: '__container__', align: HorizontalAlign.Start }, right: { anchor: '__container__', align: HorizontalAlign.End }, bottom: { anchor: '__container__', align: VerticalAlign.Bottom } })
               .animation(defaultAnima)
@@ -344,13 +303,13 @@ struct Index {
           .animation(defaultAnima)
 
           if (this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode) {
-            Text(this.meowDictExampleBundle.mdx?.header?.Title)
+            Text(this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title)
               .padding(10)
               .width('100%')
               .textAlign(TextAlign.Center)
               .textVerticalAlign(TextVerticalAlign.TOP)
               .align(Alignment.Top)
-          }
+          } // Title
         }
       }
       .useEffect(this.myMeowFreeWindowModeStatus.on, EffectType.WINDOW_EFFECT)
@@ -380,20 +339,20 @@ struct Index {
 
   // Actions
 
-  loadWeb(content: string | undefined) {
+  loadWeb(content: string | undefined, base: string = this.context.filesDir + '/') {
     if (!content) {
       return false;
     }
 
-    this.currentContent = content;
-
     const avoidPercentages = this.constructWebAvoidPercentages();
-
     const padTop = `<div id='dictionareowTopAvoid' style="height: ${avoidPercentages[0]}%"></div>`;
     const padBottom = `<div id='dictionareowBottomAvoid' style="height: ${avoidPercentages[1]}%"></div>`;
 
+    console.log(`[Meow][loadWeb] base is ${'file://' + base}`);
+
     try {
-      this.webController.loadData(padTop + content + padBottom, 'text/html', 'UTF-8', 'file://' + this.context.filesDir + '/meow/', ' ');
+      // this.currentBase = base + 'meow/';
+      this.webController.loadData(padTop + content + padBottom, 'text/html', 'UTF-8', 'file://' + base, ' ');
       console.log(content);
       return true;
     } catch (e) {
@@ -431,7 +390,7 @@ struct Index {
         } catch (e) {
           console.error(`[Meow][MDX] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
         }
-        this.loadWeb(resultText);
+        this.loadWeb(resultText, this.currentBase());
         // console.log(`[Meow][MDX] Got result!`);
 
         this.keywordsInSameIndexBlock = bundle.mdx?.keyword?.index?.indexEntries[bundle.mdx?.keyword?.lookUpBlockIndex].builtBlock?.keywords || [];
@@ -468,7 +427,11 @@ struct Index {
    * @returns 60 or 110.
    * */
   titleHeight() {
-    return (this.myMeowLayout.wideMode ? 60 : 110);
+    return this.twoRows() ? 60 : 110;
+  }
+
+  twoRows() {
+    return (this.myMeowLayout.wideMode && (this.buttonsWidth < 0.8 * this.myMeowLayout.width));
   }
 
   /**
@@ -506,16 +469,13 @@ struct Index {
     return [topPercentage, bottomPercentage];
   }
 
-  // Events
-
-  @Monitor('meowDictExampleMDX.header')
-  // Why warning O.o
-  onDictRefresh() {
-    console.log(`[Meow][MDX] Woof!`);
-    this.firstPageLoaded = this.loadWeb(this.meowDictExampleBundle.mdx?.header?.toHtml());
+  currentBase() {
+    return this.context.filesDir + '/' + this.meowLibrarian.bundles[this.currentDictNo]?.sandboxPathWithEndSlash + 'meow/';
   }
 
-  @Monitor('myMeowFreeWindowModeStatus.on', 'myMeowAvoid.top', 'myMeowLayout.height', 'myMeowLayout.width', 'myMeowLayout.wideMode')
+  // Events
+
+  @Monitor('myMeowFreeWindowModeStatus.on', 'myMeowAvoid.top', 'myMeowLayout.height', 'myMeowLayout.width', 'myMeowLayout.wideMode', 'buttonsWidth')
   refreshUIParams() {
     // console.log(`[Meow][web][refreshUIParams] !`);
     this.topDown = this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode;
@@ -523,7 +483,7 @@ struct Index {
     this.linearBlurOps = this.constructLinearBlurOps();
   }
 
-  @Monitor('myMeowAvoid.top')
+  @Monitor('myMeowAvoid.top', 'buttonsWidth')
   refreshWebToUpdateAvoid() {
     // console.log(`[Meow][web][refreshWebToUpdateAvoid] !`);
     clearTimeout(this.timeoutIdForAvoidReload);

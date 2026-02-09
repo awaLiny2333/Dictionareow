@@ -1,6 +1,8 @@
 import { meowDict, meowDictType } from '../hosts/meowDict';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { addUnitsToSize, resource_to_string } from '../utils/data';
+import { LengthMetrics } from '@kit.ArkUI';
+import { defaultAnima } from '../utils/uiEnv';
 
 @ComponentV2
 struct MeowDictInfo {
@@ -9,31 +11,20 @@ struct MeowDictInfo {
   context: Context = this.getUIContext().getHostContext()!;
 
   build() {
-    Column({ space: 8 }) {
-      Text(this.dict.header?.Title)
-        .fontWeight(FontWeight.Bold)
-        .fontSize(24)
-        .opacity(0.9)
-        // .fontColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_onSub') : undefined)
+    Column({ space: 5 }) {
+      Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(5), cross: LengthMetrics.vp(2) } }) {
+        Text(this.dict.header?.Title)
+          .fontWeight(FontWeight.Bold)
+          .fontSize(16)
+          .opacity(0.9)
 
-      Text(`${this.dict.keyword?.numEntries} ${resource_to_string($r('app.string.entries'), this.context)}`)
-        .fontWeight(FontWeight.Bolder)
-        .opacity(0.75)
-        // .fontColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_onSub') : undefined)
+        Text(`${this.dict.keyword?.numEntries} ${resource_to_string($r('app.string.entries'), this.context)} / ${this.dict.header?.Encoding || 'Unknown encoding'} / ${addUnitsToSize(this.dict.size)}`)
+          .fontWeight(FontWeight.Medium)
+          .opacity(0.75)
 
-      Text(`${this.dict.header?.Encoding || 'Unknown encoding'}`)
-        .fontWeight(FontWeight.Bolder)
-        .opacity(0.75)
-        // .fontColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_onSub') : undefined)
-
-      Text(this.dict.fullPath)
-        .opacity(0.5)
-        // .fontColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_onSub') : undefined)
-
-      Text(addUnitsToSize(this.dict.size) + ' ' + (this.dict.type == meowDictType.MDX ? 'MDX' : 'MDD'))
-      // .fontWeight(FontWeight.Bolder)
-        .opacity(0.5)
-        // .fontColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_onSub') : undefined)
+        Text(this.dict.fullPath)
+          .opacity(0.5)
+      }
 
       if (this.deleteAction) {
         Row() {
@@ -43,7 +34,6 @@ struct MeowDictInfo {
                 this.deleteAction();
               }
             })
-            // .backgroundColor(this.dict.type == meowDictType.MDX ? $r('app.color.blur_background') : $r('app.color.meow_brand'))
         }
         .width('100%')
         .justifyContent(FlexAlign.End)

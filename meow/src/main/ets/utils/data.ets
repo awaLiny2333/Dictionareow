@@ -1,6 +1,6 @@
 import { buffer, fastbuffer } from '@kit.ArkTS';
-import { lzoDecompress } from './lzo';
-import { zlib } from '@kit.BasicServicesKit';
+import lazy { lzoDecompress } from './lzo';
+import lazy { zlib } from '@kit.BasicServicesKit';
 import { alder32ChecksumVerify } from './alder32';
 import { decryptKeywordIndex, getEncryptionKey } from './decryption';
 

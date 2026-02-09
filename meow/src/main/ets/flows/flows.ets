@@ -1,10 +1,10 @@
 import { AppStorageV2, window } from '@kit.ArkUI';
 import { meow, meowLevel } from '../utils/catsLogger';
-import lazy { sandboxCreateDir } from '../utils/storage';
 import { getUpdateAvoid, getUpdateFreeWindowMode, listenAvoid, listenFreeWindowMode, meowLayoutModeStatus, meowPx2vp } from '../utils/uiEnv';
-import { fileIo } from '@kit.CoreFileKit';
-import { meowDict, meowDictBundle, meowDictType } from '../hosts/meowDict';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { meowDictBundle } from '../hosts/meowDictBundle';
+import { fileIo } from '@kit.CoreFileKit';
+import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
 
 // Flows
 
@@ -63,53 +63,25 @@ export function onLoadContent(window: window.Window, context: Context) {
  * @param context The context.
  * */
 export function initEnv(context: Context) {
-  return sandboxCreateDir('meow', context).then(() => {
-    return sandboxCreateDir('woof', context).then(() => {
-      return sandboxCreateDir('honk', context).then(() => {
-        let bundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
-        // MDX
-        let mdx = readMDict('/woof/woof.mdx', meowDictType.MDX, context);
-        bundle.mdx = mdx;
-        // MDD
-        fileIo.listFile(context.filesDir + '/honk/')
-          .then((r) => {
-            for (let index = 0; index < r.length; index++) {
-              const path = context.filesDir + '/honk/' + r[index];
-              let mdd = new meowDict(meowDictType.MDD, path);
-              bundle.mdds.push(mdd);
-              mdd.init();
-            }
-          })
-          .catch((e: BusinessError) => {
-            console.error(`[Meow][initEnv] fileIo.listFile(context.filesDir + '/honk/') Failed: ${e}`);
-          })
-        // Files
-        bundle.updateFiles(context);
-        // readMDict('/woof/woof.mdd', meowDictType.MDD, 'meowDictExampleMDD', context);
-      })
-    })
-  })
-}
+  let bundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
+  bundle.initFrom('', context); // Legacy
 
-/**
- * Reads an MDict file and store the meowDict file into appStorage of given key
- * @param sandboxPath The sandbox path. With context.filesDir as base
- * @param type meowDictType
- * @param appStorageKey The key of appStorage record
- * @param context Context
- * @returns Nothing
- * */
-function readMDict(sandboxPath: string = '/woof/woof.mdx', type: meowDictType = meowDictType.MDX, context: Context) {
+  // New home
   try {
-    const existMdd = fileIo.accessSync(context.filesDir + sandboxPath);
-    if (existMdd) {
-      console.log(`[Meow][readMDict][${sandboxPath}] Exist!`);
-      let a = new meowDict(type, context.filesDir + sandboxPath);
-      a.init();
-      return a;
+    let homeExist = fileIo.accessSync(context.filesDir + '/bundles');
+    if (!homeExist) {
+      fileIo.mkdirSync(context.filesDir + '/bundles');
+      console.log(`[flow][initEnv] Created new home bundles!`);
+    } else {
+      refreshAllBundles(context);
     }
   } catch (e) {
-    console.error(`[Meow][readMDict][${sandboxPath}] Check and load existing mdx failed: ${e}`);
+    console.error(`[flow][initEnv] Create new home bundles failed! ${e}`);
   }
-  return undefined;
+}
+
+function refreshAllBundles(context: Context) {
+  console.log(`[flow][refreshAllBundles] BUILD!`);
+  let librarian = AppStorageV2.connect<meowDictBundleLibrarian>(meowDictBundleLibrarian, 'meowDictBundleLibrarian', () => new meowDictBundleLibrarian())!;
+  librarian.initAll(context);
 }

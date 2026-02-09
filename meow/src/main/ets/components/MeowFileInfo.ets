@@ -1,5 +1,6 @@
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { addUnitsToSize, resource_to_string } from '../utils/data';
+import { LengthMetrics } from '@kit.ArkUI';
 
 @ComponentV2
 struct MeowFileInfo {
@@ -7,29 +8,27 @@ struct MeowFileInfo {
   @Param @Require fileSize: number;
   @Param deleteAction?: (() => void) | undefined = undefined;
   @Local name: string = 'file';
-  @Local type: string = 'ext';
   context: Context = this.getUIContext().getHostContext()!;
 
   @Monitor('filePath')
   aboutToAppear(): void {
     const spl = this.filePath.split('/');
     this.name = spl[spl.length-1];
-    const nameSpl = this.name.split('.');
-    this.type = nameSpl[nameSpl.length-1].toUpperCase();
   }
 
   build() {
-    Column({ space: 8 }) {
-      Text(this.name)
-        // .fontWeight(FontWeight.Medium)
-        .fontSize(24)
-        .opacity(0.75)
+    Column({ space: 5 }) {
+      Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(5), cross: LengthMetrics.vp(2) } }) {
+        Text(this.name)
+          .fontSize(16)
+          .opacity(0.75)
 
-      Text(this.filePath)
-        .opacity(0.5)
-      Text(addUnitsToSize(this.fileSize) + ' ' + this.type)
-      // .fontWeight(FontWeight.Bolder)
-        .opacity(0.5)
+        Text(this.filePath)
+          .opacity(0.5)
+
+        Text(addUnitsToSize(this.fileSize))
+          .opacity(0.5)
+      }
 
       if (this.deleteAction) {
         Row() {
@@ -40,8 +39,8 @@ struct MeowFileInfo {
               }
             })
             .opacity(0.8)
-            // .backgroundColor($r('app.color.meow_iconSubEmphasize'))
-            // .fontColor($r('app.color.meow_onSub'))
+          // .backgroundColor($r('app.color.meow_iconSubEmphasize'))
+          // .fontColor($r('app.color.meow_onSub'))
 
         }
         .width('100%')

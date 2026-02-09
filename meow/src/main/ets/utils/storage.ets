@@ -1,6 +1,6 @@
-import { fileIo, fileUri, picker } from '@kit.CoreFileKit';
+import lazy { fileIo, fileUri, picker } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { taskpool } from '@kit.ArkTS';
+import lazy { taskpool } from '@kit.ArkTS';
 
 export interface meowReadPickResult {
   succeed: boolean;

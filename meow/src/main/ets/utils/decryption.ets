@@ -3,7 +3,7 @@
  * Fixes and adaptions by Liny's dictionary cat engineer!
  * */
 
-import { buffer } from '@kit.ArkTS';
+import lazy { buffer } from '@kit.ArkTS';
 
 // TODO: Verify that this works!
 /**

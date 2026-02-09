@@ -31,6 +31,10 @@
     {
       "name": "entries",
       "value": "词汇"
+    },
+    {
+      "name": "new_dictionary",
+      "value": "词典"
     }
   ]
 }

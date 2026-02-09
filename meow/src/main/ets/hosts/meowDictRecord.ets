@@ -1,5 +1,5 @@
 import { arrayBuffer2Int64BE, bufferBuffer2Int64BE, decompress } from '../utils/data';
-import { fastbuffer } from '@kit.ArkTS';
+import { fastbuffer, taskpool } from '@kit.ArkTS';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { sandboxReadArrayBufferConcurrent, sandboxReadArrayBufferSync } from '../utils/storage';
 
@@ -50,14 +50,23 @@ export class meowDictRecord {
 
     const metaDataBlockSlice = sandboxReadArrayBufferSync(this.fullPath, this.globalOffset + 32, 16 * numBlocks)!;
 
-    const res = calculateMetaDataSync(metaDataBlockSlice, numBlocks);
-    this.compSizes = res.compSizes;
-    this.decompSizes = res.decompSizes;
-    this.compSizesCumulative = res.compSizesCumulative;
-    this.decompSizesCumulative = res.decompSizesCumulative;
-    this.recBlocksHeadOffset = res.recBlocksHeadOffset + 32 + this.globalOffset;
-    this.ready = true;
-    console.warn(`[meowDictRecord][processMetadata] taskpool.execute(task) OK!`);
+    // const res = calculateMetaDataSync(metaDataBlockSlice, numBlocks);
+    // this.compSizes = res.compSizes;
+    // this.decompSizes = res.decompSizes;
+    // this.compSizesCumulative = res.compSizesCumulative;
+    // this.decompSizesCumulative = res.decompSizesCumulative;
+    // this.recBlocksHeadOffset = res.recBlocksHeadOffset + 32 + this.globalOffset;
+    // this.ready = true;
+
+    calculateMetaDataConcurrent(metaDataBlockSlice, numBlocks).then((res) => {
+      res = res as calculateMetaDataSyncResult;
+      this.compSizes = res.compSizes;
+      this.decompSizes = res.decompSizes;
+      this.compSizesCumulative = res.compSizesCumulative;
+      this.decompSizesCumulative = res.decompSizesCumulative;
+      this.recBlocksHeadOffset = res.recBlocksHeadOffset + 32 + this.globalOffset;
+      this.ready = true;
+    })
   }
 
   /**
@@ -180,4 +189,19 @@ function calculateMetaDataSync(rawData: ArrayBuffer, numBlocks: number) {
     decompSizesCumulative: decompSizesCumulative,
     recBlocksHeadOffset: recBlocksHeadOffset,
   } as calculateMetaDataSyncResult;
+}
+
+export async function calculateMetaDataConcurrent(rawData: ArrayBuffer, numBlocks: number) {
+  // taskpool.execute(task)
+  let task: taskpool.Task = new taskpool.Task(calculateMetaDataSync, rawData, numBlocks);
+
+  try {
+    const result = await taskpool.execute(task);
+    console.info(`[calculateMetaDataConcurrent] taskpool.execute(task)!`);
+    return result as calculateMetaDataSyncResult;
+  } catch (e) {
+    console.error(`[calculateMetaDataConcurrent] Failed: ${e}`);
+    return undefined;
+  }
+  // return undefined;
 }

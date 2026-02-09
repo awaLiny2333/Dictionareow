@@ -1,11 +1,10 @@
 import { meowDictHeader } from './meowDictHeader';
-import { addUnitsToSize, arrayBuffer2Int32BE, arrayBuffer2Int32LE, arrayBuffer2UTF16LE, getUnitEncodingLength } from '../utils/data';
+import { arrayBuffer2Int32BE, arrayBuffer2Int32LE, arrayBuffer2UTF16LE, getUnitEncodingLength } from '../utils/data';
 import { meowDictKeyword } from './meowDictKeyword';
 import { alder32ChecksumVerify } from '../utils/alder32';
 import { meowDictRecord } from './meowDictRecord';
-import { sandboxReadArrayBufferSync, saveHybrid } from '../utils/storage';
+import { sandboxReadArrayBufferSync } from '../utils/storage';
 import { fileIo } from '@kit.CoreFileKit';
-import { BusinessError } from '@kit.BasicServicesKit';
 
 export enum meowDictType {
   MDD = 0,
@@ -26,13 +25,11 @@ export class meowDict {
     this.type = type;
 
     // Get size
-    fileIo.stat(fullPath)
-      .then((r) => {
-        this.size = r.size;
-      })
-      .catch((e: BusinessError) => {
-        console.error(`[meowDict][${this.fullPath}] fileIo.stat(fullPath) failed: ${e}`);
-      })
+    try {
+      this.size = fileIo.statSync(fullPath).size;
+    } catch (e) {
+      console.error(`[meowDict][${this.fullPath}] fileIo.statSync(fullPath) failed: ${e}`);
+    }
   }
 
   async init() {
@@ -173,88 +170,3 @@ export class meowDict {
   }
 }
 
-@ObservedV2
-export class meowDictBundle {
-  @Trace mdx: meowDict | undefined;
-  @Trace mdds: meowDict[] = [];
-  @Trace files: string[] = [];
-  @Trace fileSizes: number[] = [];
-  cacheKeys: string[] = []
-  cacheBufs: ArrayBuffer[] = []
-
-  constructor(mdx?: meowDict) {
-    if (mdx) {
-      this.mdx = mdx;
-    }
-  }
-
-  async lookUpResourceFromMDDs(key: string) {
-    const startTime: number = Date.now();
-
-    const cacheIdx = this.cacheKeys.indexOf(key);
-    if (cacheIdx >= 0) {
-      console.log(`[meowDictBundle][lookUpResourceFromMDDs] Fetch from cache [${key}]`);
-      return this.cacheBufs[cacheIdx];
-    }
-
-    for (let index = 0; index < this.mdds.length; index++) {
-      let meow = await this.mdds[index].lookUpKey(key);
-      if (meow) {
-        if (meow.byteLength > 100000) {
-          this.cacheKeys.push(key);
-          this.cacheBufs.push(meow);
-          console.log(`[meowDictBundle][lookUpResourceFromMDDs] Cached [${key}] (${addUnitsToSize(meow.byteLength)})`);
-        }
-        console.log(`[meowDictBundle][lookUpResourceFromMDDs] Found [${key}] in MDD [${this.mdds[index].fullPath}]! (${Date.now() - startTime} ms)`);
-        return meow;
-      }
-    }
-    console.error(`[meowDictBundle][lookUpResourceFromMDDs] [${key}] Not found in any MDD!`);
-    return undefined;
-  }
-
-  async extractFileToTemp(key: string, context: Context) {
-    return this.lookUpResourceFromMDDs(key).then((resultBuffer) => {
-      if (!resultBuffer) {
-        return undefined;
-      }
-
-      console.log(`[Meow][extractFile] Got result!`);
-
-      let fileName = key;
-      if (fileName.substring(0, 1) == '\\') {
-        fileName = fileName.substring(1);
-      }
-
-      const path = context.tempDir + '/' + fileName;
-      saveHybrid(path, resultBuffer);
-
-      return path;
-    })
-  }
-
-  /**
-   * Updates the extra files additionally added.
-   * @param context Context.
-   * */
-  updateFiles(context: Context) {
-    // Files
-    this.files = [];
-    fileIo.listFile(context.filesDir + '/meow/')
-      .then((r) => {
-        for (let index = 0; index < r.length; index++) {
-          const path = context.filesDir + '/meow/' + r[index];
-          this.files.push(path);
-
-          fileIo.stat(path).then((r) => {
-            this.fileSizes.push(r.size);
-          }).catch((e: BusinessError) => {
-            console.error(`[Meow][initEnv] fileIo.stat(path) Failed: ${e}`);
-          })
-        }
-      })
-      .catch((e: BusinessError) => {
-        console.error(`[Meow][initEnv] fileIo.listFile(context.filesDir + '/honk/') Failed: ${e}`);
-      })
-  }
-}
