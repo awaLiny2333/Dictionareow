@@ -154,7 +154,7 @@ struct Index {
 
                   return null;
                 })
-                .borderRadius(15)
+                // .borderRadius(15)
                 .backgroundColor(Color.Transparent)
                 .id('mainWeb')
                 .linearGradientBlur(30, this.linearBlurOps)
