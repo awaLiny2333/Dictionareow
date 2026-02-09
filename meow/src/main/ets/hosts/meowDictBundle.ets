@@ -29,9 +29,20 @@ export class meowDictBundle {
       return sandboxCreateDir(sandboxPathWithEndSlash + 'woof', context).then(() => {
         return sandboxCreateDir(sandboxPathWithEndSlash + 'honk', context).then(() => {
           // MDX
-          let mdx = readMDict('/' + sandboxPathWithEndSlash + 'woof/woof.mdx', meowDictType.MDX, context);
-          this.mdx = mdx;
-          console.log(`[readMDict] ${this.mdx?.header?.Title}`);
+          fileIo.listFile(context.filesDir + '/' + sandboxPathWithEndSlash + 'woof/')
+            .then((r) => {
+              if (r.length > 0) {
+                let mdx = readMDict('/' + sandboxPathWithEndSlash + 'woof/' + r[0], meowDictType.MDX, context);
+                this.mdx = mdx;
+                console.log(`[readMDict] ${this.mdx?.header?.Title}`);
+                this.updateSizes();
+              } else {
+                console.warn(`[readMDict][${sandboxPathWithEndSlash}] NO MDX?`);
+              }
+            })
+            .catch((e: BusinessError) => {
+              console.error(`[meowDictBundle][initFrom] fileIo.listFile(context.filesDir + '/honk/') Failed: ${e}`);
+            })
           // MDD
           fileIo.listFile(context.filesDir + '/' + sandboxPathWithEndSlash + 'honk/')
             .then((r) => {
@@ -149,7 +160,9 @@ export class meowDictBundle {
   // File operations
 
   addMDX(sourcePath: string, context: Context) {
-    const destPath: string = context.filesDir + '/' + this.sandboxPathWithEndSlash + 'woof/woof.mdx';
+    const sourcePathSplit = sourcePath.split('/');
+    const fileName: string | undefined = sourcePathSplit[sourcePathSplit.length-1];
+    const destPath: string = context.filesDir + '/' + this.sandboxPathWithEndSlash + 'woof/' + fileName;
     fileCopy(sourcePath, destPath).then(() => {
       this.mdx = new meowDict(meowDictType.MDX, destPath);
       this.mdx.init();
@@ -175,8 +188,8 @@ export class meowDictBundle {
   }
 
   addFile(sourcePath: string, context: Context, updateFile: boolean = true) {
-    const targetPathSplit = sourcePath.split('/');
-    const fileName: string | undefined = targetPathSplit[targetPathSplit.length-1];
+    const sourcePathSplit = sourcePath.split('/');
+    const fileName: string | undefined = sourcePathSplit[sourcePathSplit.length-1];
     fileCopy(sourcePath, context.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/' + fileName).then(() => {
       if (updateFile) {
         this.updateFilesSync(context);

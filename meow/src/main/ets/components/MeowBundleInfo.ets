@@ -14,15 +14,16 @@ struct meowBundleInfo {
   @Param @Require bundle: meowDictBundle;
   @Local myMeowLayout: meowLayoutModeStatus = AppStorageV2.connect<meowLayoutModeStatus>(meowLayoutModeStatus)!;
   @Local isExpanded: boolean = false;
+  @Local renderExpanded: boolean = false;
   @Param deleteAction?: (() => void) | undefined = undefined;
   context: Context = this.getUIContext().getHostContext()!;
 
   build() {
     Column({ space: 8 }) {
-      Row() {
+      Row({ space: 8 }) {
         Text(this.bundle.mdx?.header?.Title || 'meow')
           .fontWeight(FontWeight.Bolder)
-          .fontSize(24)
+          .fontSize(20)
           .opacity(0.9)
           .layoutWeight(1)
 
@@ -34,116 +35,125 @@ struct meowBundleInfo {
       .padding({ right: 10 })
       .justifyContent(FlexAlign.Center)
 
-      Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(5), cross: LengthMetrics.vp(2) } }) {
-        Text(`${this.bundle.mdx?.keyword?.numEntries} ${resource_to_string($r('app.string.entries'), this.context)} / ${addUnitsToSize(this.bundle.totalSize)}`)
-          .fontWeight(FontWeight.Bolder)
-          .opacity(0.75)
+      if (this.renderExpanded) {
+        Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(5), cross: LengthMetrics.vp(2) } }) {
+          Text(`${this.bundle.mdx?.keyword?.numEntries} ${resource_to_string($r('app.string.entries'), this.context)} / ${addUnitsToSize(this.bundle.totalSize)}`)
+            .fontWeight(FontWeight.Bolder)
+            .opacity(0.75)
 
-        Text(`${this.context.filesDir}/${this.bundle.sandboxPathWithEndSlash}`)
-          .fontWeight(FontWeight.Medium)
-          .opacity(0.5)
-      }
-      .visibility(this.isExpanded ? Visibility.Visible : Visibility.None)
-      .animation(defaultAnima)
-
-      Scroll() {
-        Row({ space: 10 }) {
-          Button(this.bundle.mdx?.header ? 'MDX  󰀓' : '󰀵 MDX')
-            .onClick(() => {
-              fileDocumentPick2Path(['.mdx'], 1).then((r) => {
-                if (r.succeed) {
-                  this.bundle.addMDX(r.sourcePaths![0], this.context);
-                }
-              })
-            })
-          Button(`󰀵 MDD (${this.bundle.mdds.length})`)
-            .onClick(() => {
-              fileDocumentPick2Path(['.mdd'], 233).then((r) => {
-                if (r.succeed) {
-                  for (let index = 0; index < r.sourcePaths!.length; index++) {
-                    this.bundle.addMDD(r.sourcePaths![index], this.context);
-                  }
-                }
-              })
-            })
-          Button(`󰀵 ${resource_to_string($r('app.string.add_files'), this.context)} (${this.bundle.files.length})`)
-            .onClick(() => {
-              fileDocumentPick2Path([], 233).then((r) => {
-                if (r.succeed) {
-                  for (let index = 0; index < r.sourcePaths!.length; index++) {
-                    this.bundle.addFile(r.sourcePaths![index], this.context, index == r.sourcePaths!.length - 1);
-                  }
-                }
-              })
-            })
-
-          if (this.deleteAction) {
-            Button(` 󰀁 ${resource_to_string($r('app.string.delete'), this.context)}`)
-              .onClick(() => {
-                if (this.deleteAction) {
-                  this.deleteAction();
-                }
-              })
-          }
-        } // Buttons
-      } // Control buttons
-      .visibility(this.isExpanded ? Visibility.Visible : Visibility.None)
-      .animation(defaultAnima)
-      .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
-      .scrollable(ScrollDirection.Horizontal)
-      .scrollBar(BarState.Off)
-      .edgeEffect(EdgeEffect.Spring)
-
-      Column({ space: 8 }) {
-        if (this.bundle.mdx) {
-          MeowDictInfo({
-            dict: this.bundle.mdx,
-            deleteAction: () => {
-              fileIo.unlink(this.bundle.mdx!.fullPath)
-                .catch((e: BusinessError) => {
-                  console.error(`[Meow][Info] fileIo.unlink(this.bundle.mdds[index].fullPath) Failed: ${e}`);
-                });
-              this.bundle.mdx = undefined;
-              this.bundle.updateSizes();
-            }
-          })
+          Text(`${this.context.filesDir}/${this.bundle.sandboxPathWithEndSlash}`)
+            .fontWeight(FontWeight.Medium)
+            .opacity(0.5)
         }
-        ForEach(this.bundle.mdds, ((mdd: meowDict, index: number) => {
-          MeowDictInfo({
-            dict: mdd,
-            deleteAction: () => {
-              fileIo.unlink(this.bundle.mdds[index].fullPath)
-                .catch((e: BusinessError) => {
-                  console.error(`[Meow][Info] fileIo.unlink(this.bundle.mdds[index].fullPath) Failed: ${e}`);
-                });
-              this.bundle.mdds.splice(index, 1);
-              this.bundle.updateSizes();
-            }
-          })
-        }))
-        ForEach(this.bundle.files, ((path: string, index: number) => {
-          MeowFileInfo({
-            filePath: path,
-            fileSize: this.bundle.fileSizes[index],
-            deleteAction: () => {
-              fileIo.unlink(path)
-                .then(() => {
-                  this.bundle.updateFilesSync(this.context);
+        .visibility(this.isExpanded ? Visibility.Visible : Visibility.None)
+        .animation(defaultAnima)
+
+        Scroll() {
+          Row({ space: 10 }) {
+            Button(this.bundle.mdx?.header ? 'MDX  󰀓' : '󰀵 MDX')
+              .onClick(() => {
+                fileDocumentPick2Path(['.mdx'], 1).then((r) => {
+                  if (r.succeed) {
+                    this.bundle.addMDX(r.sourcePaths![0], this.context);
+                  }
                 })
-                .catch((e: BusinessError) => {
-                  console.error(`[Meow][Info][Files] fileIo.unlink(path) Failed: ${e}`);
-                });
+              })
+            Button(`󰀵 MDD (${this.bundle.mdds.length})`)
+              .onClick(() => {
+                fileDocumentPick2Path(['.mdd'], 233).then((r) => {
+                  if (r.succeed) {
+                    for (let index = 0; index < r.sourcePaths!.length; index++) {
+                      this.bundle.addMDD(r.sourcePaths![index], this.context);
+                    }
+                  }
+                })
+              })
+            Button(`󰀵 ${resource_to_string($r('app.string.add_files'), this.context)} (${this.bundle.files.length})`)
+              .onClick(() => {
+                fileDocumentPick2Path([], 233).then((r) => {
+                  if (r.succeed) {
+                    for (let index = 0; index < r.sourcePaths!.length; index++) {
+                      this.bundle.addFile(r.sourcePaths![index], this.context, index == r.sourcePaths!.length - 1);
+                    }
+                  }
+                })
+              })
+
+            if (this.deleteAction) {
+              Button(` 󰀁 ${resource_to_string($r('app.string.delete'), this.context)}`)
+                .onClick(() => {
+                  if (this.deleteAction) {
+                    this.deleteAction();
+                  }
+                })
             }
-          })
-        }))
-      } // Info
-      .visibility(this.isExpanded ? Visibility.Visible : Visibility.None)
-      .animation(defaultAnima)
-      .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+          } // Buttons
+        } // Control buttons
+        .visibility(this.isExpanded ? Visibility.Visible : Visibility.None)
+        .animation(defaultAnima)
+        .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+        .scrollable(ScrollDirection.Horizontal)
+        .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.Spring)
+
+        Column({ space: 8 }) {
+          if (this.bundle.mdx) {
+            MeowDictInfo({
+              dict: this.bundle.mdx,
+              deleteAction: () => {
+                fileIo.unlink(this.bundle.mdx!.fullPath)
+                  .catch((e: BusinessError) => {
+                    console.error(`[Meow][Info] fileIo.unlink(this.bundle.mdds[index].fullPath) Failed: ${e}`);
+                  });
+                this.bundle.mdx = undefined;
+                this.bundle.updateSizes();
+              }
+            })
+          }
+          ForEach(this.bundle.mdds, ((mdd: meowDict, index: number) => {
+            MeowDictInfo({
+              dict: mdd,
+              deleteAction: () => {
+                fileIo.unlink(this.bundle.mdds[index].fullPath)
+                  .catch((e: BusinessError) => {
+                    console.error(`[Meow][Info] fileIo.unlink(this.bundle.mdds[index].fullPath) Failed: ${e}`);
+                  });
+                this.bundle.mdds.splice(index, 1);
+                this.bundle.updateSizes();
+              }
+            })
+          }))
+          ForEach(this.bundle.files, ((path: string, index: number) => {
+            MeowFileInfo({
+              filePath: path,
+              fileSize: this.bundle.fileSizes[index],
+              deleteAction: () => {
+                fileIo.unlink(path)
+                  .then(() => {
+                    this.bundle.updateFilesSync(this.context);
+                  })
+                  .catch((e: BusinessError) => {
+                    console.error(`[Meow][Info][Files] fileIo.unlink(path) Failed: ${e}`);
+                  });
+              }
+            })
+          }))
+        } // Info
+        .visibility(this.isExpanded ? Visibility.Visible : Visibility.None)
+        .animation(defaultAnima)
+        .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+      }
 
     }
     .onClick(() => {
-      this.isExpanded = !this.isExpanded;
+      if (this.renderExpanded) {
+        this.isExpanded = !this.isExpanded;
+      } else {
+        this.renderExpanded = true;
+        setTimeout(() => {
+          this.isExpanded = !this.isExpanded;
+        }, 80)
+      }
     })
     .width('100%')
     .alignItems(HorizontalAlign.Start)

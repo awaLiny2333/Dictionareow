@@ -50,7 +50,7 @@ export class meowDictHeader {
    */
   constructor(config: meowDictHeaderConfig = {}, fullPath: string) {
     const targetPathSplit = fullPath.split('/');
-    const fileName: string | undefined = targetPathSplit[targetPathSplit.length-1];
+    const fileName: string | undefined = targetPathSplit[targetPathSplit.length-1].split('.')[0];
 
     // 设置默认值
     this.generatedByEngineVersion = config.generatedByEngineVersion || "2.0";
@@ -316,6 +316,7 @@ export class meowDictHeader {
       }
     }
 
+    console.log(`[meowDictHeader] Title: ${config.title}`);
     return new meowDictHeader(config, fullPath);
   }
 

@@ -32,17 +32,19 @@ export class meowDict {
     }
   }
 
-  async init() {
+  init() {
     const startTime: number = Date.now();
 
     let globalOffset: number = 0;
-    globalOffset += await this.processHeader();
-    globalOffset += this.processKeyword(globalOffset);
-    this.processRecord(globalOffset);
+    this.processHeader().then((val) => {
+      globalOffset += val;
+      globalOffset += this.processKeyword(globalOffset);
+      this.processRecord(globalOffset);
 
-    // Ending mark
-    console.log(`[meowDict][${this.fullPath}] READY! (${Date.now() - startTime} ms)
+      // Ending mark
+      console.log(`[meowDict][${this.fullPath}] READY! (${Date.now() - startTime} ms)
     `);
+    })
   }
 
   /**
@@ -60,9 +62,6 @@ export class meowDict {
 
     const headerChecksumBuffer = sandboxReadArrayBufferSync(this.fullPath!, 4 + headerContentLength, 4);
     const headerChecksumNumber = arrayBuffer2Int32LE(headerChecksumBuffer) || 0;
-
-    // Header checksum in ADLER32, let's leave it here for a while
-    // TODO: finish up the checksum checker
 
     if (headerContent) {
       this.header = meowDictHeader.fromXMLString(headerContent, this.fullPath);

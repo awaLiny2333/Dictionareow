@@ -226,12 +226,11 @@ export interface decompressDecryptConfig {
   userId?: string;
 }
 
-export async function decompress(rawData: ArrayBuffer, decompLen: number, logTag: string = '', dec: decompressDecryptConfig) {
+export async function decompress(rawData: ArrayBuffer, decompLen: number, logTag: string = '', dec: decompressDecryptConfig, verify: boolean = false) {
   const compType = new Uint8Array(rawData.slice(0, 4)).toString();
   console.log(`${logTag}[decompress] compType = ${compType}, compLen = ${rawData.byteLength}, decompLen = ${decompLen}`);
 
   const compChecksumBuffer = rawData.slice(4, 8);
-  const compChecksumNumber = arrayBuffer2Int32BE(compChecksumBuffer) || 0;
 
   let compData = rawData.slice(8);
   // console.log(`${logTag}[decompress] compData.byteLength = ${compData.byteLength}`);
@@ -273,12 +272,16 @@ export async function decompress(rawData: ArrayBuffer, decompLen: number, logTag
     })
   }
 
-  const verify = alder32ChecksumVerify(decompData, compChecksumNumber);
   if (verify) {
-    console.log(`${logTag}[decompress] Checksum verify: ${verify}`);
-  } else {
-    console.warn(`${logTag}[decompress] Checksum verify: ${verify}`);
+    const compChecksumNumber = arrayBuffer2Int32BE(compChecksumBuffer) || 0;
+    const verifyResult = alder32ChecksumVerify(decompData, compChecksumNumber);
+    if (verifyResult) {
+      console.log(`${logTag}[decompress] Checksum verify: ${verifyResult}`);
+    } else {
+      console.warn(`${logTag}[decompress] Checksum verify: ${verifyResult}`);
+    }
   }
+
   return decompData;
 }
 
@@ -310,7 +313,7 @@ export function addUnitsToSize(size_in_bytes: number | bigint) {
 /**
  * 根据文件名或路径获取对应的 MIME 类型。
  * @description
- * 1. 自动处理大小写（如 .JPG -> image/jpeg）。
+* 1. 自动处理大小写（如 .JPG -> image/jpeg）。
  * 2. 能够正确处理包含路径的字符串（如 /path/to/file.txt）。
  * 3. 排除无后缀或隐藏文件（如 .gitignore）。
  * 4. 匹配失败时默认返回 'application/octet-stream'。
@@ -318,7 +321,7 @@ export function addUnitsToSize(size_in_bytes: number | bigint) {
  * @returns {string} 对应的 MIME 类型字符串
  * @author Gemini web @ Feb 8 2026
  * @example
- * mimeOfFileName('vacation.jpg');     // 'image/jpeg'
+* mimeOfFileName('vacation.jpg');     // 'image/jpeg'
  * mimeOfFileName('INDEX.HTML');      // 'text/html'
  * mimeOfFileName('config');          // 'application/octet-stream'
  * mimeOfFileName('.hidden-file');    // 'application/octet-stream'

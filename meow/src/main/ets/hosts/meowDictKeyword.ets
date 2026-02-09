@@ -292,10 +292,12 @@ export class meowDictKeywordIndex {
     // this.init();
   }
 
-  async init(encoding: string, dec: decompressDecryptConfig) {
-    this.decompData = await decompress(this.rawData!, this.keyIndexDecompLen, '[meowDictKeyword][Index][init]', dec);
-    this.processIndexEntry(encoding);
-    this.rawData = undefined; // Release memory
+  init(encoding: string, dec: decompressDecryptConfig) {
+    return decompress(this.rawData!, this.keyIndexDecompLen, '[meowDictKeyword][Index][init]', dec).then((data) => {
+      this.decompData = data;
+      this.processIndexEntry(encoding);
+      this.rawData = undefined; // Release memory
+    })
   }
 
   processIndexEntry(encoding: string) {
