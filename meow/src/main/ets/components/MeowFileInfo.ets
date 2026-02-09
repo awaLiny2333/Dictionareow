@@ -39,7 +39,10 @@ struct MeowFileInfo {
                 this.deleteAction();
               }
             })
-            .backgroundColor($r('app.color.blur_background'))
+            .opacity(0.8)
+            // .backgroundColor($r('app.color.meow_iconSubEmphasize'))
+            // .fontColor($r('app.color.meow_onSub'))
+
         }
         .width('100%')
         .justifyContent(FlexAlign.End)

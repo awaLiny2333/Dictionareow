@@ -13,19 +13,27 @@ struct MeowDictInfo {
       Text(this.dict.header?.Title)
         .fontWeight(FontWeight.Bold)
         .fontSize(24)
+        .opacity(0.9)
+        // .fontColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_onSub') : undefined)
 
       Text(`${this.dict.keyword?.numEntries} ${resource_to_string($r('app.string.entries'), this.context)}`)
         .fontWeight(FontWeight.Bolder)
         .opacity(0.75)
+        // .fontColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_onSub') : undefined)
+
       Text(`${this.dict.header?.Encoding || 'Unknown encoding'}`)
         .fontWeight(FontWeight.Bolder)
         .opacity(0.75)
+        // .fontColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_onSub') : undefined)
 
       Text(this.dict.fullPath)
         .opacity(0.5)
+        // .fontColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_onSub') : undefined)
+
       Text(addUnitsToSize(this.dict.size) + ' ' + (this.dict.type == meowDictType.MDX ? 'MDX' : 'MDD'))
       // .fontWeight(FontWeight.Bolder)
         .opacity(0.5)
+        // .fontColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_onSub') : undefined)
 
       if (this.deleteAction) {
         Row() {
