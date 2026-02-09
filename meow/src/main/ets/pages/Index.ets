@@ -166,28 +166,35 @@ struct Index {
             }
 
             Column({ space: 8 }) {
-              Row({ space: 8 }) {
-                Button(`󰀵 ${resource_to_string($r('app.string.new_dictionary'), this.context)}`)
-                  .onClick(() => {
-                    this.meowLibrarian.createBundle(this.context);
-                  })
-
-                Select(this.meowLibrarian.constructSelectOptions())
-                  .selected(this.myMeowMisc.defaultDictBundleIndex)
-                  .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex].mdx?.header?.Title)
-                  .onSelect((index: number) => {
-                    console.info('[Meow][Select] Select:' + index);
-                    this.myMeowMisc.defaultDictBundleIndex = index;
-                    saveHybrid(this.context.filesDir + '/oops/default.txt', index.toString(), true);
-                  })
-                  .selectedOptionBgColor($r('app.color.meow_iconSubEmphasize'))
-                  .selectedOptionFontColor($r('sys.color.font'))
-                  .selectedOptionFont({ weight: FontWeight.Bold })
-              }
-              .clip(true)
-              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
-
               if (this.renderMore) {
+
+                Scroll() {
+                  Row({ space: 8 }) {
+                    Button(`󰀵 ${resource_to_string($r('app.string.new_dictionary'), this.context)}`)
+                      .onClick(() => {
+                        this.meowLibrarian.createBundle(this.context);
+                      })
+
+                    Select(this.meowLibrarian.constructSelectOptions())
+                      .selected(this.myMeowMisc.defaultDictBundleIndex)
+                      .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex].mdx?.header?.Title)
+                      .onSelect((index: number) => {
+                        console.info('[Meow][Select] Select:' + index);
+                        this.myMeowMisc.defaultDictBundleIndex = index;
+                        saveHybrid(this.context.filesDir + '/oops/default.txt', index.toString(), true);
+                      })
+                      .selectedOptionBgColor($r('app.color.meow_iconSubEmphasize'))
+                      .selectedOptionFontColor($r('sys.color.font'))
+                      .selectedOptionFont({ weight: FontWeight.Bold })
+                  }
+                }
+                .edgeEffect(EdgeEffect.Spring)
+                .scrollable(ScrollDirection.Horizontal)
+                .scrollBar(BarState.Off)
+                .clip(true)
+                .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+
+                // if (this.renderMore) {
                 Scroll() {
                   Column({ space: 8 }) {
                     if (this.meowDictExampleBundle.mdx?.header) {
