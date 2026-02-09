@@ -2,6 +2,7 @@ import { deviceInfo } from '@kit.BasicServicesKit';
 import { addUnitsToSize, resource_to_string } from '../utils/data';
 import { LengthMetrics } from '@kit.ArkUI';
 
+@ReusableV2
 @ComponentV2
 struct MeowFileInfo {
   @Param @Require filePath: string;

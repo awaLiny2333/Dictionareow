@@ -2,8 +2,8 @@ import { meowDict, meowDictType } from '../hosts/meowDict';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { addUnitsToSize, resource_to_string } from '../utils/data';
 import { LengthMetrics } from '@kit.ArkUI';
-import { defaultAnima } from '../utils/uiEnv';
 
+@ReusableV2
 @ComponentV2
 struct MeowDictInfo {
   @Param @Require dict: meowDict;
