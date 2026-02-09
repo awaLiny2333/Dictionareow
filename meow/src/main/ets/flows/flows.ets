@@ -5,6 +5,9 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { meowDictBundle } from '../hosts/meowDictBundle';
 import { fileIo } from '@kit.CoreFileKit';
 import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
+import { readArrayBufferSync, sandboxCreateDir, saveHybrid } from '../utils/storage';
+import { buffer } from '@kit.ArkTS';
+import { meowMisc } from '../hosts/meowMisc';
 
 // Flows
 
@@ -63,6 +66,20 @@ export function onLoadContent(window: window.Window, context: Context) {
  * @param context The context.
  * */
 export function initEnv(context: Context) {
+  sandboxCreateDir('oops', context).then(() => {
+    saveHybrid(context.filesDir + '/oops/default.txt', '0', false).then((result) => {
+      if (result == undefined) {
+        // Should read
+        const read = readArrayBufferSync(context.filesDir + '/oops/default.txt');
+        const readString = buffer.from(read).toString();
+        const readNumber = Number(readString);
+        console.log(`[initEnv] Read default dictionary is ${readNumber}!`);
+        let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
+        misc.defaultDictBundleIndex = readNumber;
+      }
+    })
+  })
+
   let bundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
   bundle.initFrom('', context); // Legacy
 

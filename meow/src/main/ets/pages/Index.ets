@@ -11,6 +11,8 @@ import lazy { fastbuffer } from '@kit.ArkTS';
 import meowBundleInfo from '../components/MeowBundleInfo';
 import { meowDictBundle } from '../hosts/meowDictBundle';
 import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
+import { saveHybrid } from '../utils/storage';
+import { meowMisc } from '../hosts/meowMisc';
 
 @Entry
 @ComponentV2
@@ -18,6 +20,7 @@ struct Index {
   @Local myMeowAvoid: meowAvoid = AppStorageV2.connect<meowAvoid>(meowAvoid)!;
   @Local myMeowFreeWindowModeStatus: meowFreeWindowModeStatus = AppStorageV2.connect<meowFreeWindowModeStatus>(meowFreeWindowModeStatus)!;
   @Local myMeowLayout: meowLayoutModeStatus = AppStorageV2.connect<meowLayoutModeStatus>(meowLayoutModeStatus)!;
+  @Local myMeowMisc: meowMisc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
   @Local windowTopAvoid: number = 0;
   // Data
   @Local meowDictExampleBundle: meowDictBundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
@@ -27,6 +30,9 @@ struct Index {
   @Local lookUpResult: boolean = true;
   @Local keywordsInSameIndexBlock: string[] = [];
   @Local keywordsInSameIndexBlockRelevant: string[] = [];
+  // Dictionaries
+  @Local currentDictNo: number = this.myMeowMisc.defaultDictBundleIndex;
+  @Local currentDictBundleTitle: string = '(～o￣3￣)～';
   // Runtime UI
   @Local topDown: boolean = this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode;
   @Local render: boolean = false;
@@ -40,7 +46,6 @@ struct Index {
   // Runtime Objects
   webController: WebviewController = new webview.WebviewController();
   context: Context = this.getUIContext().getHostContext()!;
-  currentDictNo: number = 0;
 
   aboutToAppear(): void {
     console.warn(`[UI][aboutToAppear] TopDown: ${this.topDown}`);
@@ -161,10 +166,26 @@ struct Index {
             }
 
             Column({ space: 8 }) {
-              Button(`󰀵 ${resource_to_string($r('app.string.new_dictionary'), this.context)}`)
-                .onClick(() => {
-                  this.meowLibrarian.createBundle(this.context);
-                })
+              Row({ space: 8 }) {
+                Button(`󰀵 ${resource_to_string($r('app.string.new_dictionary'), this.context)}`)
+                  .onClick(() => {
+                    this.meowLibrarian.createBundle(this.context);
+                  })
+
+                Select(this.meowLibrarian.constructSelectOptions())
+                  .selected(this.myMeowMisc.defaultDictBundleIndex)
+                  .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex].mdx?.header?.Title)
+                  .onSelect((index: number) => {
+                    console.info('[Meow][Select] Select:' + index);
+                    this.myMeowMisc.defaultDictBundleIndex = index;
+                    saveHybrid(this.context.filesDir + '/oops/default.txt', index.toString(), true);
+                  })
+                  .selectedOptionBgColor($r('app.color.meow_iconSubEmphasize'))
+                  .selectedOptionFontColor($r('sys.color.font'))
+                  .selectedOptionFont({ weight: FontWeight.Bold })
+              }
+              .clip(true)
+              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
 
               if (this.renderMore) {
                 Scroll() {
@@ -195,6 +216,9 @@ struct Index {
                         bundle: bundle,
                         deleteAction: () => {
                           this.meowLibrarian.deleteBundle(idx, this.context);
+                          if (idx == this.myMeowMisc.defaultDictBundleIndex) {
+                            this.myMeowMisc.defaultDictBundleIndex = 0;
+                          }
                         }
                       })
                     }, (bundle: meowDictBundle) => {
@@ -212,6 +236,7 @@ struct Index {
             } // More panel
             .visibility(this.showInfo ? Visibility.Visible : Visibility.None)
             .animation(defaultAnima)
+            .clip(true)
             .alignItems(HorizontalAlign.Start)
             .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
             .borderWidth(1)
@@ -263,13 +288,13 @@ struct Index {
               .animation(defaultAnima)
 
               Row({ space: 10 }) {
-                TextInput({ placeholder: `󰀩 ${this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title || ''}`, text: this.lookUpWord })
+                TextInput({ placeholder: `󰀩 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title || ''}`, text: this.lookUpWord })
                   .layoutWeight(1)
                   .onChange((e) => {
                     this.lookUpWord = e;
                   })
                   .onSubmit(() => {
-                    this.currentDictNo = 0;
+                    this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
                     this.searchMDX(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord).then((result) => {
                       this.lookUpResult = result == true;
                     })
@@ -280,7 +305,7 @@ struct Index {
 
                 Button(`${this.lookUpResult ? '' : '¯\\_(ツ)_/¯  '}󰈱`)
                   .onClick(() => {
-                    this.currentDictNo = 0;
+                    this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
                     this.searchMDX(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord).then((result) => {
                       this.lookUpResult = result == true;
                     })
@@ -316,7 +341,7 @@ struct Index {
         }
 
         if (this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode) {
-          Text(this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title)
+          Text(this.currentDictBundleTitle)
             .padding(10)
             .width('100%')
             .textAlign(TextAlign.Center)
@@ -413,6 +438,8 @@ struct Index {
         } catch (e) {
           console.error(`[Meow][MDX] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
         }
+
+        this.currentDictBundleTitle = this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title || '';
         this.loadWeb(resultText, this.currentBase());
         // console.log(`[Meow][MDX] Got result!`);
 

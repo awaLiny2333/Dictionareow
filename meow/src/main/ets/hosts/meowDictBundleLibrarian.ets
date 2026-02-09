@@ -54,4 +54,12 @@ export class meowDictBundleLibrarian {
       console.error(`[meowDictBundleLibrarian][deleteBundle][${dir}] Failed: ${e}`);
     });
   }
+
+  constructSelectOptions() {
+    let options: SelectOption[] = [];
+    for (let index = 0; index < this.bundles.length; index++) {
+      options.push({ value: this.bundles[index].mdx?.header?.Title || `${index}` });
+    }
+    return options;
+  }
 }

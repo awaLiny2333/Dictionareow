@@ -56,7 +56,7 @@ export async function fileDocumentPick2Path(fileSuffixFilters: string[] = [".meo
  * @param filePath A string, setting the file's name.
  * @param context The content.
  * @param content A string or an ArrayBuffer, fills the file's content.
- * @param overwrite overwrite or not.
+ * @param overwrite overwrite or not. Default is false.
  * */
 export async function saveHybrid(filePath: string, content: string | ArrayBuffer, overwrite = false) {
   let fullDirectory = filePath;
@@ -83,7 +83,7 @@ export async function saveHybrid(filePath: string, content: string | ArrayBuffer
         return true;
       })
       .catch((e: BusinessError) => {
-        console.error(`[saveHybrid] fileIo.write(file.fd, content) to file ${filePath} failed: ${e}`);
+        console.error(`[saveHybrid] fileIo.write(file.fd, content) to file ${fullDirectory} failed: ${e}`);
         return false;
       })
       .finally(() => {
@@ -93,7 +93,7 @@ export async function saveHybrid(filePath: string, content: string | ArrayBuffer
           });
       })
   } catch (e) {
-    console.error(`[saveHybrid] write to file ${filePath} failed: ${e}`);
+    console.error(`[saveHybrid] write to file ${fullDirectory} failed: ${e}`);
     return false;
   }
 }
@@ -114,17 +114,17 @@ export async function fileCopy(sourcePath: string, destPath: string) {
  * @returns An ArrayBuffer, of the requested file's content or undefined if the file doesn't exist.
  * */
 @Concurrent
-export function sandboxReadArrayBufferSync(fullFilePath: string, offset?: number, length?: number) {
+export function readArrayBufferSync(fullFilePath: string, offset?: number, length?: number) {
   const startTime: number = Date.now();
 
   try {
     if (!(fileIo.accessSync(fullFilePath))) {
       // file doesn't exist
-      console.warn(`[sandboxReadArrayBuffer][${fullFilePath}] doesn't exist`);
+      console.warn(`[readArrayBuffer][${fullFilePath}] doesn't exist`);
       return undefined;
     }
   } catch (e) {
-    console.error(`[sandboxReadArrayBuffer] fileIo.accessSync(filePath) check failed: ${e}`);
+    console.error(`[readArrayBuffer] fileIo.accessSync(filePath) check failed: ${e}`);
     return undefined;
   }
 
@@ -141,13 +141,13 @@ export function sandboxReadArrayBufferSync(fullFilePath: string, offset?: number
     let readLen = l;
     let result = buf.slice(0, readLen);
     fileIo.close(file).catch((e: BusinessError) => {
-      console.error(`[sandboxReadArrayBuffer] fileIo.close(file) failed: ${e}`);
+      console.error(`[readArrayBuffer] fileIo.close(file) failed: ${e}`);
     })
-    console.info(`[sandboxReadArrayBuffer] read [${fullFilePath}][${offset}, ${length}] succeed, length: ${readLen} (${Date.now() - startTime} ms)`);
+    console.info(`[readArrayBuffer] read [${fullFilePath}][${offset}, ${length}] succeed, length: ${readLen} (${Date.now() - startTime} ms)`);
     return result;
 
   } catch (e) {
-    console.error(`[sandboxReadArrayBuffer] file operation failed: ${e}. Return undefined.`);
+    console.error(`[readArrayBuffer] file operation failed: ${e}. Return undefined.`);
     return undefined;
   }
 }
@@ -158,20 +158,20 @@ export function sandboxReadArrayBufferSync(fullFilePath: string, offset?: number
  * @param context the context
  * @returns An ArrayBuffer, of the requested file's content or undefined if the file doesn't exist.
  * */
-export async function sandboxReadArrayBufferConcurrent(fullFilePath: string, offset?: number, length?: number) {
+export async function readArrayBufferConcurrent(fullFilePath: string, offset?: number, length?: number) {
   // taskpool.execute(task)
   let task: taskpool.Task;
   if (offset) {
-    task = new taskpool.Task(sandboxReadArrayBufferSync, fullFilePath, offset!, length!);
+    task = new taskpool.Task(readArrayBufferSync, fullFilePath, offset!, length!);
   } else {
-    task = new taskpool.Task(sandboxReadArrayBufferSync, fullFilePath);
+    task = new taskpool.Task(readArrayBufferSync, fullFilePath);
   }
   try {
     const result = await taskpool.execute(task);
-    console.info(`[sandboxReadArrayBufferConcurrent] taskpool.execute(task)!`);
+    console.info(`[readArrayBufferConcurrent] taskpool.execute(task)!`);
     return result as ArrayBuffer;
   } catch (e) {
-    console.error(`[sandboxReadArrayBufferConcurrent] Failed: ${e}`);
+    console.error(`[readArrayBufferConcurrent] Failed: ${e}`);
     return undefined;
   }
   // return undefined;
@@ -183,7 +183,7 @@ export async function sandboxReadArrayBufferConcurrent(fullFilePath: string, off
  * Creates a directory in sandbox directory
  * @param dirPath The folder path
  * @param context The context
- * @param overwrite Overwrite or not
+ * @param overwrite Overwrite or not, default false
  * @returns The promise?
  * */
 export function sandboxCreateDir(dirPath: string, context: Context, overwrite = false) {

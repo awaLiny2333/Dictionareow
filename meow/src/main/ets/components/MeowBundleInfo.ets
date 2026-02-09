@@ -32,7 +32,7 @@ struct meowBundleInfo {
           .fontSize(26)
           .opacity(0.9)
       }
-      .padding({ right: 10 })
+      // .padding({ right: 10 })
       .justifyContent(FlexAlign.Center)
 
       if (this.renderExpanded) {

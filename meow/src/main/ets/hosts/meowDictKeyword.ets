@@ -14,7 +14,7 @@ import {
 import { buffer, fastbuffer, taskpool } from '@kit.ArkTS';
 import { meowDictHeader } from './meowDictHeader';
 import { decryptType1Block } from '../utils/decryption';
-import { sandboxReadArrayBufferSync } from '../utils/storage';
+import { readArrayBufferSync } from '../utils/storage';
 
 export class meowDictKeyword {
   globalOffset: number; // The offset from the head of the entire raw data.
@@ -38,7 +38,7 @@ export class meowDictKeyword {
   }
 
   private processMetadata(type1Encrypted: boolean, header: meowDictHeader) {
-    let metaSlice40 = sandboxReadArrayBufferSync(this.fullPath, this.globalOffset, 40)!;
+    let metaSlice40 = readArrayBufferSync(this.fullPath, this.globalOffset, 40)!;
     // let metaSlice = this.globalRawData.slice(this.globalOffset + 0, this.globalOffset + 40);
 
     // TODO: Verify that this decryptType1Block works
@@ -67,7 +67,7 @@ export class meowDictKeyword {
     // Number of bytes in compressed version of key_index (including the comp_type and checksum parts). Big-endian. Possibly encrypted, see below.
     let keyBlocksLen = arrayBuffer2Int64BE(metaSlice40.slice(32, 40)) || 0;
 
-    let headerChecksumSlice4 = sandboxReadArrayBufferSync(this.fullPath, this.globalOffset + 40, 4);
+    let headerChecksumSlice4 = readArrayBufferSync(this.fullPath, this.globalOffset + 40, 4);
     // ADLER32 checksum of the preceding 40 bytes. If those are encrypted, it is the checksum of the decrypted version. Big-endian.
     let headerChecksum = arrayBuffer2Int32BE(headerChecksumSlice4) || 0;
 
@@ -193,7 +193,7 @@ export class meowDictKeyword {
     }
 
     // const compBlock = this.globalRawData.slice(offsetFromRawHead, offsetFromRawHead + thisBlockCompSize);
-    const compBlock = sandboxReadArrayBufferSync(this.fullPath, offsetFromRawHead, thisBlockCompSize);
+    const compBlock = readArrayBufferSync(this.fullPath, offsetFromRawHead, thisBlockCompSize);
 
     console.log(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] offsetFromRawHead = ${offsetFromRawHead}, thisBlockCompSize = ${thisBlockCompSize}, thisBlockDecompSize = ${thisBlockDecompSize}`);
 
@@ -284,7 +284,7 @@ export class meowDictKeywordIndex {
 
   constructor(offset: number, fullPath: string, keyIndexCompLen: number, keyIndexDecompLen: number, numBlocks: number) {
     this.offset = offset;
-    this.rawData = sandboxReadArrayBufferSync(fullPath, offset, keyIndexCompLen)!;
+    this.rawData = readArrayBufferSync(fullPath, offset, keyIndexCompLen)!;
     this.keyIndexCompLen = keyIndexCompLen;
     this.keyIndexDecompLen = keyIndexDecompLen;
     this.numBlocks = numBlocks;

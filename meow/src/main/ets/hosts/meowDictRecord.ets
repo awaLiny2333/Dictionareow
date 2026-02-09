@@ -1,7 +1,7 @@
 import { arrayBuffer2Int64BE, bufferBuffer2Int64BE, decompress } from '../utils/data';
 import { fastbuffer, taskpool } from '@kit.ArkTS';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { sandboxReadArrayBufferConcurrent, sandboxReadArrayBufferSync } from '../utils/storage';
+import { readArrayBufferConcurrent, readArrayBufferSync } from '../utils/storage';
 
 @ObservedV2
 export class meowDictRecord {
@@ -27,7 +27,7 @@ export class meowDictRecord {
   }
 
   private async processMetaData() {
-    const metaDataSlice32 = sandboxReadArrayBufferSync(this.fullPath, this.globalOffset, 32)!;
+    const metaDataSlice32 = readArrayBufferSync(this.fullPath, this.globalOffset, 32)!;
 
     // Number items in record_blocks. Does not need to equal the number of keyword blocks. Big-endian.
     let numBlocks = arrayBuffer2Int64BE(metaDataSlice32.slice(0, 8));
@@ -48,7 +48,7 @@ export class meowDictRecord {
     // Total size of the rec_block[i] sections, in bytes. Big-endian.
     this.blocksLen = arrayBuffer2Int64BE(metaDataSlice32.slice(24, 32)) || 0;
 
-    const metaDataBlockSlice = sandboxReadArrayBufferSync(this.fullPath, this.globalOffset + 32, 16 * numBlocks)!;
+    const metaDataBlockSlice = readArrayBufferSync(this.fullPath, this.globalOffset + 32, 16 * numBlocks)!;
 
     // const res = calculateMetaDataSync(metaDataBlockSlice, numBlocks);
     // this.compSizes = res.compSizes;
@@ -84,7 +84,7 @@ export class meowDictRecord {
     const tag = `    [meowDictRecord][getRecordEntry][build!][${key}][${startRecordIdx}]`;
 
     // const block = sandboxReadArrayBufferSync(this.fullPath, startRecordGlobalOffset, endRecordGlobalOffset - startRecordGlobalOffset)!;
-    return sandboxReadArrayBufferConcurrent(this.fullPath, startRecordGlobalOffset, endRecordGlobalOffset - startRecordGlobalOffset).then((block) => {
+    return readArrayBufferConcurrent(this.fullPath, startRecordGlobalOffset, endRecordGlobalOffset - startRecordGlobalOffset).then((block) => {
       return decompress(block!, this.decompSizes[startRecordIdx], tag, { type: '0' })
         .then((arrayBuffer) => {
           const recordOffsetStartInBuffer = recordOffsetStart - this.decompSizesCumulative[startRecordIdx];

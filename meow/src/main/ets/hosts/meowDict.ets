@@ -3,7 +3,7 @@ import { arrayBuffer2Int32BE, arrayBuffer2Int32LE, arrayBuffer2UTF16LE, getUnitE
 import { meowDictKeyword } from './meowDictKeyword';
 import { alder32ChecksumVerify } from '../utils/alder32';
 import { meowDictRecord } from './meowDictRecord';
-import { sandboxReadArrayBufferSync } from '../utils/storage';
+import { readArrayBufferSync } from '../utils/storage';
 import { fileIo } from '@kit.CoreFileKit';
 
 export enum meowDictType {
@@ -54,13 +54,13 @@ export class meowDict {
   private async processHeader() {
     const startTime: number = Date.now();
 
-    const block04 = sandboxReadArrayBufferSync(this.fullPath!, 0, 4);
+    const block04 = readArrayBufferSync(this.fullPath!, 0, 4);
     const headerContentLength = arrayBuffer2Int32BE(block04) || 0;
 
-    const headerContentBuffer = sandboxReadArrayBufferSync(this.fullPath!, 4, headerContentLength);
+    const headerContentBuffer = readArrayBufferSync(this.fullPath!, 4, headerContentLength);
     const headerContent = arrayBuffer2UTF16LE(headerContentBuffer);
 
-    const headerChecksumBuffer = sandboxReadArrayBufferSync(this.fullPath!, 4 + headerContentLength, 4);
+    const headerChecksumBuffer = readArrayBufferSync(this.fullPath!, 4 + headerContentLength, 4);
     const headerChecksumNumber = arrayBuffer2Int32LE(headerChecksumBuffer) || 0;
 
     if (headerContent) {
