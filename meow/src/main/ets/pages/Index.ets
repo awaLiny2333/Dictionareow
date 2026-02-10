@@ -301,7 +301,7 @@ struct Index {
                     this.lookUpWord = e;
                   })
                   .onSubmit(() => {
-                    this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
+                    // this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
                     this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord).then((result) => {
                       this.lookUpResult = result == true;
                     })
@@ -312,7 +312,7 @@ struct Index {
 
                 Button(`${this.lookUpResult ? '' : '¯\\_(ツ)_/¯  '}󰈱`)
                   .onClick(() => {
-                    this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
+                    // this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
                     this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord).then((result) => {
                       this.lookUpResult = result == true;
                     })
@@ -460,7 +460,6 @@ struct Index {
         console.error(`[Meow][MDX] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
       }
 
-      this.currentDictBundleTitle = this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title || '';
       this.loadWeb(resultText, this.currentBase());
       // console.log(`[Meow][MDX] Got result!`);
 
@@ -560,6 +559,11 @@ struct Index {
   }
 
   // Events
+
+  @Monitor('currentDictNo')
+  refreshBundleTitle() {
+    this.currentDictBundleTitle = this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title || '';
+  }
 
   @Monitor('myMeowFreeWindowModeStatus.on', 'myMeowAvoid.top', 'myMeowLayout.height', 'myMeowLayout.width', 'myMeowLayout.wideMode', 'buttonsWidth')
   refreshUIParams() {
