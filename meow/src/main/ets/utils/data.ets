@@ -167,6 +167,65 @@ export function resource_to_string(resourceStr: Resource, context: Context) {
   }
 }
 
+/**
+ * 从文本中删除匹配的 @@@LINK=key 字句，并返回其他 @@@LINK 的 key
+ * @param text 原始文本
+ * @param query 要匹配的key（大小写不敏感）
+ * @returns [0]: 过滤后的文本，[1...]: 其他 @@@LINK 的 key
+ * @author DeepSeek @ Feb 10 2026
+ */
+export function filterAtSimple(text: string, query: string[]): string[] {
+  const lines = text.split('\n');
+  const filteredLines: string[] = [];
+  const otherKeysMap = new Map<string, string>(); // key: lowercase, value: original
+
+  let queryLower: string[] = [];
+  for (let index = 0; index < query.length; index++) {
+    queryLower.push(query[index].toLowerCase());
+  }
+
+  for (const line of lines) {
+    const trimmedLine = line.trim().replace(/\0/g, '');
+    // console.log(`[filterAtSimple] ${trimmedLine}`);
+
+    // 检查是否是 @@@LINK 行
+    if (trimmedLine.toUpperCase().startsWith('@@@LINK=')) {
+      // console.log(`[filterAtSimple][o] [${trimmedLine}]`);
+
+      // 提取 key（从 = 号后面开始）
+      const key = trimmedLine.substring(8).trim(); // 8 是 '@@@LINK=' 的长度
+
+      if (queryLower.includes(key.toLowerCase())) {
+        // 跳过匹配 query 的行
+        continue;
+      } else {
+        // 保留该行
+        // filteredLines.push(line);
+
+        // 记录 key（保留原格式，使用小写作为 Map 的键去重）
+        const keyLower = key.toLowerCase();
+        if (!otherKeysMap.has(keyLower)) {
+          otherKeysMap.set(keyLower, key);
+        }
+      }
+    } else {
+      // 非 @@@LINK 行，直接保留
+      // console.log(`[filterAtSimple][x] Pushed [${line}](${line.length})`);
+      filteredLines.push(line);
+    }
+  }
+
+  // 构建结果数组
+  const result = [filteredLines.join('\n')];
+
+  // 添加其他 key（按原始格式）
+  otherKeysMap.forEach((originalKey) => {
+    result.push(originalKey);
+  });
+
+  return result;
+}
+
 // ArrayBuffers
 
 /**

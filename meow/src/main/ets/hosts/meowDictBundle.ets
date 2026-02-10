@@ -116,29 +116,23 @@ export class meowDictBundle {
    * */
   updateFilesSync(context: Context) {
     // Files
-    console.log(`
-[MeowDictBundle][updateFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}]:`);
+    console.log(`[MeowDictBundle][updateFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}]:`);
     this.files = [];
-    const r = fileIo.listFileSync(context.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/')
-    // .then((r) => {
-    for (let index = 0; index < r.length; index++) {
-      const path = context.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/' + r[index];
-      this.files.push(path);
-      console.log(`    [MeowDictBundle][updateFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}] [${path}]!`);
-      const stat = fileIo.statSync(path)
-      // .then((stat) => {
-      this.fileSizes.push(stat.size);
-      if (index == r.length - 1) {
-        this.updateSizes();
+    try {
+      const r = fileIo.listFileSync(context.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/');
+      for (let index = 0; index < r.length; index++) {
+        const path = context.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/' + r[index];
+        this.files.push(path);
+        console.log(`    [MeowDictBundle][updateFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}] [${path}]!`);
+        const stat = fileIo.statSync(path)
+        this.fileSizes.push(stat.size);
+        if (index == r.length - 1) {
+          this.updateSizes();
+        }
       }
-      // }).catch((e: BusinessError) => {
-      //   console.error(`[MeowDictBundle][updateFiles] fileIo.stat(path) Failed: ${e}`);
-      // })
+    } catch (e) {
+      console.error(`[MeowDictBundle][updateFiles] Failed: ${e}`);
     }
-    // })
-    // .catch((e: BusinessError) => {
-    //   console.error(`[MeowDictBundle][updateFiles] fileIo.listFile(context.filesDir + '/honk/') Failed: ${e}`);
-    // })
   }
 
   updateSizes() {

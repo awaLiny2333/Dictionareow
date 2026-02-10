@@ -1,10 +1,9 @@
-import { meowDictType } from '../hosts/meowDict';
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { AppStorageV2 } from '@kit.ArkUI';
 import { defaultAnima, defaultDecorHeight, meowAvoid, meowFreeWindowModeStatus, meowLayoutModeStatus } from '../utils/uiEnv';
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
-import { addUnitsToSize, keepOnlyAlphanumericGlobal, mimeOfFileName, resource_to_string } from '../utils/data';
+import { addUnitsToSize, filterAtSimple, keepOnlyAlphanumericGlobal, mimeOfFileName, resource_to_string } from '../utils/data';
 import { meowTheme } from '../hosts/meowTheme';
 import lazy { playThisForMe } from '../utils/av';
 import lazy { fastbuffer } from '@kit.ArkTS';
@@ -154,7 +153,7 @@ struct Index {
                   }
 
                   if (reqFileScheme == 'entry:') {
-                    this.searchMDX(this.meowLibrarian.bundles[this.currentDictNo], decodeURIComponent(reqFileName));
+                    this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], decodeURIComponent(reqFileName));
                   }
 
                   return null;
@@ -259,42 +258,45 @@ struct Index {
             .shadow(ShadowStyle.OUTER_DEFAULT_SM)
 
             RelativeContainer() {
-              Scroll() {
-                Row({ space: 10 }) {
-                  Button(`󰊖 ${resource_to_string($r('app.string.info'), this.context)}`)
-                    .onClick(() => {
-                      this.renderMore = true;
-                      this.showInfo = !this.showInfo;
-                    })
-                    .border(this.showInfo ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
-                    .brightness(this.showInfo ? 1.1 : 1)
-                    .animation(defaultAnima)
-
-                  ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, index: number) => {
-                    if (bundle.mdx) {
-                      Button(`${bundle.mdx?.header?.Title}`)
-                        .onClick(() => {
-                          this.currentDictNo = index;
-                          this.searchMDX(bundle, this.lookUpWord);
-                        })
-                    }
-                  }, (bundle: meowDictBundle) => {
-                    return bundle.sandboxPathWithEndSlash;
+              Row({ space: 10 }) {
+                Button(`󰊖 ${resource_to_string($r('app.string.info'), this.context)}`)
+                  .onClick(() => {
+                    this.renderMore = true;
+                    this.showInfo = !this.showInfo;
                   })
-                } // Buttons
-                .onAreaChange((o, n) => {
-                  if (o.width != n.width) {
-                    this.buttonsWidth = n.width as number;
-                  }
-                })
+                  .border(this.showInfo ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
+                  .brightness(this.showInfo ? 1.1 : 1)
+                  .animation(defaultAnima)
+                Scroll() {
+                  Row({ space: 10 }) {
+                    ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, index: number) => {
+                      if (bundle.mdx) {
+                        Button(`${bundle.mdx?.header?.Title}`)
+                          .onClick(() => {
+                            this.currentDictNo = index;
+                            this.lookUpKey(bundle, this.lookUpWord);
+                          })
+                      }
+                    }, (bundle: meowDictBundle) => {
+                      return bundle.sandboxPathWithEndSlash;
+                    })
+                  } // Buttons
+                  .onAreaChange((o, n) => {
+                    if (o.width != n.width) {
+                      this.buttonsWidth = n.width as number;
+                    }
+                  })
+                }
+                .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+                .scrollable(ScrollDirection.Horizontal)
+                .scrollBar(BarState.Off)
+                .edgeEffect(EdgeEffect.Spring)
               }
-              .scrollable(ScrollDirection.Horizontal)
-              .scrollBar(BarState.Off)
-              .edgeEffect(EdgeEffect.Spring)
-              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
-              .id('fileControlButtons')
-              .alignRules({ left: { anchor: '__container__', align: HorizontalAlign.Start }, top: { anchor: '__container__', align: VerticalAlign.Top } })
+              .clip(true)
               .animation(defaultAnima)
+              .alignRules({ left: { anchor: '__container__', align: HorizontalAlign.Start }, top: { anchor: '__container__', align: VerticalAlign.Top } })
+              .id('fileControlButtons')
+              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
 
               Row({ space: 10 }) {
                 TextInput({ placeholder: `󰀩 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title || ''}`, text: this.lookUpWord })
@@ -304,7 +306,7 @@ struct Index {
                   })
                   .onSubmit(() => {
                     this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
-                    this.searchMDX(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord).then((result) => {
+                    this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord).then((result) => {
                       this.lookUpResult = result == true;
                     })
                   })
@@ -315,7 +317,7 @@ struct Index {
                 Button(`${this.lookUpResult ? '' : '¯\\_(ツ)_/¯  '}󰈱`)
                   .onClick(() => {
                     this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
-                    this.searchMDX(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord).then((result) => {
+                    this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord).then((result) => {
                       this.lookUpResult = result == true;
                     })
                   })
@@ -342,6 +344,10 @@ struct Index {
               top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0)
             })
             .shadow(ShadowStyle.OUTER_DEFAULT_SM)
+
+            if (this.myMeowMisc.debugOutput) {
+              TextArea({ text: this.myMeowMisc.debugOutput })
+            }
           }
           .height('100%')
           .width('100%')
@@ -414,7 +420,7 @@ struct Index {
     }
   }
 
-  async searchMDX(bundle: meowDictBundle | undefined, key: string) {
+  async lookUpKey(bundle: meowDictBundle | undefined, key: string) {
     if (!bundle || !bundle.mdx || !bundle.mdx.isReady()) {
       return false;
     }
@@ -435,41 +441,66 @@ struct Index {
     }
 
     const query = keepOnlyAlphanumericGlobal(key.toLowerCase());
-    return bundle.mdx.lookUpKey(query)?.then((resultBuffer) => {
+    return bundle.mdx.lookUpKey(query)?.then(async (resultBuffer) => {
       if (!resultBuffer) {
         // Not found
         return false;
       }
-      if (bundle.mdx!.type == meowDictType.MDX) {
-        let resultText = 'ERROR! ＞︿＜';
-        try {
-          resultText = fastbuffer.from(resultBuffer).toString(bundle.mdx!.header!.Encoding);
-        } catch (e) {
-          console.error(`[Meow][MDX] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
+
+      let resultText = 'ERROR! ＞︿＜';
+      try {
+        resultText = fastbuffer.from(resultBuffer).toString(bundle.mdx!.header!.Encoding);
+        // console.log(`[Meow][MDX] ${resultText}`);
+
+        // TODO: .includes is low performance!
+        const knownKeys = [key];
+        let layers = 0;
+        while (resultText.includes('@@@LINK=') && layers < 10) {
+          resultText = await this.fetchJumpsAsync(bundle, resultText, knownKeys);
+          layers += 1;
         }
 
-        this.currentDictBundleTitle = this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title || '';
-        this.loadWeb(resultText, this.currentBase());
-        // console.log(`[Meow][MDX] Got result!`);
-
-        this.keywordsInSameIndexBlock = bundle.mdx?.keyword?.index?.indexEntries[bundle.mdx?.keyword?.lookUpBlockIndex].builtBlock?.keywords || [];
-        console.log(`[Meow][MDX] this.keywordsInSameIndexBlock.length = ${this.keywordsInSameIndexBlock.length}`);
-
-        let re: string[] = [];
-        for (let wordIndex = 0; wordIndex < this.keywordsInSameIndexBlock.length; wordIndex++) {
-          if (keepOnlyAlphanumericGlobal(this.keywordsInSameIndexBlock[wordIndex].toLowerCase()).includes(query)) {
-            re.push(this.keywordsInSameIndexBlock[wordIndex]);
-            // console.log(`[Meow][MDX] Relative: ${this.keywordsInSameIndexBlock[wordIndex]}`);
-          }
-        }
-        this.keywordsInSameIndexBlockRelevant = re;
-        const percentage = this.keywordsInSameIndexBlockRelevant.length / this.keywordsInSameIndexBlock.length * 100;
-        console.log(`[Meow][MDX][${query}] this.keywordsInSameIndexBlockRelevant.length = ${this.keywordsInSameIndexBlockRelevant.length} (${percentage.toFixed(2)} %)`);
-        console.log(`[Meow][MDX][${query}] this.keywordsInSameIndexBlockRelevant: ${'\n' + this.keywordsInSameIndexBlockRelevant}`);
+      } catch (e) {
+        console.error(`[Meow][MDX] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
       }
+
+      this.currentDictBundleTitle = this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title || '';
+      this.loadWeb(resultText, this.currentBase());
+      // console.log(`[Meow][MDX] Got result!`);
 
       return true;
     })
+  }
+
+  // TODO: Low performance!
+  async fetchJumpsAsync(bundle: meowDictBundle, text: string, key: string[]) {
+    let filterResult = filterAtSimple(text, key);
+    text = filterResult[0];
+
+    // Get all @@@LINK= out.
+    let pieces = [text];
+
+    for (let index = 1; index < filterResult.length; index++) {
+      console.warn(`[Meow][MDX][filterAtSimple] ${filterResult.slice(1)}`);
+      let resultBufferJump = await bundle.mdx?.jumpTo(filterResult[1]);
+      if (!resultBufferJump) {
+        // Not found
+        continue;
+      }
+
+      try {
+        const resultTextExtra = fastbuffer.from(resultBufferJump).toString(bundle.mdx!.header!.Encoding);
+        pieces.push(resultTextExtra);
+      } catch (e) {
+        console.error(`[Meow][fetchJumpsAsync] Failed: ${e}`);
+      }
+    }
+
+    const prompt = resource_to_string($r('app.string.jump_to'), this.context);
+    const division =
+      `<div><p> </p><hr style='border: none; height: 10px; background: #ccc; margin: 0;'><p> (　o=^•ェ•)o　┏━┓ ${prompt}</p><hr style='border: none; height: 10px; background: #ccc; margin: 0;'><p> </p></div>`;
+    text = pieces.join(division);
+    return text;
   }
 
   /**

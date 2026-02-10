@@ -35,6 +35,10 @@
     {
       "name": "new_dictionary",
       "value": "Dict"
+    },
+    {
+      "name": "jump_to",
+      "value": "Plz see also:"
     }
   ]
 }

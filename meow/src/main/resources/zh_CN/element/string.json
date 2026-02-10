@@ -35,6 +35,10 @@
     {
       "name": "new_dictionary",
       "value": "词典"
+    },
+    {
+      "name": "jump_to",
+      "value": "请一同过目："
     }
   ]
 }

@@ -152,6 +152,34 @@ export class meowDict {
   }
 
   /**
+   * Nearly the same with lookUpKey method.
+   * @param key The key
+   * @returns The ArrayBuffer of content
+   * */
+  jumpTo(key: string) {
+    if (!(this.keyword && this.keyword.index && this.header && this.record?.ready)) {
+      console.warn(`[meowDictHeader][lookUpWord] Rejected. Uninitialized!`);
+      return undefined;
+    }
+    return this.keyword!.jumpToExactRecordEntryOffset(key).then((offsets) => {
+      if (offsets !== null && offsets !== undefined) {
+        if (offsets[1] < 0) {
+          // The last word in the entire dictionary?!
+          return this.record!.getRecordEntry(offsets[0], undefined, key + ' <end>').then((buf) => {
+            return buf;
+          })
+        }
+        return this.record!.getRecordEntry(offsets[0], offsets[1], key).then((buf) => {
+          return buf;
+        })
+      } else {
+        console.warn(`[meowDict][lookUpWord] this.keyword!.lookUpRecordEntryOffset(word) is null or undefined??`);
+        return undefined;
+      }
+    })
+  }
+
+  /**
    * Checks if the dictionary is ready
    * @returns A boolean
    * */
