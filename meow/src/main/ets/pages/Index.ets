@@ -278,6 +278,8 @@ struct Index {
                           this.searchMDX(bundle, this.lookUpWord);
                         })
                     }
+                  }, (bundle: meowDictBundle) => {
+                    return bundle.sandboxPathWithEndSlash;
                   })
                 } // Buttons
                 .onAreaChange((o, n) => {
