@@ -115,6 +115,7 @@ export function isStringBetween(target: string, lowerBound: string, upperBound: 
  * */
 export function keepOnlyAlphanumericGlobal(str: string): string {
   // [^\p{L}\p{N}_] 匹配任何非字母、非数字且非下划线的字符
+  str = str.replace(/\0/g, '').replace(/\UFEFF/g, '');
   return str.replace(/[^\p{L}\p{N}_@]/gu, '');
 }
 
@@ -150,6 +151,10 @@ export function wrapHtml(content: string = '', options: meowWrapHtmlOptions = {
     ${options.scripts ? `<script>${options.scripts}</script>` : ''}
 </body>
 </html>`;
+}
+
+export function division(prompt: string) {
+  return `<div><p> </p><hr style='border: none; height: 3px; background: #ccc; margin: 0;'><p>　(　o=^•ェ•)o　┏━┓　${prompt}</p><hr style='border: none; height: 3px; background: #ccc; margin: 0;'><p> </p></div>`;
 }
 
 /**

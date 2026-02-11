@@ -77,13 +77,13 @@ export class meowDictBundle {
     for (let index = 0; index < this.mdds.length; index++) {
       let meow = await this.mdds[index].lookUpKey(key);
       if (meow) {
-        if (meow.byteLength > 100000) {
+        if (meow[0].byteLength > 100000) {
           this.cacheKeys.push(key);
-          this.cacheBufs.push(meow);
-          console.log(`[meowDictBundle][lookUpResourceFromMDDs] Cached [${key}] (${addUnitsToSize(meow.byteLength)})`);
+          this.cacheBufs.push(meow[0]);
+          console.log(`[meowDictBundle][lookUpResourceFromMDDs] Cached [${key}] (${addUnitsToSize(meow[0].byteLength)})`);
         }
         console.log(`[meowDictBundle][lookUpResourceFromMDDs] Found [${key}] in MDD [${this.mdds[index].fullPath}]! (${Date.now() - startTime} ms)`);
-        return meow;
+        return meow[0];
       }
     }
     console.error(`[meowDictBundle][lookUpResourceFromMDDs] [${key}] Not found in any MDD!`);

@@ -127,23 +127,31 @@ export class meowDict {
    * @param key The key
    * @returns The ArrayBuffer of content
    * */
-  lookUpKey(key: string) {
+  async lookUpKey(key: string) {
     if (!(this.keyword && this.keyword.index && this.header && this.record?.ready)) {
       console.warn(`[meowDictHeader][lookUpWord] Rejected. Uninitialized!`);
       return undefined;
     }
 
-    return this.keyword!.lookUpRecordEntryOffset(key).then((offsets) => {
+    key = key.replace(/\0/g, '').replace(/\UFEFF/g, '');
+
+    return this.keyword!.lookUpRecordEntryOffset(key).then(async (offsets) => {
       if (offsets !== null && offsets !== undefined) {
-        if (offsets[1] < 0) {
-          // The last word in the entire dictionary?!
-          return this.record!.getRecordEntry(offsets[0], undefined, key + ' <end>').then((buf) => {
-            return buf;
-          })
+        let arrayBuffers: ArrayBuffer[] = [];
+        for (let index = 0; index < offsets.length; index++) {
+          console.log(`[meowDict][lookUpWord][${key}][${index + 1}/${offsets.length}] Get entry!`);
+          let buf: ArrayBuffer | undefined = undefined;
+          if (offsets[index][1] < 0) {
+            // The last word in the entire dictionary?!
+            buf = await this.record!.getRecordEntry(offsets[index][0], undefined, key + ' <end>')
+          } else {
+            buf = await this.record!.getRecordEntry(offsets[index][0], offsets[index][1], key);
+          }
+          if (buf) {
+            arrayBuffers.push(buf);
+          }
         }
-        return this.record!.getRecordEntry(offsets[0], offsets[1], key).then((buf) => {
-          return buf;
-        })
+        return arrayBuffers;
       } else {
         console.warn(`[meowDict][lookUpWord] this.keyword!.lookUpRecordEntryOffset(word) is null or undefined??`);
         return undefined;

@@ -78,13 +78,15 @@ export class meowDictRecord {
   getRecordEntry(recordOffsetStart: number, recordOffsetEnd?: number, key = '') {
     const startRecordIdx = Math.max(0, this.findLastIndexLessThanQuery(this.decompSizesCumulative, recordOffsetStart));
 
+
     // Decompress them
     const startRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[startRecordIdx];
     const endRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[startRecordIdx + 1];
     const tag = `    [meowDictRecord][getRecordEntry][build!][${key}][${startRecordIdx}]`;
+    const readableLength = endRecordGlobalOffset - startRecordGlobalOffset;
 
     // const block = sandboxReadArrayBufferSync(this.fullPath, startRecordGlobalOffset, endRecordGlobalOffset - startRecordGlobalOffset)!;
-    return readArrayBufferConcurrent(this.fullPath, startRecordGlobalOffset, endRecordGlobalOffset - startRecordGlobalOffset).then((block) => {
+    return readArrayBufferConcurrent(this.fullPath, startRecordGlobalOffset, readableLength).then((block) => {
       return decompress(block!, this.decompSizes[startRecordIdx], tag, { type: '0' })
         .then((arrayBuffer) => {
           const recordOffsetStartInBuffer = recordOffsetStart - this.decompSizesCumulative[startRecordIdx];
@@ -92,8 +94,17 @@ export class meowDictRecord {
           if (recordOffsetEnd) {
             recordOffsetEndInBuffer = recordOffsetEnd - this.decompSizesCumulative[startRecordIdx];
           }
-          const arrayBufferSliceWhat = arrayBuffer.slice(recordOffsetStartInBuffer, recordOffsetEndInBuffer);
-          return arrayBufferSliceWhat;
+          const arrayBufferSliceA = arrayBuffer.slice(recordOffsetStartInBuffer, recordOffsetEndInBuffer);
+
+          if (recordOffsetEnd) {
+            const expectedLength = recordOffsetEnd - recordOffsetStart;
+            const endRecordIdx = Math.max(0, this.findLastIndexLessThanQuery(this.decompSizesCumulative, recordOffsetEnd));
+            if (startRecordIdx != endRecordIdx) {
+              console.warn(`    [meowDictRecord][getRecordEntry][end][${key}][${endRecordIdx}] Cross block! exp=${expectedLength}, act=${readableLength}`);
+            }
+          }
+
+          return arrayBufferSliceA;
         })
         .catch((e: BusinessError) => {
           console.error(`[meowDictRecord][getRecordEntry][${startRecordIdx}] Failed: ${e}`);

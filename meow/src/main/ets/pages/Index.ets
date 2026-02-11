@@ -3,7 +3,7 @@ import { fileIo } from '@kit.CoreFileKit';
 import { AppStorageV2 } from '@kit.ArkUI';
 import { defaultAnima, defaultDecorHeight, meowAvoid, meowFreeWindowModeStatus, meowLayoutModeStatus } from '../utils/uiEnv';
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
-import { addUnitsToSize, filterAtSimple, keepOnlyAlphanumericGlobal, mimeOfFileName, resource_to_string } from '../utils/data';
+import { addUnitsToSize, division, filterAtSimple, keepOnlyAlphanumericGlobal, mimeOfFileName, resource_to_string } from '../utils/data';
 import { meowTheme } from '../hosts/meowTheme';
 import lazy { playThisForMe } from '../utils/av';
 import lazy { fastbuffer } from '@kit.ArkTS';
@@ -295,7 +295,7 @@ struct Index {
               .id('fileControlButtons')
 
               Row({ space: 10 }) {
-                TextInput({ placeholder: `󰀩 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title || ''}`, text: this.lookUpWord })
+                TextInput({ placeholder: `󰀩 ${this.currentDictBundleTitle}`, text: this.lookUpWord })
                   .layoutWeight(1)
                   .onChange((e) => {
                     this.lookUpWord = e;
@@ -408,7 +408,7 @@ struct Index {
     try {
       // this.currentBase = base + 'meow/';
       this.webController.loadData(padTop + content + padBottom, 'text/html', 'UTF-8', 'file://' + base, ' ');
-      console.log(content);
+      // console.log(content);
       return true;
     } catch (e) {
       console.error(`[Meow] loadWeb() Failed! ${e}`);
@@ -437,30 +437,36 @@ struct Index {
     }
 
     const query = keepOnlyAlphanumericGlobal(key.toLowerCase());
-    return bundle.mdx.lookUpKey(query)?.then(async (resultBuffer) => {
-      if (!resultBuffer) {
+    return bundle.mdx.lookUpKey(query)?.then(async (resultBuffers) => {
+      if (!resultBuffers) {
         // Not found
         return false;
       }
 
-      let resultText = 'ERROR! ＞︿＜';
-      try {
-        resultText = fastbuffer.from(resultBuffer).toString(bundle.mdx!.header!.Encoding);
-        // console.log(`[Meow][MDX] ${resultText}`);
+      let resultTexts: string[] = [];
 
-        // TODO: .includes is low performance!
-        const knownKeys = [key];
-        let layers = 0;
-        while (resultText.includes('@@@LINK=') && layers < 10) {
-          resultText = await this.fetchJumpsAsync(bundle, resultText, knownKeys);
-          layers += 1;
+      for (let index = 0; index < resultBuffers.length; index++) {
+        let resultText = 'ERROR! ＞︿＜';
+        try {
+          resultText = fastbuffer.from(resultBuffers[index]).toString(bundle.mdx!.header!.Encoding);
+          // console.log(`[Meow][MDX] ${resultText}`);
+
+          // TODO: .includes is low performance!
+          const knownKeys = [key];
+          let layers = 0;
+          while (resultText.includes('@@@LINK=') && layers < 10) {
+            resultText = await this.fetchJumpsAsync(bundle, resultText, knownKeys);
+            layers += 1;
+          }
+
+        } catch (e) {
+          console.error(`[Meow][MDX][${key}] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
         }
-
-      } catch (e) {
-        console.error(`[Meow][MDX] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
+        resultTexts.push(resultText);
+        // console.log(`[Meow][MDX][${key}] resultText = ${resultText}}`);
       }
 
-      this.loadWeb(resultText, this.currentBase());
+      this.loadWeb(resultTexts.join(division(resource_to_string($r('app.string.jump_to'), this.context))), this.currentBase());
       // console.log(`[Meow][MDX] Got result!`);
 
       return true;
@@ -491,19 +497,9 @@ struct Index {
       }
     }
 
-    const prompt = resource_to_string($r('app.string.jump_to'), this.context);
-    const division =
-      `<div><p> </p><hr style='border: none; height: 10px; background: #ccc; margin: 0;'><p> (　o=^•ェ•)o　┏━┓ ${prompt}</p><hr style='border: none; height: 10px; background: #ccc; margin: 0;'><p> </p></div>`;
-    text = pieces.join(division);
+    text = pieces.join(division(resource_to_string($r('app.string.jump_to'), this.context)));
     return text;
   }
-
-  /**
-   * Extracts a file from a dictionary to sandbox temp.
-   * @param dict The dictionary.
-   * @param key The key.
-   * @returns True if success.
-   * */
 
   // Data
 

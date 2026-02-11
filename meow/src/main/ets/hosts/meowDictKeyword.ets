@@ -118,45 +118,47 @@ export class meowDictKeyword {
       if (isStringBetween(key.toLowerCase(), firstWord.toLowerCase(), lastWord.toLowerCase())) {
         // if (isStringBetween(keepOnlyAlphanumericGlobal(key.toLowerCase()), keepOnlyAlphanumericGlobal(firstWord.toLowerCase()), keepOnlyAlphanumericGlobal(lastWord.toLowerCase()))) {
         this.lookUpBlockIndex = lookUpBlockIndex;
-        console.log(`[meowDictKeyword][Index][lookUp][${key}] Selected index block from '${firstWord}' to '${lastWord}'! Looking into this index block (#${lookUpBlockIndex})!`);
+        console.log(`[meowDictKeyword][Index][lookUp][${key}] Selected index block from '${firstWord}' to '${lastWord}'! (#${lookUpBlockIndex})! `);
 
         return this.getKeyBlockArrayBuffer(lookUpBlockIndex).then((block) => {
           if (!block) {
-            console.error(`[meowDictKeyword][Index][lookUp] this.getKeyBlockArrayBuffer(lookUpBlockIndex) returned undefined. What's going on here?`);
+            console.error(`[meowDictKeyword][Index][lookUp][${key}] this.getKeyBlockArrayBuffer(lookUpBlockIndex) returned undefined. What's going on here?`);
             return undefined;
           }
 
-          console.log(`[meowDictKeyword][Index][lookUp][${key}] block.keywords.length = ${block.keywords.length}, block.offsets.length = ${block.offsets.length}.`);
-          let offset = this.binaryFindOffsetByKeyword(key, block.keywords, block.offsets);
-          if (offset === null) {
-            console.warn(`[meowDictKeyword][Index][lookUp] '${key}' not found!`);
-            // let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!
-            // misc.debugOutput = block.keywords.join('\n');
+          // console.log(`[meowDictKeyword][Index][lookUp][${key}] block.keywords.length = ${block.keywords.length}, block.offsets.length = ${block.offsets.length}.`);
+          let offsets = this.binaryFindOffsetByKeyword(key, block.keywords, block.offsets);
+
+          // let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!
+          // misc.debugOutput = block.keywords.join('\n');
+
+          if (offsets === null) {
+            console.warn(`[meowDictKeyword][Index][lookUp][${key}] not found!`);
 
             if (block.keywords.length < 1000000) {
               const tryPos = block.keywords.indexOf(key);
 
               if (tryPos >= 0) {
-                console.warn(`[meowDictKeyword][Index][lookUp] wait '${key}' is found @ ${tryPos}`);
+                console.warn(`[meowDictKeyword][Index][lookUp][${key}] wait it is found @ ${tryPos}`);
                 // console.warn(`[meowDictKeyword][Index][lookUp] ${block.keywords.slice(tryPos - 20)}`);
                 if (tryPos == block.offsets.length - 1) {
-                  return [block.offsets[tryPos], -1]
+                  return [[block.offsets[tryPos], -1]];
                 }
-                return [block.offsets[tryPos], block.offsets[tryPos+1]]
+                return [[block.offsets[tryPos], block.offsets[tryPos+1]]];
               } else {
-                console.warn(`[meowDictKeyword][Index][lookUp] '${key}' not found even with a hard search!`);
+                console.warn(`[meowDictKeyword][Index][lookUp][${key}(${key.length})] not found even with a hard search!`);
               }
             }
 
           } else {
-            console.log(`[meowDictKeyword][Index][lookUp] Found '${key}', offset = [${offset}], used time ${(Date.now() - startTime)} ms!`);
+            console.log(`[meowDictKeyword][Index][lookUp][${key}] Found @ offset = [${offsets}), used time ${(Date.now() - startTime)} ms!`);
           }
-          return offset;
+          return offsets;
         })
       }
     }
 
-    console.warn(`[meowDictKeyword][Index][lookUp][${this.fullPath}] Key '${key}' not found in any of the blocks!`);
+    console.warn(`[meowDictKeyword][Index][lookUp][${key}][${this.fullPath}] not found in any of the blocks!`);
     return undefined;
   }
 
@@ -248,7 +250,7 @@ export class meowDictKeyword {
    * @returns 找到则返回对应的 offset (number)，否则返回 null
    * @author Gemini 3 @ Feb 4 2026
    */
-  private binaryFindOffsetByKeyword(target: string, keywords: string[], offsets: number[]): number[] | null {
+  private binaryFindOffsetByKeyword(target: string, keywords: string[], offsets: number[]): number[][] | null {
     // const options: Intl.CollatorOptions = { sensitivity: 'accent' };
     const targetFuzzy = keepOnlyAlphanumericGlobal(target.toLowerCase());
 
@@ -260,27 +262,37 @@ export class meowDictKeyword {
       let mid = left + Math.floor((right - left) / 2);
       const midValueFuzzy = keepOnlyAlphanumericGlobal(keywords[mid]).toLowerCase();
 
-      // console.log(`[meow][meowDictKeyword][Index][lookUp] Compared (${mid}) ${keywords[mid]} (${midValueFuzzy}) <=> ${target}`);
+      console.log(`[meow][meowDictKeyword][Index][lookUp] Compared (${mid}) ${keywords[mid]} (${midValueFuzzy}) <=> ${target}`);
 
       if (midValueFuzzy == targetFuzzy) {
         // 找到匹配项，返回对应的平行 offset
         while (mid - 1 > 0 && keepOnlyAlphanumericGlobal(keywords[mid-1]).toLowerCase() == targetFuzzy) {
           mid -= 1;
         } // choose the first match
+        let offsetStart = offsets[mid];
         if (mid == keywords.length - 1) {
-          return [offsets[mid], -1]; // Is the last one
+          return [[offsets[mid], -1]]; // Is the last one
         }
-        const offsetStart = offsets[mid];
+        let offsetEnd = offsets[mid+1];
+
+        let result = [[offsetStart, offsetEnd]];
 
         while (mid + 1 < keywords.length && keepOnlyAlphanumericGlobal(keywords[mid+1]).toLowerCase() == targetFuzzy) {
           mid += 1;
+          offsetStart = offsets[mid];
+          if (mid == keywords.length - 1) {
+            result.push([offsetStart, -1]); // Is the last one
+          } else {
+            offsetEnd = offsets[mid+1];
+            result.push([offsetStart, offsetEnd]);
+          }
         } // find the last match
-        if (mid == keywords.length - 1) {
-          return [offsetStart, -1]; // Is the last one
-        }
-        const offsetEnd = offsets[mid+1];
 
-        return [offsetStart, offsetEnd];
+        console.log(`[meow][meowDictKeyword][Index][lookUp][${target}] result is:`);
+        for (let index = 0; index < result.length; index++) {
+          console.log(`     [meow][meowDictKeyword][Index][lookUp][${target}] [${result[index]}]`);
+        }
+        return result;
 
       } else if (midValueFuzzy < targetFuzzy) {
         // } else if (target.localeCompare(midValue, 'en', options) > 0) {
@@ -457,7 +469,7 @@ function splitBuild(rawData: ArrayBuffer, encoding: string) {
       const endOfString = pointer;
 
       const keyword = bufferBuffer2String(rawDataBufferBuffer, startOfString, endOfString, encoding) || '';
-      buildKeywords.push(keyword);
+      buildKeywords.push(keyword.replace(/\0/g, ''));
 
       // console.log(`[meowDictKeyword][IndexBlock][splitBuild] offsetNumber = ${offsetNumber}, keyword = ${keyword}`);
 
