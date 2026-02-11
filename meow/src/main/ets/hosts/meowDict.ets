@@ -5,6 +5,7 @@ import { alder32ChecksumVerify } from '../utils/alder32';
 import { meowDictRecord } from './meowDictRecord';
 import { readArrayBufferSync } from '../utils/storage';
 import { fileIo } from '@kit.CoreFileKit';
+import { fastbuffer } from '@kit.ArkTS';
 
 export enum meowDictType {
   MDD = 0,
@@ -127,15 +128,15 @@ export class meowDict {
    * @param key The key
    * @returns The ArrayBuffer of content
    * */
-  async lookUpKey(key: string) {
-    if (!(this.keyword && this.keyword.index && this.header && this.record?.ready)) {
+  async lookUpKey(key: string, exact: boolean) {
+    if (!this.isReady()) {
       console.warn(`[meowDictHeader][lookUpWord] Rejected. Uninitialized!`);
       return undefined;
     }
 
     key = key.replace(/\0/g, '').replace(/\UFEFF/g, '');
 
-    return this.keyword!.lookUpRecordEntryOffset(key).then(async (offsets) => {
+    return this.keyword!.lookUpRecordEntryOffset(key, exact).then(async (offsets) => {
       if (offsets !== null && offsets !== undefined) {
         let arrayBuffers: ArrayBuffer[] = [];
         for (let index = 0; index < offsets.length; index++) {
@@ -147,7 +148,24 @@ export class meowDict {
           } else {
             buf = await this.record!.getRecordEntry(offsets[index][0], offsets[index][1], key);
           }
-          if (buf) {
+          let isNew = true;
+
+          try {
+            if (buf && buf.byteLength < 1000) {
+              const fastBuf = fastbuffer.from(buf);
+              for (let index = 0; index < arrayBuffers.length; index++) {
+                if (arrayBuffers[index].byteLength < 1000) {
+                  if (fastBuf.equals(fastbuffer.from(arrayBuffers[index]))) {
+                    isNew = false;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error(`[meowDict][lookUpWord] Compare equal and eliminate duplication failed: ${e}`);
+          }
+
+          if (buf && isNew) {
             arrayBuffers.push(buf);
           }
         }
@@ -165,10 +183,13 @@ export class meowDict {
    * @returns The ArrayBuffer of content
    * */
   jumpTo(key: string) {
-    if (!(this.keyword && this.keyword.index && this.header && this.record?.ready)) {
+    if (!this.isReady()) {
       console.warn(`[meowDictHeader][lookUpWord] Rejected. Uninitialized!`);
       return undefined;
     }
+
+    key = key.replace(/\0/g, '').replace(/\UFEFF/g, '');
+
     return this.keyword!.jumpToExactRecordEntryOffset(key).then((offsets) => {
       if (offsets !== null && offsets !== undefined) {
         if (offsets[1] < 0) {
@@ -184,6 +205,24 @@ export class meowDict {
         console.warn(`[meowDict][lookUpWord] this.keyword!.lookUpRecordEntryOffset(word) is null or undefined??`);
         return undefined;
       }
+    })
+  }
+
+  /**
+   * Checks if the dictionary has this key
+   * @param key The key
+   * @returns The ArrayBuffer of content
+   * */
+  hasKey(key: string, exact: boolean) {
+    if (!this.isReady()) {
+      console.warn(`[meowDictHeader][lookUpWord] Rejected. Uninitialized!`);
+      return undefined;
+    }
+
+    key = key.replace(/\0/g, '').replace(/\UFEFF/g, '');
+
+    return this.keyword!.lookUpRecordEntryOffset(key, exact).then((offsets) => {
+      return (offsets !== null && offsets !== undefined);
     })
   }
 

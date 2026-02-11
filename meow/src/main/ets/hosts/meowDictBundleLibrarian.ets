@@ -10,7 +10,7 @@ export class meowDictBundleLibrarian {
   /**
    * Scans the bundles.
    * */
-  initAll(context: Context) {
+  initAll(context: Context, defaultId: number) {
     fileIo.listFile(context.filesDir + '/' + this.basePath)
       .then((listResult) => {
         for (let index = 0; index < listResult.length; index++) {

@@ -37,8 +37,12 @@
       "value": "Dict"
     },
     {
-      "name": "jump_to",
+      "name": "link_to",
       "value": "Plz see also:"
+    },
+    {
+      "name": "jump_to",
+      "value": "The page jumps you to..."
     }
   ]
 }

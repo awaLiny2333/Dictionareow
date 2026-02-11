@@ -68,37 +68,38 @@ export function onLoadContent(window: window.Window, context: Context) {
 export function initEnv(context: Context) {
   sandboxCreateDir('oops', context).then(() => {
     saveHybrid(context.filesDir + '/oops/default.txt', '0', false).then((result) => {
+      let defaultDictNumber = 0;
       if (result == undefined) {
         // Should read
         const read = readArrayBufferSync(context.filesDir + '/oops/default.txt');
         const readString = buffer.from(read).toString();
-        const readNumber = Number(readString);
-        console.log(`[initEnv] Read default dictionary is ${readNumber}!`);
+        defaultDictNumber = Number(readString);
+        console.log(`[initEnv] Read default dictionary is ${defaultDictNumber}!`);
         let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
-        misc.defaultDictBundleIndex = readNumber;
+        misc.defaultDictBundleIndex = defaultDictNumber;
+      }
+
+      // New home
+      try {
+        let homeExist = fileIo.accessSync(context.filesDir + '/bundles');
+        if (!homeExist) {
+          fileIo.mkdirSync(context.filesDir + '/bundles');
+          console.log(`[flow][initEnv] Created new home bundles!`);
+        } else {
+          refreshAllBundles(context, defaultDictNumber);
+        }
+      } catch (e) {
+        console.error(`[flow][initEnv] Create new home bundles failed! ${e}`);
       }
     })
   })
 
   let bundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
   bundle.initFrom('', context); // Legacy
-
-  // New home
-  try {
-    let homeExist = fileIo.accessSync(context.filesDir + '/bundles');
-    if (!homeExist) {
-      fileIo.mkdirSync(context.filesDir + '/bundles');
-      console.log(`[flow][initEnv] Created new home bundles!`);
-    } else {
-      refreshAllBundles(context);
-    }
-  } catch (e) {
-    console.error(`[flow][initEnv] Create new home bundles failed! ${e}`);
-  }
 }
 
-function refreshAllBundles(context: Context) {
+function refreshAllBundles(context: Context, defaultId: number) {
   console.log(`[flow][refreshAllBundles] BUILD!`);
   let librarian = AppStorageV2.connect<meowDictBundleLibrarian>(meowDictBundleLibrarian, 'meowDictBundleLibrarian', () => new meowDictBundleLibrarian())!;
-  librarian.initAll(context);
+  librarian.initAll(context, defaultId);
 }

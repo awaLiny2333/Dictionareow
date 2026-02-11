@@ -65,6 +65,18 @@ export class meowDictBundle {
     })
   }
 
+  // Use
+
+  async hasKeyInMDX(key: string) {
+    return this.mdx?.hasKey(key, false)?.then((r) => {
+      return r;
+    }) || false;
+  }
+
+  lookUpKeyFromMDX(key: string): Promise<ArrayBuffer[] | undefined> | undefined {
+    return this.mdx?.lookUpKey(key, false);
+  }
+
   async lookUpResourceFromMDDs(key: string) {
     const startTime: number = Date.now();
 
@@ -75,7 +87,7 @@ export class meowDictBundle {
     }
 
     for (let index = 0; index < this.mdds.length; index++) {
-      let meow = await this.mdds[index].lookUpKey(key);
+      let meow = await this.mdds[index].lookUpKey(key, true);
       if (meow) {
         if (meow[0].byteLength > 100000) {
           this.cacheKeys.push(key);
@@ -109,6 +121,8 @@ export class meowDictBundle {
       return path;
     })
   }
+
+  // Status maintenance
 
   /**
    * Updates the extra files additionally added.

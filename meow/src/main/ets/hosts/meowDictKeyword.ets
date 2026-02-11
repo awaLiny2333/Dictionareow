@@ -103,7 +103,7 @@ export class meowDictKeyword {
    * @param fuzzyInclusive Allow case and punctuation fuzzy
    * @returns [offsetStart, offsetEnd] local offsets with head of record as base
    * */
-  async lookUpRecordEntryOffset(key: string) {
+  async lookUpRecordEntryOffset(key: string, exact: boolean) {
     if (!this.index) {
       console.warn(`[meowDictKeyword][Index][lookUp] Index uninitialized. Request rejected.`);
       return undefined;
@@ -114,8 +114,9 @@ export class meowDictKeyword {
       const theBlockEntry = this.index.indexEntries[lookUpBlockIndex];
       const firstWord = theBlockEntry.firstWord;
       const lastWord = theBlockEntry.lastWord;
+      const keyProcessed = exact ? key : keepOnlyAlphanumericGlobal(key).toLowerCase();
 
-      if (isStringBetween(key.toLowerCase(), firstWord.toLowerCase(), lastWord.toLowerCase())) {
+      if (isStringBetween(keyProcessed.toLowerCase(), firstWord.toLowerCase(), lastWord.toLowerCase())) {
         // if (isStringBetween(keepOnlyAlphanumericGlobal(key.toLowerCase()), keepOnlyAlphanumericGlobal(firstWord.toLowerCase()), keepOnlyAlphanumericGlobal(lastWord.toLowerCase()))) {
         this.lookUpBlockIndex = lookUpBlockIndex;
         console.log(`[meowDictKeyword][Index][lookUp][${key}] Selected index block from '${firstWord}' to '${lastWord}'! (#${lookUpBlockIndex})! `);

@@ -37,8 +37,12 @@
       "value": "词典"
     },
     {
-      "name": "jump_to",
+      "name": "link_to",
       "value": "请一同过目："
+    },
+    {
+      "name": "jump_to",
+      "value": "页面跳转到了……"
     }
   ]
 }
