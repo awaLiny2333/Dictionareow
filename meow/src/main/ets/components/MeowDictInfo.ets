@@ -1,6 +1,6 @@
 import { meowDict, meowDictType } from '../hosts/meowDict';
 import { deviceInfo } from '@kit.BasicServicesKit';
-import { addUnitsToSize, resource_to_string } from '../utils/data';
+import { addUnitsToSize, resource2String } from '../utils/data';
 import { LengthMetrics } from '@kit.ArkUI';
 
 @ReusableV2
@@ -18,7 +18,7 @@ struct MeowDictInfo {
           .fontSize(16)
           .opacity(0.9)
 
-        Text(`${this.dict.keyword?.numEntries} ${resource_to_string($r('app.string.entries'), this.context)} / ${this.dict.header?.Encoding || 'Unknown encoding'} / ${addUnitsToSize(this.dict.size)}`)
+        Text(`${this.dict.keyword?.numEntries} ${resource2String($r('app.string.entries'), this.context)} / ${this.dict.header?.Encoding || 'Unknown encoding'} / ${addUnitsToSize(this.dict.size)}`)
           .fontWeight(FontWeight.Medium)
           .opacity(0.75)
 
@@ -28,7 +28,7 @@ struct MeowDictInfo {
 
       if (this.deleteAction) {
         Row() {
-          Button(` 󰀁 ${resource_to_string($r('app.string.delete'), this.context)}`)
+          Button(` 󰀁 ${resource2String($r('app.string.delete'), this.context)}`)
             .onClick(() => {
               if (this.deleteAction) {
                 this.deleteAction();

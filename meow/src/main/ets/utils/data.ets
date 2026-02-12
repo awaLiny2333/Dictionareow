@@ -163,7 +163,7 @@ export function division(prompt: string) {
  * @returns A string, the string content retrieved.
  * @example resource_to_string($r('app.string.Whats_new_content_1'))
  * */
-export function resource_to_string(resourceStr: Resource, context: Context) {
+export function resource2String(resourceStr: Resource, context: Context) {
   try {
     return context.resourceManager.getStringSync(resourceStr.id);
   } catch (error) {

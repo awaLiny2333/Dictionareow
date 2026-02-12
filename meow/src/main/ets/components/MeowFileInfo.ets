@@ -1,5 +1,5 @@
 import { deviceInfo } from '@kit.BasicServicesKit';
-import { addUnitsToSize, resource_to_string } from '../utils/data';
+import { addUnitsToSize, resource2String } from '../utils/data';
 import { LengthMetrics } from '@kit.ArkUI';
 
 @ReusableV2
@@ -33,7 +33,7 @@ struct MeowFileInfo {
 
       if (this.deleteAction) {
         Row() {
-          Button(` 󰀁 ${resource_to_string($r('app.string.delete'), this.context)}`)
+          Button(` 󰀁 ${resource2String($r('app.string.delete'), this.context)}`)
             .onClick(() => {
               if (this.deleteAction) {
                 this.deleteAction();

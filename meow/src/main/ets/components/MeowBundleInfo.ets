@@ -1,6 +1,6 @@
 import { meowDict } from '../hosts/meowDict';
 import { deviceInfo } from '@kit.BasicServicesKit';
-import { addUnitsToSize, resource_to_string } from '../utils/data';
+import { addUnitsToSize, resource2String } from '../utils/data';
 import { defaultAnima, meowLayoutModeStatus } from '../utils/ui';
 import { AppStorageV2, LengthMetrics } from '@kit.ArkUI';
 import MeowDictInfo from './MeowDictInfo';
@@ -37,7 +37,7 @@ struct meowBundleInfo {
 
       if (this.renderExpanded) {
         Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(5), cross: LengthMetrics.vp(2) } }) {
-          Text(`${this.bundle.mdx?.keyword?.numEntries} ${resource_to_string($r('app.string.entries'), this.context)} / ${addUnitsToSize(this.bundle.totalSize)}`)
+          Text(`${this.bundle.mdx?.keyword?.numEntries} ${resource2String($r('app.string.entries'), this.context)} / ${addUnitsToSize(this.bundle.totalSize)}`)
             .fontWeight(FontWeight.Bolder)
             .opacity(0.75)
 
@@ -52,7 +52,7 @@ struct meowBundleInfo {
           Row({ space: 10 }) {
             Button(this.bundle.mdx?.header ? 'MDX  󰀓' : '󰀵 MDX')
               .onClick(() => {
-                fileDocumentPick2Path(['.mdx'], 1).then((r) => {
+                fileDocumentPick2Path([`${resource2String($r('app.string.type_mdx'), this.context)}|.mdx`], 1).then((r) => {
                   if (r.succeed) {
                     this.bundle.addMDX(r.sourcePaths![0], this.context);
                   }
@@ -60,7 +60,7 @@ struct meowBundleInfo {
               })
             Button(`󰀵 MDD (${this.bundle.mdds.length})`)
               .onClick(() => {
-                fileDocumentPick2Path(['.mdd'], 233).then((r) => {
+                fileDocumentPick2Path([`${resource2String($r('app.string.type_mdd'), this.context)}|.mdd`], 233).then((r) => {
                   if (r.succeed) {
                     for (let index = 0; index < r.sourcePaths!.length; index++) {
                       this.bundle.addMDD(r.sourcePaths![index], this.context);
@@ -68,7 +68,7 @@ struct meowBundleInfo {
                   }
                 })
               })
-            Button(`󰀵 ${resource_to_string($r('app.string.add_files'), this.context)} (${this.bundle.files.length})`)
+            Button(`󰀵 ${resource2String($r('app.string.add_files'), this.context)} (${this.bundle.files.length})`)
               .onClick(() => {
                 fileDocumentPick2Path([], 233).then((r) => {
                   if (r.succeed) {
@@ -80,7 +80,7 @@ struct meowBundleInfo {
               })
 
             if (this.deleteAction) {
-              Button(` 󰀁 ${resource_to_string($r('app.string.delete'), this.context)}`)
+              Button(` 󰀁 ${resource2String($r('app.string.delete'), this.context)}`)
                 .onClick(() => {
                   if (this.deleteAction) {
                     this.deleteAction();

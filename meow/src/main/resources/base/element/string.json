@@ -43,6 +43,14 @@
     {
       "name": "jump_to",
       "value": "The page jumps you to..."
+    },
+    {
+      "name": "type_mdx",
+      "value": "MDX Dictionary (.mdx)"
+    },
+    {
+      "name": "type_mdd",
+      "value": "MDD Dictionary Resource (.mdd)"
     }
   ]
 }

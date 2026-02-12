@@ -3,7 +3,7 @@ import { fileIo } from '@kit.CoreFileKit';
 import { AppStorageV2, LengthMetrics } from '@kit.ArkUI';
 import { defaultAnima, defaultDecorHeight, meowAvoid, meowFreeWindowModeStatus, meowLayoutModeStatus } from '../utils/ui';
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
-import { addUnitsToSize, division, filterAtSimple, mimeOfFileName, resource_to_string } from '../utils/data';
+import { addUnitsToSize, division, filterAtSimple, mimeOfFileName, resource2String } from '../utils/data';
 import { meowTheme } from '../hosts/meowTheme';
 import lazy { playThisForMe } from '../utils/av';
 import lazy { fastbuffer } from '@kit.ArkTS';
@@ -171,7 +171,7 @@ struct Index {
 
                 Scroll() {
                   Row({ space: 8 }) {
-                    Button(`󰀵 ${resource_to_string($r('app.string.new_dictionary'), this.context)}`)
+                    Button(`󰀵 ${resource2String($r('app.string.new_dictionary'), this.context)}`)
                       .onClick(() => {
                         this.meowLibrarian.createBundle(this.context);
                       })
@@ -265,7 +265,7 @@ struct Index {
               Column({ space: 5 }) {
                 Row() {
                   Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
-                    Button(`󰊖 ${resource_to_string($r('app.string.info'), this.context)}`)
+                    Button(`󰊖 ${resource2String($r('app.string.info'), this.context)}`)
                       .onClick(() => {
                         this.renderMore = true;
                         this.isShowingInfo = !this.isShowingInfo;
@@ -535,7 +535,7 @@ struct Index {
         // console.log(`[Meow][MDX][${key}] resultText = ${resultText}}`);
       }
 
-      this.loadWeb(resultTexts.join(division(resource_to_string($r('app.string.link_to'), this.context))), this.currentBase());
+      this.loadWeb(resultTexts.join(division(resource2String($r('app.string.link_to'), this.context))), this.currentBase());
       // console.log(`[Meow][MDX] Got result!`);
 
       return true;
@@ -566,7 +566,7 @@ struct Index {
       }
     }
 
-    text = pieces.join(division(resource_to_string($r('app.string.jump_to'), this.context)));
+    text = pieces.join(division(resource2String($r('app.string.jump_to'), this.context)));
     return text;
   }
 
