@@ -1,4 +1,4 @@
-import { arrayBuffer2Int64BE, bufferBuffer2Int64BE, decompress } from '../utils/data';
+import { arrayBuffer2Int64BE, bufferBuffer2Int64BE, decompress, findLastIndexLessThanQuery } from '../utils/data';
 import { fastbuffer, taskpool } from '@kit.ArkTS';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { readArrayBufferConcurrent, readArrayBufferSync } from '../utils/storage';
@@ -50,14 +50,6 @@ export class meowDictRecord {
 
     const metaDataBlockSlice = readArrayBufferSync(this.fullPath, this.globalOffset + 32, 16 * numBlocks)!;
 
-    // const res = calculateMetaDataSync(metaDataBlockSlice, numBlocks);
-    // this.compSizes = res.compSizes;
-    // this.decompSizes = res.decompSizes;
-    // this.compSizesCumulative = res.compSizesCumulative;
-    // this.decompSizesCumulative = res.decompSizesCumulative;
-    // this.recBlocksHeadOffset = res.recBlocksHeadOffset + 32 + this.globalOffset;
-    // this.ready = true;
-
     calculateMetaDataConcurrent(metaDataBlockSlice, numBlocks).then((res) => {
       res = res as calculateMetaDataSyncResult;
       this.compSizes = res.compSizes;
@@ -69,6 +61,8 @@ export class meowDictRecord {
     })
   }
 
+  // Use
+
   /**
    * Gets the record entry data of a certain segment
    * @param recordOffsetStart The local offset of the start of the record. Based on the head of the record blocks.
@@ -76,8 +70,7 @@ export class meowDictRecord {
    * @returns The data result.
    * */
   getRecordEntry(recordOffsetStart: number, recordOffsetEnd?: number, key = '') {
-    const startRecordIdx = Math.max(0, this.findLastIndexLessThanQuery(this.decompSizesCumulative, recordOffsetStart));
-
+    const startRecordIdx = Math.max(0, findLastIndexLessThanQuery(this.decompSizesCumulative, recordOffsetStart));
 
     // Decompress them
     const startRecordGlobalOffset = this.recBlocksHeadOffset + this.compSizesCumulative[startRecordIdx];
@@ -98,7 +91,7 @@ export class meowDictRecord {
 
           if (recordOffsetEnd) {
             const expectedLength = recordOffsetEnd - recordOffsetStart;
-            const endRecordIdx = Math.max(0, this.findLastIndexLessThanQuery(this.decompSizesCumulative, recordOffsetEnd));
+            const endRecordIdx = Math.max(0, findLastIndexLessThanQuery(this.decompSizesCumulative, recordOffsetEnd));
             if (startRecordIdx != endRecordIdx) {
               console.warn(`    [meowDictRecord][getRecordEntry][end][${key}][${endRecordIdx}] Cross block! exp=${expectedLength}, act=${readableLength}`);
             }
@@ -112,36 +105,9 @@ export class meowDictRecord {
         })
     })
   }
-
-  /**
-   * 在升序数组中查找最后一个小于目标值的元素索引
-   * @param decompSizesCumulative 升序数组
-   * @param query 目标值
-   * @returns 最后一个小于 query 的元素的索引。如果所有元素都大于等于 query，返回 -1
-   * @author Celia Web @ Feb 4 2026
-   */
-  private findLastIndexLessThanQuery(decompSizesCumulative: number[], query: number): number {
-    let left = 0;
-    let right = decompSizesCumulative.length - 1;
-    let result = -1; // 初始化为-1，处理所有元素都大于等于query的情况
-
-    while (left <= right) {
-      const mid = Math.floor((left + right) / 2);
-
-      if (decompSizesCumulative[mid] <= query) {
-        // 中间值小于query，记录当前位置，并继续在右侧寻找更大的（但依然小于query的）值
-        result = mid; // 更新结果为当前满足条件的索引
-        left = mid + 1; // 向右半部分继续查找
-      } else {
-        // 中间值大于等于query，向左半部分查找
-        right = mid - 1;
-      }
-    }
-
-    // 循环结束时，result 保存的就是最后一个满足条件的索引
-    return result;
-  }
 }
+
+// MetaData processing
 
 interface calculateMetaDataSyncResult {
   compSizes: number[];
@@ -202,7 +168,7 @@ function calculateMetaDataSync(rawData: ArrayBuffer, numBlocks: number) {
   } as calculateMetaDataSyncResult;
 }
 
-export async function calculateMetaDataConcurrent(rawData: ArrayBuffer, numBlocks: number) {
+async function calculateMetaDataConcurrent(rawData: ArrayBuffer, numBlocks: number) {
   // taskpool.execute(task)
   let task: taskpool.Task = new taskpool.Task(calculateMetaDataSync, rawData, numBlocks);
 

@@ -33,18 +33,19 @@ export class meowDict {
     }
   }
 
+  // Build
+
   init() {
     const startTime: number = Date.now();
 
     let globalOffset: number = 0;
-    this.processHeader().then((val) => {
+    return this.processHeader().then((val) => {
       globalOffset += val;
       globalOffset += this.processKeyword(globalOffset);
       this.processRecord(globalOffset);
 
       // Ending mark
-      console.log(`[meowDict][${this.fullPath}] READY! (${Date.now() - startTime} ms)
-    `);
+      console.log(`[meowDict][${this.fullPath}] READY! (${Date.now() - startTime} ms)`);
     })
   }
 
@@ -122,6 +123,8 @@ export class meowDict {
     this.record = new meowDictRecord(baseBytesOffset, this.fullPath!, this.header!.Encoding);
     console.log(`[meowDict][processRecord] Record OK! (${Date.now() - startTime} ms)`);
   }
+
+  // Use
 
   /**
    * Look up a key in the dictionary

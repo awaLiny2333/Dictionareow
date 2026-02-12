@@ -98,11 +98,24 @@ export async function saveHybrid(filePath: string, content: string | ArrayBuffer
   }
 }
 
-export async function fileCopy(sourcePath: string, destPath: string) {
+export async function fileCopy(sourcePath: string, destPath: string, overwrite: boolean) {
+  try {
+    if (fileIo.accessSync(destPath)) {
+      if (!overwrite) {
+        return undefined;
+      }
+    }
+  } catch (e) {
+    console.error(`[fileCopy] fileIo.copyFile(${sourcePath}, ${destPath}, ${overwrite}) test accessSync failed: ${e}`);
+  }
   return fileIo.copyFile(sourcePath, destPath)
     .catch((e: BusinessError) => {
-      console.error(`[fileCopy] fileIo.copyFile(${sourcePath}, ${destPath}) failed: ${e}`);
-    });
+      console.error(`[fileCopy] fileIo.copyFile(${sourcePath}, ${destPath}, ${overwrite}) failed: ${e}`);
+      return false;
+    })
+    .then(() => {
+      return true;
+    })
 }
 
 // Read

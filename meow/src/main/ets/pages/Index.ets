@@ -22,7 +22,7 @@ struct Index {
   @Local myMeowMisc: meowMisc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
   @Local windowTopAvoid: number = 0;
   // Data
-  @Local meowDictExampleBundle: meowDictBundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
+  // @Local meowDictExampleBundle: meowDictBundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
   @Local meowLibrarian: meowDictBundleLibrarian = AppStorageV2.connect<meowDictBundleLibrarian>(meowDictBundleLibrarian, 'meowDictBundleLibrarian', () => new meowDictBundleLibrarian())!;
   // Runtime interaction
   @Local lookUpWord: string = '';
@@ -198,26 +198,26 @@ struct Index {
                 // if (this.renderMore) {
                 Scroll() {
                   Column({ space: 8 }) {
-                    if (this.meowDictExampleBundle.mdx?.header) {
-                      meowBundleInfo({
-                        bundle: this.meowDictExampleBundle,
-                        deleteAction: () => {
-                          fileIo.rmdir(this.context.filesDir + '/meow/')
-                            .catch((e: BusinessError) => {
-                              console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/meow/') Failed: ${e}`);
-                            });
-                          fileIo.rmdir(this.context.filesDir + '/woof/')
-                            .catch((e: BusinessError) => {
-                              console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/woof/') Failed: ${e}`);
-                            });
-                          fileIo.rmdir(this.context.filesDir + '/honk/')
-                            .catch((e: BusinessError) => {
-                              console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/honk/') Failed: ${e}`);
-                            });
-                          this.meowDictExampleBundle = new meowDictBundle();
-                        }
-                      })
-                    }
+                    // if (this.meowDictExampleBundle.mdx?.header) {
+                    //   meowBundleInfo({
+                    //     bundle: this.meowDictExampleBundle,
+                    //     deleteAction: () => {
+                    //       fileIo.rmdir(this.context.filesDir + '/meow/')
+                    //         .catch((e: BusinessError) => {
+                    //           console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/meow/') Failed: ${e}`);
+                    //         });
+                    //       fileIo.rmdir(this.context.filesDir + '/woof/')
+                    //         .catch((e: BusinessError) => {
+                    //           console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/woof/') Failed: ${e}`);
+                    //         });
+                    //       fileIo.rmdir(this.context.filesDir + '/honk/')
+                    //         .catch((e: BusinessError) => {
+                    //           console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/honk/') Failed: ${e}`);
+                    //         });
+                    //       this.meowDictExampleBundle = new meowDictBundle();
+                    //     }
+                    //   })
+                    // }
 
                     ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, idx: number) => {
                       meowBundleInfo({
@@ -262,82 +262,74 @@ struct Index {
 
           RelativeContainer() {
             if (this.render) {
-              Column({ space: 5 }) {
-                Row() {
-                  Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
-                    Button(`󰊖 ${resource2String($r('app.string.info'), this.context)}`)
-                      .onClick(() => {
-                        this.renderMore = true;
-                        this.isShowingInfo = !this.isShowingInfo;
-                      })
-                      .border(this.isShowingInfo ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
-                      .brightness(this.isShowingInfo ? 1.1 : 1)
-                      .animation(defaultAnima)
-
-                    // Default
-
-                    Button(`󰀲 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex].mdx?.header?.Title}`)
-                      .onClick(() => {
-                        this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
-                        this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], this.lookUpWord);
-                      })
-                      .opacity(this.currentDictHasStats ? (this.currentDictHasStats[this.myMeowMisc.defaultDictBundleIndex] ? 1 : 0.5) : 0.5)
-                      .border(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
-                      .brightness(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? 1.1 : 1)
-                      .animation(defaultAnima)
-
-                    // Others
-
-                    ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, index: number) => {
-                      if (index != this.myMeowMisc.defaultDictBundleIndex) {
-                        Button(`${bundle.mdx?.header?.Title}`)
-                          .onClick(() => {
-                            this.currentDictNo = index;
-                            this.lookUpKey(bundle, this.lookUpWord);
-                          })
-                          .opacity(this.currentDictHasStats ? (this.currentDictHasStats[index] ? 1 : 0.5) : 0.5)
-                          .border(this.currentDictNo == index ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
-                          .brightness(this.currentDictNo == index ? 1.1 : 1)
-                          .animation(defaultAnima)
-                      }
-                    }, (bundle: meowDictBundle) => {
-                      return bundle.sandboxPathWithEndSlash;
+              Row() {
+                Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
+                  Button(`󰊖 ${resource2String($r('app.string.info'), this.context)}`)
+                    .onClick(() => {
+                      this.renderMore = true;
+                      this.isShowingInfo = !this.isShowingInfo;
                     })
-                  }
-                  .animation(defaultAnima)
-                  .onAreaChange((o, n) => {
-                    if (o.width != n.width) {
-                      this.buttonsWidth = n.width as number;
+                    .border(this.isShowingInfo ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
+                    .brightness(this.isShowingInfo ? 1.1 : 1)
+                    .animation(defaultAnima)
+
+                  // Default
+
+                  Button(`󰀲 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex].mdx?.header?.Title}`)
+                    .onClick(() => {
+                      this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
+                      this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], this.lookUpWord);
+                    })
+                    .opacity(this.currentDictHasStats ? (this.currentDictHasStats[this.myMeowMisc.defaultDictBundleIndex] ? 1 : 0.5) : 0.5)
+                    .border(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
+                    .brightness(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? 1.1 : 1)
+                    .animation(defaultAnima)
+
+                  // Others
+
+                  ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, index: number) => {
+                    if (index != this.myMeowMisc.defaultDictBundleIndex) {
+                      Button(`${bundle.mdx?.header?.Title}`)
+                        .onClick(() => {
+                          this.currentDictNo = index;
+                          this.lookUpKey(bundle, this.lookUpWord);
+                        })
+                        .opacity(this.currentDictHasStats ? (this.currentDictHasStats[index] ? 1 : 0.5) : 0.5)
+                        .border(this.currentDictNo == index ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
+                        .brightness(this.currentDictNo == index ? 1.1 : 1)
+                        .animation(defaultAnima)
                     }
-                    if (o.height != n.height) {
-                      this.buttonsHeight = n.height as number;
-                    }
+                  }, (bundle: meowDictBundle) => {
+                    return bundle.sandboxPathWithEndSlash;
                   })
                 }
-                .constraintSize(this.buttonsExpanded ? {} : { maxHeight: 40 })
                 .animation(defaultAnima)
-                .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
-                .alignItems(VerticalAlign.Top)
-                .clip(true)
-
-                Text(this.buttonsExpanded ? (this.topDown ? '󰃘' : '󰃛') : (!this.topDown ? '󰃘' : '󰃛'))
-                  .hoverEffect(HoverEffect.Highlight)
-                  .visibility(this.needExpandable() ? Visibility.Visible : Visibility.None)
-                  .animation(defaultAnima)
-                  .onClick(() => {
-                    this.buttonsExpanded = !this.buttonsExpanded;
-                  })
-                  .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
-                  .textAlign(TextAlign.Center)
-                  .width('100%')
-                  .padding(1)
+                .onAreaChange((o, n) => {
+                  if (o.width != n.width) {
+                    this.buttonsWidth = n.width as number;
+                  }
+                  if (o.height != n.height) {
+                    this.buttonsHeight = n.height as number;
+                  }
+                })
               }
-              .alignItems(HorizontalAlign.Center)
+              .constraintSize(this.buttonsExpanded ? {} : { maxHeight: 40 })
+              .animation(defaultAnima)
+              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+              .alignItems(VerticalAlign.Top)
+              .clip(true)
               .alignRules({ left: { anchor: '__container__', align: HorizontalAlign.Start }, top: { anchor: '__container__', align: VerticalAlign.Top } })
               .id('fileControlButtons')
             }
 
             Row({ space: 10 }) {
+              if (this.needExpandable()) {
+                Button(this.buttonsExpanded ? (this.topDown ? '󰃘' : '󰃛') : (!this.topDown ? '󰃘' : '󰃛'))
+                  .onClick(() => {
+                    this.buttonsExpanded = !this.buttonsExpanded;
+                  })
+              }
+
               TextInput({ placeholder: `󰀩 ${this.currentDictBundleTitle}`, text: this.lookUpWord })
                 .layoutWeight(1)
                 .onChange((e) => {
@@ -577,7 +569,7 @@ struct Index {
    * @returns 60 or 110.
    * */
   titleHeight() {
-    return 70 + (this.buttonsExpanded ? this.buttonsHeight : 40) + (this.needExpandable() ? 20 : 0);
+    return 70 + (this.buttonsExpanded ? this.buttonsHeight : 40);
   }
 
   /**
@@ -632,9 +624,9 @@ struct Index {
   focusSearch() {
     if (this.myMeowFreeWindowModeStatus.onFocus) {
       // if (this.myMeowFreeWindowModeStatus.on) {
-        setTimeout(() => {
-          focusControl.requestFocus('searchInput');
-        }, 10)
+      setTimeout(() => {
+        focusControl.requestFocus('searchInput');
+      }, 10)
       // }
     }
   }

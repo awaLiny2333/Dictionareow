@@ -51,6 +51,22 @@
     {
       "name": "type_mdd",
       "value": "MDD Dictionary Resource (.mdd)"
+    },
+    {
+      "name": "add_fail_general",
+      "value": "Add file failed!"
+    },
+    {
+      "name": "add_success",
+      "value": "Add file succeeded!"
+    },
+    {
+      "name": "add_fail_same_name",
+      "value": "Add file failed! A file of a same name has already been added!"
+    },
+    {
+      "name": "add_importing",
+      "value": "File importing... Please wait for a moment..."
     }
   ]
 }

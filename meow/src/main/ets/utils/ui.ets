@@ -68,7 +68,7 @@ export let defaultAnima: AnimateParam = { curve: Curve.FastOutSlowIn, duration: 
 
 // Decor (Free window mode)
 
-export let defaultDecorHeight: number = 40;
+export const defaultDecorHeight: number = 40;
 
 /**
  * Sets the decor height to defaultDecorHeight (50).
@@ -264,3 +264,7 @@ export function listenFocus(windowClass: window.Window) {
     console.error('[listen_focus] Failed: ' + e);
   }
 }
+
+// Toast
+
+export const toastDuration: number = 5000;

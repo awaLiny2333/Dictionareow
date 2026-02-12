@@ -153,6 +153,11 @@ export function wrapHtml(content: string = '', options: meowWrapHtmlOptions = {
 </html>`;
 }
 
+/**
+ * HTML Division for two blocks.
+ * @param prompt The prompt in between.
+ * @returns The HTML code.
+ * */
 export function division(prompt: string) {
   return `<div><p> </p><hr style='border: none; height: 3px; background: #ccc; margin: 0;'><p>　(～o￣3￣)～　${prompt}</p><hr style='border: none; height: 3px; background: #ccc; margin: 0;'><p> </p></div>`;
 }
@@ -231,18 +236,7 @@ export function filterAtSimple(text: string, query: string[]): string[] {
   return result;
 }
 
-// ArrayBuffers
-
-/**
- * Returns true if the buffer is all zero
- * @param buffer The buffer
- * @returns Boolean
- * @author HarmonyOS Developers Search AI @ Feb 4 2026
- * */
-export function isArrayBufferZero(buffer: ArrayBuffer): boolean {
-  const view = new Uint8Array(buffer);
-  return view.every(byte => byte === 0);
-}
+// Arrays, ArrayBuffers and Buffers
 
 /**
  * Returns true if the uint8array is all zero
@@ -279,7 +273,36 @@ const encodingUnitLengthsMap = new Map<string, number>([
  * @author Celia Web @ Feb 4 2026
  */
 export function getUnitEncodingLength(encoding: string): number {
-  return encodingUnitLengthsMap.get(encoding) || 1;
+  return encodingUnitLengthsMap.get(encoding.toLowerCase()) || 1;
+}
+
+/**
+ * 在升序数组中查找最后一个小于目标值的元素索引
+ * @param ascArray 升序数组
+ * @param query 目标值
+ * @returns 最后一个小于 query 的元素的索引。如果所有元素都大于等于 query，返回 -1
+ * @author Celia Web @ Feb 4 2026
+ */
+export function findLastIndexLessThanQuery(ascArray: number[], query: number): number {
+  let left = 0;
+  let right = ascArray.length - 1;
+  let result = -1; // 初始化为-1，处理所有元素都大于等于query的情况
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+
+    if (ascArray[mid] <= query) {
+      // 中间值小于query，记录当前位置，并继续在右侧寻找更大的（但依然小于query的）值
+      result = mid; // 更新结果为当前满足条件的索引
+      left = mid + 1; // 向右半部分继续查找
+    } else {
+      // 中间值大于等于query，向左半部分查找
+      right = mid - 1;
+    }
+  }
+
+  // 循环结束时，result 保存的就是最后一个满足条件的索引
+  return result;
 }
 
 // Compressed

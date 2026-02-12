@@ -37,6 +37,8 @@ export class meowDictKeyword {
     this.processIndex(type2Encrypted);
   }
 
+  // Build
+
   private processMetadata(type1Encrypted: boolean, header: meowDictHeader) {
     let metaSlice40 = readArrayBufferSync(this.fullPath, this.globalOffset, 40)!;
     // let metaSlice = this.globalRawData.slice(this.globalOffset + 0, this.globalOffset + 40);
@@ -96,6 +98,8 @@ export class meowDictKeyword {
       console.log(`[meowDictKeyword][Index][init] Index loaded! (${Date.now() - startTime} ms)`);
     })
   }
+
+  // Use
 
   /**
    * Gets the offset of a specific record entry of given key.
@@ -198,6 +202,8 @@ export class meowDictKeyword {
     console.warn(`[meowDictKeyword][Index][lookUp][${this.fullPath}] Key '${key}' not found in any of the blocks!`);
     return undefined;
   }
+
+  // Helpers
 
   private async getKeyBlockArrayBuffer(indexInBlocks: number) {
     if (!this.index) {

@@ -54,7 +54,7 @@ struct meowBundleInfo {
               .onClick(() => {
                 fileDocumentPick2Path([`${resource2String($r('app.string.type_mdx'), this.context)}|.mdx`], 1).then((r) => {
                   if (r.succeed) {
-                    this.bundle.addMDX(r.sourcePaths![0], this.context);
+                    this.bundle.addMDX(r.sourcePaths![0], this.getUIContext());
                   }
                 })
               })
@@ -63,7 +63,7 @@ struct meowBundleInfo {
                 fileDocumentPick2Path([`${resource2String($r('app.string.type_mdd'), this.context)}|.mdd`], 233).then((r) => {
                   if (r.succeed) {
                     for (let index = 0; index < r.sourcePaths!.length; index++) {
-                      this.bundle.addMDD(r.sourcePaths![index], this.context);
+                      this.bundle.addMDD(r.sourcePaths![index], this.getUIContext());
                     }
                   }
                 })
@@ -73,7 +73,7 @@ struct meowBundleInfo {
                 fileDocumentPick2Path([], 233).then((r) => {
                   if (r.succeed) {
                     for (let index = 0; index < r.sourcePaths!.length; index++) {
-                      this.bundle.addFile(r.sourcePaths![index], this.context, index == r.sourcePaths!.length - 1);
+                      this.bundle.addFile(r.sourcePaths![index], this.getUIContext(), index == r.sourcePaths!.length - 1);
                     }
                   }
                 })

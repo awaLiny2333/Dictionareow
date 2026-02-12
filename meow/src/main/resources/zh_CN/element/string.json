@@ -51,6 +51,22 @@
     {
       "name": "type_mdd",
       "value": "MDD 词典资源（.mdd）"
+    },
+    {
+      "name": "add_fail_general",
+      "value": "文件添加失败！"
+    },
+    {
+      "name": "add_fail_same_name",
+      "value": "文件添加失败！已经添加了一个同名文件！"
+    },
+    {
+      "name": "add_success",
+      "value": "文件添加成功！"
+    },
+    {
+      "name": "add_importing",
+      "value": "文件导入中……请稍候……"
     }
   ]
 }
