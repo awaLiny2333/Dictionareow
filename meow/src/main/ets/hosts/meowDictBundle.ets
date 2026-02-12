@@ -82,19 +82,27 @@ export class meowDictBundle {
 
     const cacheIdx = this.cacheKeys.indexOf(key);
     if (cacheIdx >= 0) {
-      console.log(`[meowDictBundle][lookUpResourceFromMDDs] Fetch from cache [${key}]`);
+      console.log(`[meowDictBundle][lookUpResourceFromMDDs] Fetched [${key}] from cache (${Date.now() - startTime} ms)`);
       return this.cacheBufs[cacheIdx];
     }
 
     for (let index = 0; index < this.mdds.length; index++) {
       let meow = await this.mdds[index].lookUpKey(key, true);
       if (meow) {
-        if (meow[0].byteLength > 100000) {
+        let cachedTag = '';
+        const keySplit = key.split('.');
+        const keyExt = keySplit[keySplit.length-1];
+        const isJsTtfCss = ['js', 'ttf', 'css', 'woff'].includes(keyExt.toLowerCase());
+        if (meow[0].byteLength > 100000 || isJsTtfCss) {
           this.cacheKeys.push(key);
           this.cacheBufs.push(meow[0]);
-          console.log(`[meowDictBundle][lookUpResourceFromMDDs] Cached [${key}] (${addUnitsToSize(meow[0].byteLength)})`);
+          if (isJsTtfCss) {
+            cachedTag = `and cached (isJsTtfCss)! `;
+          } else {
+            cachedTag = `and cached! `;
+          }
         }
-        console.log(`[meowDictBundle][lookUpResourceFromMDDs] Found [${key}] in MDD [${this.mdds[index].fullPath}]! (${Date.now() - startTime} ms)`);
+        console.log(`[meowDictBundle][lookUpResourceFromMDDs] Found ${cachedTag}[${key}] in MDD [${this.mdds[index].fullPath}]! (${addUnitsToSize(meow[0].byteLength)}) (${Date.now() - startTime} ms)`);
         return meow[0];
       }
     }

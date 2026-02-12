@@ -151,7 +151,7 @@ export class meowDict {
           let isNew = true;
 
           try {
-            if (buf && buf.byteLength < 1000) {
+            if (this.type == meowDictType.MDX && buf && buf.byteLength < 1000) {
               const fastBuf = fastbuffer.from(buf);
               for (let index = 0; index < arrayBuffers.length; index++) {
                 if (arrayBuffers[index].byteLength < 1000) {

@@ -170,6 +170,7 @@ export function getUpdateAvoid(windowClass: window.Window) {
 @ObservedV2
 export class meowFreeWindowModeStatus {
   @Trace on: boolean;
+  @Trace onFocus: boolean = true;
 
   constructor(on: boolean) {
     this.on = on;
@@ -233,5 +234,33 @@ export class meowLayoutModeStatus {
     this.wideMode = wideMode;
     this.width = width;
     this.height = height;
+  }
+}
+
+// Focus
+
+/**
+ * Enables the listeners for avoid area change.
+ *
+ * Works OK in both window modes (free / traditional).
+ *
+ * @param windowClass The window.Window object.
+ * */
+export function listenFocus(windowClass: window.Window) {
+  // Focus Listener
+  try {
+    windowClass.on("windowEvent", (windowEvent) => {
+      let on_focus = false;
+      if (windowEvent == window.WindowEventType.WINDOW_ACTIVE || windowEvent == window.WindowEventType.WINDOW_SHOWN) {
+        // Focused
+        on_focus = true;
+      }
+      let stat = AppStorageV2.connect<meowFreeWindowModeStatus>(meowFreeWindowModeStatus);
+      if (stat) {
+        stat.onFocus = on_focus;
+      }
+    });
+  } catch (e) {
+    console.error('[listen_focus] Failed: ' + e);
   }
 }

@@ -1,7 +1,7 @@
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { AppStorageV2, LengthMetrics } from '@kit.ArkUI';
-import { defaultAnima, defaultDecorHeight, meowAvoid, meowFreeWindowModeStatus, meowLayoutModeStatus } from '../utils/uiEnv';
+import { defaultAnima, defaultDecorHeight, meowAvoid, meowFreeWindowModeStatus, meowLayoutModeStatus } from '../utils/ui';
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import { addUnitsToSize, division, filterAtSimple, mimeOfFileName, resource_to_string } from '../utils/data';
 import { meowTheme } from '../hosts/meowTheme';
@@ -273,14 +273,31 @@ struct Index {
                       .border(this.isShowingInfo ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
                       .brightness(this.isShowingInfo ? 1.1 : 1)
                       .animation(defaultAnima)
+
+                    // Default
+
+                    Button(`󰀲 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex].mdx?.header?.Title}`)
+                      .onClick(() => {
+                        this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
+                        this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], this.lookUpWord);
+                      })
+                      .opacity(this.currentDictHasStats ? (this.currentDictHasStats[this.myMeowMisc.defaultDictBundleIndex] ? 1 : 0.5) : 0.5)
+                      .border(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
+                      .brightness(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? 1.1 : 1)
+                      .animation(defaultAnima)
+
+                    // Others
+
                     ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, index: number) => {
-                      if (bundle.mdx) {
+                      if (index != this.myMeowMisc.defaultDictBundleIndex) {
                         Button(`${bundle.mdx?.header?.Title}`)
                           .onClick(() => {
                             this.currentDictNo = index;
                             this.lookUpKey(bundle, this.lookUpWord);
                           })
                           .opacity(this.currentDictHasStats ? (this.currentDictHasStats[index] ? 1 : 0.5) : 0.5)
+                          .border(this.currentDictNo == index ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
+                          .brightness(this.currentDictNo == index ? 1.1 : 1)
                           .animation(defaultAnima)
                       }
                     }, (bundle: meowDictBundle) => {
@@ -336,7 +353,7 @@ struct Index {
                   }
                 })
                 .selectAll(true)
-                .selectedBackgroundColor($r('sys.color.font'))
+                .selectedBackgroundColor($r('app.color.meow_iconSubEmphasize'))
                 .keyboardAppearance(KeyboardAppearance.IMMERSIVE)
                 .keyboardShortcut('F', [ModifierKey.CTRL])
                 .id('searchInput')
@@ -610,6 +627,17 @@ struct Index {
   }
 
   // Events
+
+  @Monitor('myMeowFreeWindowModeStatus.onFocus')
+  focusSearch() {
+    if (this.myMeowFreeWindowModeStatus.onFocus) {
+      if (this.myMeowFreeWindowModeStatus.on) {
+        setTimeout(() => {
+          focusControl.requestFocus('searchInput');
+        }, 10)
+      }
+    }
+  }
 
   @Monitor('lookUpWord')
   async refreshHasStats() {

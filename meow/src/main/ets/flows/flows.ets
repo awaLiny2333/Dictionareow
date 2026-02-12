@@ -1,6 +1,6 @@
 import { AppStorageV2, window } from '@kit.ArkUI';
 import { meow, meowLevel } from '../utils/catsLogger';
-import { getUpdateAvoid, getUpdateFreeWindowMode, listenAvoid, listenFreeWindowMode, meowLayoutModeStatus, meowPx2vp } from '../utils/uiEnv';
+import { getUpdateAvoid, getUpdateFreeWindowMode, listenAvoid, listenFocus, listenFreeWindowMode, meowLayoutModeStatus, meowPx2vp } from '../utils/ui';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { meowDictBundle } from '../hosts/meowDictBundle';
 import { fileIo } from '@kit.CoreFileKit';
@@ -57,6 +57,8 @@ export function onLoadContent(window: window.Window, context: Context) {
 
   getUpdateFreeWindowMode(context, window);
   listenFreeWindowMode(context, window);
+
+  listenFocus(window);
 }
 
 // Actions

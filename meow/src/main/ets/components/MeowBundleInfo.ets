@@ -1,7 +1,7 @@
 import { meowDict } from '../hosts/meowDict';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { addUnitsToSize, resource_to_string } from '../utils/data';
-import { defaultAnima, meowLayoutModeStatus } from '../utils/uiEnv';
+import { defaultAnima, meowLayoutModeStatus } from '../utils/ui';
 import { AppStorageV2, LengthMetrics } from '@kit.ArkUI';
 import MeowDictInfo from './MeowDictInfo';
 import MeowFileInfo from './MeowFileInfo';
@@ -145,6 +145,7 @@ struct meowBundleInfo {
       }
 
     }
+    .hoverEffect(HoverEffect.Highlight)
     .onClick(() => {
       if (this.renderExpanded) {
         this.isExpanded = !this.isExpanded;

@@ -14,7 +14,7 @@ import {
 import { buffer, fastbuffer, taskpool } from '@kit.ArkTS';
 import { meowDictHeader } from './meowDictHeader';
 import { decryptType1Block } from '../utils/decryption';
-import { readArrayBufferSync } from '../utils/storage';
+import { readArrayBufferConcurrent, readArrayBufferSync } from '../utils/storage';
 
 export class meowDictKeyword {
   globalOffset: number; // The offset from the head of the entire raw data.
@@ -128,7 +128,7 @@ export class meowDictKeyword {
           }
 
           // console.log(`[meowDictKeyword][Index][lookUp][${key}] block.keywords.length = ${block.keywords.length}, block.offsets.length = ${block.offsets.length}.`);
-          let offsets = this.binaryFindOffsetByKeyword(key, block.keywords, block.offsets);
+          let offsets = this.binaryFindOffsetByKeyword(key, block.keywords, block.offsets, exact);
 
           // let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!
           // misc.debugOutput = block.keywords.join('\n');
@@ -228,7 +228,7 @@ export class meowDictKeyword {
     }
 
     // const compBlock = this.globalRawData.slice(offsetFromRawHead, offsetFromRawHead + thisBlockCompSize);
-    const compBlock = readArrayBufferSync(this.fullPath, offsetFromRawHead, thisBlockCompSize);
+    const compBlock = await readArrayBufferConcurrent(this.fullPath, offsetFromRawHead, thisBlockCompSize);
 
     console.log(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] offsetFromRawHead = ${offsetFromRawHead}, thisBlockCompSize = ${thisBlockCompSize}, thisBlockDecompSize = ${thisBlockDecompSize}`);
 
@@ -251,7 +251,7 @@ export class meowDictKeyword {
    * @returns 找到则返回对应的 offset (number)，否则返回 null
    * @author Gemini 3 @ Feb 4 2026
    */
-  private binaryFindOffsetByKeyword(target: string, keywords: string[], offsets: number[]): number[][] | null {
+  private binaryFindOffsetByKeyword(target: string, keywords: string[], offsets: number[], exact: boolean): number[][] | null {
     // const options: Intl.CollatorOptions = { sensitivity: 'accent' };
     const targetFuzzy = keepOnlyAlphanumericGlobal(target.toLowerCase());
 
@@ -267,32 +267,40 @@ export class meowDictKeyword {
 
       if (midValueFuzzy == targetFuzzy) {
         // 找到匹配项，返回对应的平行 offset
-        while (mid - 1 > 0 && keepOnlyAlphanumericGlobal(keywords[mid-1]).toLowerCase() == targetFuzzy) {
-          mid -= 1;
-        } // choose the first match
         let offsetStart = offsets[mid];
-        if (mid == keywords.length - 1) {
-          return [[offsets[mid], -1]]; // Is the last one
+
+        if (!exact) {
+          while (mid - 1 > 0 && keepOnlyAlphanumericGlobal(keywords[mid-1]).toLowerCase() == targetFuzzy) {
+            mid -= 1;
+          } // choose the first match
+          offsetStart = offsets[mid];
+          if (mid == keywords.length - 1) {
+            return [[offsets[mid], -1]]; // Is the last one
+          }
         }
+
         let offsetEnd = offsets[mid+1];
 
         let result = [[offsetStart, offsetEnd]];
 
-        while (mid + 1 < keywords.length && keepOnlyAlphanumericGlobal(keywords[mid+1]).toLowerCase() == targetFuzzy) {
-          mid += 1;
-          offsetStart = offsets[mid];
-          if (mid == keywords.length - 1) {
-            result.push([offsetStart, -1]); // Is the last one
-          } else {
-            offsetEnd = offsets[mid+1];
-            result.push([offsetStart, offsetEnd]);
-          }
-        } // find the last match
+        if (!exact) {
+          while (mid + 1 < keywords.length && keepOnlyAlphanumericGlobal(keywords[mid+1]).toLowerCase() == targetFuzzy) {
+            mid += 1;
+            offsetStart = offsets[mid];
+            if (mid == keywords.length - 1) {
+              result.push([offsetStart, -1]); // Is the last one
+            } else {
+              offsetEnd = offsets[mid+1];
+              result.push([offsetStart, offsetEnd]);
+            }
+          } // find the last match
+        }
 
         console.log(`[meow][meowDictKeyword][Index][lookUp][${target}] result is:`);
         for (let index = 0; index < result.length; index++) {
           console.log(`     [meow][meowDictKeyword][Index][lookUp][${target}] [${result[index]}]`);
         }
+
         return result;
 
       } else if (midValueFuzzy < targetFuzzy) {
