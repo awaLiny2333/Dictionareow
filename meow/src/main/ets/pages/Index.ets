@@ -177,7 +177,7 @@ struct Index {
 
                     Select(this.meowLibrarian.constructSelectOptions())
                       .selected(this.myMeowMisc.defaultDictBundleIndex)
-                      .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex].mdx?.header?.Title)
+                      .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title)
                       .onSelect((index: number) => {
                         console.info('[Meow][Select] Select:' + index);
                         this.myMeowMisc.defaultDictBundleIndex = index;
@@ -275,7 +275,7 @@ struct Index {
 
                   // Default
 
-                  Button(`󰀲 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex].mdx?.header?.Title}`)
+                  Button(`󰀲 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title || ''}`)
                     .onClick(() => {
                       this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
                       this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], this.lookUpWord);
