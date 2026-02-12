@@ -631,11 +631,11 @@ struct Index {
   @Monitor('myMeowFreeWindowModeStatus.onFocus')
   focusSearch() {
     if (this.myMeowFreeWindowModeStatus.onFocus) {
-      if (this.myMeowFreeWindowModeStatus.on) {
+      // if (this.myMeowFreeWindowModeStatus.on) {
         setTimeout(() => {
           focusControl.requestFocus('searchInput');
         }, 10)
-      }
+      // }
     }
   }
 
