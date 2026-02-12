@@ -67,6 +67,10 @@
     {
       "name": "add_importing",
       "value": "文件导入中……请稍候……"
+    },
+    {
+      "name": "history",
+      "value": "历史"
     }
   ]
 }

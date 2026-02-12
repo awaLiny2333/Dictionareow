@@ -67,6 +67,10 @@
     {
       "name": "add_importing",
       "value": "File importing... Please wait for a moment..."
+    },
+    {
+      "name": "history",
+      "value": "Hist"
     }
   ]
 }

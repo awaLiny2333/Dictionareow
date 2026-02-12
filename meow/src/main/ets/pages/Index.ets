@@ -527,7 +527,9 @@ struct Index {
         // console.log(`[Meow][MDX][${key}] resultText = ${resultText}}`);
       }
 
-      this.loadWeb(resultTexts.join(division(resource2String($r('app.string.link_to'), this.context))), this.currentBase());
+      const thisLoad = resultTexts.join(division(resource2String($r('app.string.link_to'), this.context)));
+      const thisBase = this.currentBase();
+      this.loadWeb(thisLoad, thisBase);
       // console.log(`[Meow][MDX] Got result!`);
 
       return true;
