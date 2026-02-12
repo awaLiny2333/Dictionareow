@@ -168,7 +168,6 @@ struct Index {
           if (this.render) {
             Column({ space: 8 }) {
               if (this.renderMore) {
-
                 Scroll() {
                   Row({ space: 8 }) {
                     Button(`󰀵 ${resource2String($r('app.string.new_dictionary'), this.context)}`)
@@ -234,9 +233,10 @@ struct Index {
                     })
                   }
                 }
+                .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 101 })
                 .width('100%')
                 .align(Alignment.Top)
-                .layoutWeight(1)
+                // .layoutWeight(1)
                 .scrollable(ScrollDirection.Vertical)
                 .edgeEffect(EdgeEffect.Spring)
                 .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
@@ -402,9 +402,9 @@ struct Index {
               })
           )
 
-          if (this.myMeowMisc.debugOutput) {
-            TextArea({ text: this.myMeowMisc.debugOutput })
-          }
+          // if (this.myMeowMisc.debugOutput) {
+          //   TextArea({ text: this.myMeowMisc.debugOutput })
+          // }
         }
         .height('100%')
         .width('100%')
@@ -656,7 +656,7 @@ struct Index {
     this.linearBlurOps = this.constructLinearBlurOps();
   }
 
-  @Monitor('myMeowAvoid.top', 'buttonsWidth', 'buttonsHeight', 'buttonsExpanded')
+  @Monitor('myMeowFreeWindowModeStatus.on', 'myMeowAvoid.top', 'buttonsWidth', 'buttonsHeight', 'buttonsExpanded')
   refreshWebToUpdateAvoid() {
     if (!this.renderWeb) {
       return;
