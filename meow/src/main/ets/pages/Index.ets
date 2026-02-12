@@ -22,7 +22,6 @@ struct Index {
   @Local myMeowMisc: meowMisc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
   @Local windowTopAvoid: number = 0;
   // Data
-  // @Local meowDictExampleBundle: meowDictBundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
   @Local meowLibrarian: meowDictBundleLibrarian = AppStorageV2.connect<meowDictBundleLibrarian>(meowDictBundleLibrarian, 'meowDictBundleLibrarian', () => new meowDictBundleLibrarian())!;
   // Runtime interaction
   @Local lookUpWord: string = '';
@@ -194,29 +193,8 @@ struct Index {
                 .clip(true)
                 .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
 
-                // if (this.renderMore) {
                 Scroll() {
                   Column({ space: 8 }) {
-                    // if (this.meowDictExampleBundle.mdx?.header) {
-                    //   meowBundleInfo({
-                    //     bundle: this.meowDictExampleBundle,
-                    //     deleteAction: () => {
-                    //       fileIo.rmdir(this.context.filesDir + '/meow/')
-                    //         .catch((e: BusinessError) => {
-                    //           console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/meow/') Failed: ${e}`);
-                    //         });
-                    //       fileIo.rmdir(this.context.filesDir + '/woof/')
-                    //         .catch((e: BusinessError) => {
-                    //           console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/woof/') Failed: ${e}`);
-                    //         });
-                    //       fileIo.rmdir(this.context.filesDir + '/honk/')
-                    //         .catch((e: BusinessError) => {
-                    //           console.error(`[Meow][Legacy] fileIo.rmdir(this.context.filesDir + '/honk/') Failed: ${e}`);
-                    //         });
-                    //       this.meowDictExampleBundle = new meowDictBundle();
-                    //     }
-                    //   })
-                    // }
 
                     ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, idx: number) => {
                       meowBundleInfo({
@@ -236,7 +214,6 @@ struct Index {
                 .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 101 })
                 .width('100%')
                 .align(Alignment.Top)
-                // .layoutWeight(1)
                 .scrollable(ScrollDirection.Vertical)
                 .edgeEffect(EdgeEffect.Spring)
                 .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)

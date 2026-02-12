@@ -24,10 +24,6 @@ export class meowDictBundle {
    * */
   async initFrom(sandboxPathWithEndSlash: string, context: Context) {
     this.sandboxPathWithEndSlash = sandboxPathWithEndSlash;
-    // return sandboxCreateDir(sandboxPathWithEndSlash + 'meow', context, false).then(() => {
-    //   return sandboxCreateDir(sandboxPathWithEndSlash + 'woof', context, false).then(() => {
-    //     return sandboxCreateDir(sandboxPathWithEndSlash + 'honk', context, false).then(() => {
-
     // MDX
     fileIo.listFile(context.filesDir + '/' + sandboxPathWithEndSlash + 'woof/')
       .then((r) => {
@@ -59,11 +55,6 @@ export class meowDictBundle {
       })
     // Files
     this.updateFilesSync(context);
-    // readMDict('/woof/woof.mdd', meowDictType.MDD, 'meowDictExampleMDD', context);
-
-    //     })
-    //   })
-    // })
   }
 
   // Use

@@ -95,9 +95,6 @@ export function initEnv(context: Context) {
       }
     })
   })
-
-  // let bundle = AppStorageV2.connect<meowDictBundle>(meowDictBundle, 'meowDictExampleBundle', () => new meowDictBundle())!;
-  // bundle.initFrom('', context); // Legacy
 }
 
 function refreshAllBundles(context: Context, defaultId: number) {
