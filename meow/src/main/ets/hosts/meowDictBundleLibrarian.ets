@@ -55,6 +55,15 @@ export class meowDictBundleLibrarian {
     });
   }
 
+  getBase(context: Context, idx: number): string | undefined {
+    if (idx >= this.bundles.length) {
+      return undefined;
+    }
+    return this.bundles[idx].getBase(context);
+  }
+
+  // Helpers
+
   constructSelectOptions() {
     let options: SelectOption[] = [];
     for (let index = 0; index < this.bundles.length; index++) {

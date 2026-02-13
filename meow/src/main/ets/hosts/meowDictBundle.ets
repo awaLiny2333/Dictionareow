@@ -143,6 +143,10 @@ export class meowDictBundle {
     })
   }
 
+  getBase(context: Context) {
+    return context.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/';
+  }
+
   // Status maintenance
 
   /**

@@ -12,6 +12,7 @@ import { meowDictBundle } from '../hosts/meowDictBundle';
 import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
 import { saveHybrid } from '../utils/storage';
 import { meowMisc } from '../hosts/meowMisc';
+import MeowHistoryEntry from '../components/MeowHistoryEntry';
 
 @Entry
 @ComponentV2
@@ -38,6 +39,7 @@ struct Index {
   @Local renderMore: boolean = false;
   @Local linearBlurOps: LinearGradientBlurOptions = this.constructLinearBlurOps();
   @Local isShowingInfo: boolean = false;
+  @Local isShowingHistory: boolean = false;
   @Local buttonsWidth: number = 0;
   @Local buttonsHeight: number = 0;
   @Local buttonsExpanded: boolean = false;
@@ -46,6 +48,7 @@ struct Index {
   // Runtime Objects
   webController: WebviewController = new webview.WebviewController();
   context: Context = this.getUIContext().getHostContext()!;
+  @Local tempHistoryKey: string[] = [];
 
   aboutToAppear(): void {
     console.warn(`[UI][aboutToAppear] TopDown: ${this.topDown}`);
@@ -164,90 +167,141 @@ struct Index {
               .linearGradientBlur(30, this.linearBlurOps)
           }
 
-          if (this.render) {
-            Column({ space: 8 }) {
-              if (this.renderMore) {
-                Scroll() {
-                  Row({ space: 8 }) {
-                    Button(`󰀵 ${resource2String($r('app.string.new_dictionary'), this.context)}`)
-                      .onClick(() => {
-                        this.meowLibrarian.createBundle(this.context);
-                      })
-
-                    Select(this.meowLibrarian.constructSelectOptions())
-                      .selected(this.myMeowMisc.defaultDictBundleIndex)
-                      .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title)
-                      .onSelect((index: number) => {
-                        console.info('[Meow][Select] Select:' + index);
-                        this.myMeowMisc.defaultDictBundleIndex = index;
-                        saveHybrid(this.context.filesDir + '/oops/default.txt', index.toString(), true);
-                      })
-                      .selectedOptionBgColor($r('app.color.meow_iconSubEmphasize'))
-                      .selectedOptionFontColor($r('sys.color.font'))
-                      .selectedOptionFont({ weight: FontWeight.Bold })
-                  }
-                }
-                .edgeEffect(EdgeEffect.Spring)
-                .scrollable(ScrollDirection.Horizontal)
-                .scrollBar(BarState.Off)
-                .clip(true)
-                .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
-
-                Scroll() {
-                  Column({ space: 8 }) {
-
-                    ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, idx: number) => {
-                      meowBundleInfo({
-                        bundle: bundle,
-                        deleteAction: () => {
-                          this.meowLibrarian.deleteBundle(idx, this.context);
-                          if (idx == this.myMeowMisc.defaultDictBundleIndex) {
-                            this.myMeowMisc.defaultDictBundleIndex = 0;
-                          }
-                        }
-                      })
-                    }, (bundle: meowDictBundle) => {
-                      return bundle.sandboxPathWithEndSlash;
+          Column({ space: 8 }) {
+            if (this.renderMore) {
+              Scroll() {
+                Row({ space: 8 }) {
+                  Button(`󰀵 ${resource2String($r('app.string.new_dictionary'), this.context)}`)
+                    .onClick(() => {
+                      this.meowLibrarian.createBundle(this.context);
                     })
-                  }
+
+                  Select(this.meowLibrarian.constructSelectOptions())
+                    .selected(this.myMeowMisc.defaultDictBundleIndex)
+                    .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title)
+                    .onSelect((index: number) => {
+                      console.info('[Meow][Select] Select:' + index);
+                      this.myMeowMisc.defaultDictBundleIndex = index;
+                      saveHybrid(this.context.filesDir + '/oops/default.txt', index.toString(), true);
+                    })
+                    .selectedOptionBgColor($r('app.color.meow_iconSubEmphasize'))
+                    .selectedOptionFontColor($r('sys.color.font'))
+                    .selectedOptionFont({ weight: FontWeight.Bold })
                 }
-                .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 101 })
-                .width('100%')
-                .align(Alignment.Top)
-                .scrollable(ScrollDirection.Vertical)
-                .edgeEffect(EdgeEffect.Spring)
-                .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
               }
-            } // More panel
-            .visibility(this.isShowingInfo ? Visibility.Visible : Visibility.None)
-            .animation(defaultAnima)
-            .clip(true)
-            .alignItems(HorizontalAlign.Start)
-            .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
-            .borderWidth(1)
-            .borderColor($r('sys.color.comp_background_tertiary'))
-            .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
-            .padding(10)
-            .margin({
-              left: 10,
-              bottom: this.topDown ? 10 : this.myMeowAvoid.bottom + this.titleHeight() + 10,
-              right: 10,
-              top: this.topDown ? this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10 : this.windowTopAvoid + 10
-            })
-            .shadow(ShadowStyle.OUTER_DEFAULT_SM)
-          }
+              .edgeEffect(EdgeEffect.Spring)
+              .scrollable(ScrollDirection.Horizontal)
+              .scrollBar(BarState.Off)
+              .clip(true)
+              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+
+              Scroll() {
+                Column({ space: 8 }) {
+
+                  ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, idx: number) => {
+                    meowBundleInfo({
+                      bundle: bundle,
+                      deleteAction: () => {
+                        this.meowLibrarian.deleteBundle(idx, this.context);
+                        if (idx == this.myMeowMisc.defaultDictBundleIndex) {
+                          this.myMeowMisc.defaultDictBundleIndex = 0;
+                        }
+                      }
+                    })
+                  }, (bundle: meowDictBundle) => {
+                    return bundle.sandboxPathWithEndSlash;
+                  })
+                }
+              }
+              .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 101 })
+              .width('100%')
+              .align(Alignment.Top)
+              .scrollable(ScrollDirection.Vertical)
+              .edgeEffect(EdgeEffect.Spring)
+              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+            }
+          } // More panel
+          .visibility(this.isShowingInfo ? Visibility.Visible : Visibility.None)
+          .animation(defaultAnima)
+          .clip(true)
+          .alignItems(HorizontalAlign.Start)
+          .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
+          .borderWidth(1)
+          .borderColor($r('sys.color.comp_background_tertiary'))
+          .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
+          .padding(10)
+          .margin({
+            left: 10,
+            bottom: this.topDown ? 10 : this.myMeowAvoid.bottom + this.titleHeight() + 10,
+            right: 10,
+            top: this.topDown ? this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10 : this.windowTopAvoid + 10
+          })
+          .shadow(ShadowStyle.OUTER_DEFAULT_SM)
+
+          Column() {
+            Scroll() {
+              Column() {
+                ForEach(this.tempHistoryKey, ((tempHisKey: string, idx: number) => {
+                  MeowHistoryEntry({
+                    keyword: this.tempHistoryKey[idx], clickAction: () => {
+                      // Load
+                      this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
+                      this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], tempHisKey);
+                    }
+                  })
+                }))
+              }
+              .alignItems(this.topDown ? HorizontalAlign.Start : HorizontalAlign.End)
+            }
+            .scrollable(ScrollDirection.Vertical)
+            .edgeEffect(EdgeEffect.Spring)
+
+            if (this.tempHistoryKey.length == 0) {
+              Text('¯\\_(ツ)_/¯')
+            }
+          } // History panel
+          .visibility(this.isShowingHistory ? Visibility.Visible : Visibility.None)
+          .animation(defaultAnima)
+          .clip(true)
+          .alignItems(HorizontalAlign.Start)
+          .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
+          .borderWidth(1)
+          .borderColor($r('sys.color.comp_background_tertiary'))
+          .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
+          .padding(10)
+          .margin({
+            left: 10,
+            bottom: this.topDown ? 10 : this.myMeowAvoid.bottom + this.titleHeight() + 10,
+            right: 10,
+            top: this.topDown ? this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10 : this.windowTopAvoid + 10
+          })
+          .constraintSize({ maxWidth: Math.max(400, this.myMeowLayout.width * 0.4) })
+          .shadow(ShadowStyle.OUTER_DEFAULT_SM)
 
           RelativeContainer() {
             if (this.render) {
               Row() {
                 Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
+
                   Button(`󰊖 ${resource2String($r('app.string.info'), this.context)}`)
                     .onClick(() => {
-                      this.renderMore = true;
+                      this.isShowingHistory = false;
                       this.isShowingInfo = !this.isShowingInfo;
+                      this.renderMore = true;
                     })
                     .border(this.isShowingInfo ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
                     .brightness(this.isShowingInfo ? 1.1 : 1)
+                    .animation(defaultAnima)
+
+                  Button(`󰏕 ${resource2String($r('app.string.history'), this.context)}`)
+                    .onClick(() => {
+                      // console.log('[History][tempHistory]\n' + this.tempHistory);
+                      // console.log('[History][tempBase]\n' + this.tempBase);
+                      this.isShowingInfo = false;
+                      this.isShowingHistory = !this.isShowingHistory;
+                    })
+                    .border(this.isShowingHistory ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
+                    .brightness(this.isShowingHistory ? 1.1 : 1)
                     .animation(defaultAnima)
 
                   // Default
@@ -385,7 +439,7 @@ struct Index {
         }
         .height('100%')
         .width('100%')
-        .alignContent(this.topDown ? Alignment.Top : Alignment.Bottom)
+        .alignContent(this.topDown ? Alignment.TopStart : Alignment.BottomEnd)
         .animation(defaultAnima)
 
 
@@ -506,6 +560,14 @@ struct Index {
 
       const thisLoad = resultTexts.join(division(resource2String($r('app.string.link_to'), this.context)));
       const thisBase = this.currentBase();
+
+      // maintain uniqueness
+      const tryPos = this.tempHistoryKey.indexOf(key);
+      if (tryPos >= 0) {
+        this.tempHistoryKey.splice(tryPos, 1);
+      }
+      this.tempHistoryKey.unshift(key);
+
       this.loadWeb(thisLoad, thisBase);
       // console.log(`[Meow][MDX] Got result!`);
 
