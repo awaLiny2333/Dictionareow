@@ -547,11 +547,15 @@ struct Index {
         try {
           resultText = fastbuffer.from(resultBuffers[index]).toString(bundle.mdx!.header!.Encoding);
           // console.log(`[Meow][MDX] ${resultText}`);
+          console.log(`[Meow][MDX][${key}] RAW resultText = ${resultText}`);
 
           // TODO: .includes is low performance!
-          const knownKeys = [key];
+          const knownKeys = []; // Believe in the dictionary builders and No duplicated keys will be needed to avoid.
           let layers = 0;
           while (resultText.includes('@@@LINK=') && layers < 10) {
+            console.log(`
+            [Meow][MDX][${key}] JUMP
+            `);
             resultText = await this.fetchJumpsAsync(bundle, resultText, knownKeys);
             layers += 1;
           }
@@ -560,7 +564,7 @@ struct Index {
           console.error(`[Meow][MDX][${key}] Error for resultText = resultBuffer.toString(dict.header!.Encoding);! ${e}`);
         }
         resultTexts.push(resultText);
-        // console.log(`[Meow][MDX][${key}] resultText = ${resultText}}`);
+        console.log(`[Meow][MDX][${key}] resultText = ${resultText}`);
       }
 
       const thisLoad = resultTexts.join(division(resource2String($r('app.string.link_to'), this.context)));

@@ -224,7 +224,7 @@ export class meowDict {
 
     key = key.replace(/\0/g, '').replace(/\UFEFF/g, '');
 
-    return this.keyword!.lookUpRecordEntryOffset(key, exact).then((offsets) => {
+    return this.keyword!.lookUpRecordEntryOffset(key, exact, false).then((offsets) => {
       return (offsets !== null && offsets !== undefined);
     })
   }

@@ -13,7 +13,7 @@ export class meowHistory {
     if (arrayBuffer) {
       try {
         const text = fastbuffer.from(arrayBuffer).toString();
-        console.log(`[meowHistory][initFrom] Text: ${text}`);
+        // console.log(`[meowHistory][initFrom] Text: ${text}`);
         const readData = text.split('\n');
         const needSave = this.data.length > 0;
 

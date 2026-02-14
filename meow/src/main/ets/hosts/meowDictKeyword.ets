@@ -107,9 +107,11 @@ export class meowDictKeyword {
    * @param fuzzyInclusive Allow case and punctuation fuzzy
    * @returns [offsetStart, offsetEnd] local offsets with head of record as base
    * */
-  async lookUpRecordEntryOffset(key: string, exact: boolean) {
+  async lookUpRecordEntryOffset(key: string, exact: boolean, log: boolean = true) {
     if (!this.index) {
-      console.warn(`[meowDictKeyword][Index][lookUp] Index uninitialized. Request rejected.`);
+      if (log) {
+        console.warn(`[meowDictKeyword][Index][lookUp] Index uninitialized. Request rejected.`);
+      }
       return undefined;
     }
     const startTime = Date.now();
@@ -123,11 +125,15 @@ export class meowDictKeyword {
       if (isStringBetween(keyProcessed.toLowerCase(), firstWord.toLowerCase(), lastWord.toLowerCase())) {
         // if (isStringBetween(keepOnlyAlphanumericGlobal(key.toLowerCase()), keepOnlyAlphanumericGlobal(firstWord.toLowerCase()), keepOnlyAlphanumericGlobal(lastWord.toLowerCase()))) {
         this.lookUpBlockIndex = lookUpBlockIndex;
-        console.log(`[meowDictKeyword][Index][lookUp][${key}] Selected index block from '${firstWord}' to '${lastWord}'! (#${lookUpBlockIndex})! `);
+        if (log) {
+          console.log(`[meowDictKeyword][Index][lookUp][${key}] Selected index block from '${firstWord}' to '${lastWord}'! (#${lookUpBlockIndex})! `);
+        }
 
         return this.getKeyBlockArrayBuffer(lookUpBlockIndex).then((block) => {
           if (!block) {
-            console.error(`[meowDictKeyword][Index][lookUp][${key}] this.getKeyBlockArrayBuffer(lookUpBlockIndex) returned undefined. What's going on here?`);
+            if (log) {
+              console.error(`[meowDictKeyword][Index][lookUp][${key}] this.getKeyBlockArrayBuffer(lookUpBlockIndex) returned undefined. What's going on here?`);
+            }
             return undefined;
           }
 
@@ -138,25 +144,33 @@ export class meowDictKeyword {
           // misc.debugOutput = block.keywords.join('\n');
 
           if (offsets === null) {
-            console.warn(`[meowDictKeyword][Index][lookUp][${key}] not found!`);
+            if (log) {
+              console.warn(`[meowDictKeyword][Index][lookUp][${key}] not found!`);
+            }
 
             if (block.keywords.length < 1000000) {
               const tryPos = block.keywords.indexOf(key);
 
               if (tryPos >= 0) {
-                console.warn(`[meowDictKeyword][Index][lookUp][${key}] wait it is found @ ${tryPos}`);
+                if (log) {
+                  console.warn(`[meowDictKeyword][Index][lookUp][${key}] wait it is found @ ${tryPos}`);
+                }
                 // console.warn(`[meowDictKeyword][Index][lookUp] ${block.keywords.slice(tryPos - 20)}`);
                 if (tryPos == block.offsets.length - 1) {
                   return [[block.offsets[tryPos], -1]];
                 }
                 return [[block.offsets[tryPos], block.offsets[tryPos+1]]];
               } else {
-                console.warn(`[meowDictKeyword][Index][lookUp][${key}(${key.length})] not found even with a hard search!`);
+                if (log) {
+                  console.warn(`[meowDictKeyword][Index][lookUp][${key}(${key.length})] not found even with a hard search!`);
+                }
               }
             }
 
           } else {
-            console.log(`[meowDictKeyword][Index][lookUp][${key}] Found @ offset = [${offsets}), used time ${(Date.now() - startTime)} ms!`);
+            if (log) {
+              console.log(`[meowDictKeyword][Index][lookUp][${key}] Found @ offset = [${offsets}), used time ${(Date.now() - startTime)} ms!`);
+            }
           }
           return offsets;
         })
@@ -199,7 +213,7 @@ export class meowDictKeyword {
       }
     }
 
-    console.warn(`[meowDictKeyword][Index][lookUp][${this.fullPath}] Key '${key}' not found in any of the blocks!`);
+    console.warn(`[meowDictKeyword][Index][jumpToExactRecordEntryOffset][${this.fullPath}] Key '${key}' not found in any of the blocks!`);
     return undefined;
   }
 
