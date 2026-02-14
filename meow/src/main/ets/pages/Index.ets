@@ -13,6 +13,7 @@ import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
 import { saveHybrid } from '../utils/storage';
 import { meowMisc } from '../hosts/meowMisc';
 import MeowHistoryEntry from '../components/MeowHistoryEntry';
+import { meowHistory } from '../hosts/meowHistory';
 
 @Entry
 @ComponentV2
@@ -21,6 +22,7 @@ struct Index {
   @Local myMeowFreeWindowModeStatus: meowFreeWindowModeStatus = AppStorageV2.connect<meowFreeWindowModeStatus>(meowFreeWindowModeStatus)!;
   @Local myMeowLayout: meowLayoutModeStatus = AppStorageV2.connect<meowLayoutModeStatus>(meowLayoutModeStatus)!;
   @Local myMeowMisc: meowMisc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
+  @Local myMeowHistory: meowHistory = AppStorageV2.connect<meowHistory>(meowHistory, 'meowHistory', () => new meowHistory())!;
   @Local windowTopAvoid: number = 0;
   // Data
   @Local meowLibrarian: meowDictBundleLibrarian = AppStorageV2.connect<meowDictBundleLibrarian>(meowDictBundleLibrarian, 'meowDictBundleLibrarian', () => new meowDictBundleLibrarian())!;
@@ -48,10 +50,10 @@ struct Index {
   // Runtime Objects
   webController: WebviewController = new webview.WebviewController();
   context: Context = this.getUIContext().getHostContext()!;
-  @Local tempHistoryKey: string[] = [];
 
   aboutToAppear(): void {
     console.warn(`[UI][aboutToAppear] TopDown: ${this.topDown}`);
+    this.myMeowHistory.initFrom(`${this.context.filesDir}/oops/history.txt`);
   }
 
   build() {
@@ -213,7 +215,7 @@ struct Index {
                   })
                 }
               }
-              .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 101 })
+              .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 91 })
               .width('100%')
               .align(Alignment.Top)
               .scrollable(ScrollDirection.Vertical)
@@ -239,11 +241,14 @@ struct Index {
           .shadow(ShadowStyle.OUTER_DEFAULT_SM)
 
           Column() {
+            Text(`(${this.myMeowHistory.data.length}/${this.myMeowHistory.limit})`)
+              .opacity(0.75)
+              .padding(8)
             Scroll() {
               Column() {
-                ForEach(this.tempHistoryKey, ((tempHisKey: string, idx: number) => {
+                ForEach(this.myMeowHistory.data, ((tempHisKey: string, idx: number) => {
                   MeowHistoryEntry({
-                    keyword: this.tempHistoryKey[idx], clickAction: () => {
+                    keyword: this.myMeowHistory.data[idx], clickAction: () => {
                       // Load
                       this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
                       this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], tempHisKey);
@@ -253,10 +258,11 @@ struct Index {
               }
               .alignItems(this.topDown ? HorizontalAlign.Start : HorizontalAlign.End)
             }
+            .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 75 })
             .scrollable(ScrollDirection.Vertical)
             .edgeEffect(EdgeEffect.Spring)
 
-            if (this.tempHistoryKey.length == 0) {
+            if (this.myMeowHistory.data.length == 0) {
               Text('¯\\_(ツ)_/¯')
             }
           } // History panel
@@ -561,12 +567,7 @@ struct Index {
       const thisLoad = resultTexts.join(division(resource2String($r('app.string.link_to'), this.context)));
       const thisBase = this.currentBase();
 
-      // maintain uniqueness
-      const tryPos = this.tempHistoryKey.indexOf(key);
-      if (tryPos >= 0) {
-        this.tempHistoryKey.splice(tryPos, 1);
-      }
-      this.tempHistoryKey.unshift(key);
+      this.myMeowHistory.addHistory(key);
 
       this.loadWeb(thisLoad, thisBase);
       // console.log(`[Meow][MDX] Got result!`);
