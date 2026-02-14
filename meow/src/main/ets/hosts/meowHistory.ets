@@ -37,7 +37,7 @@ export class meowHistory {
     this.fullPath = fullPath;
   }
 
-  addHistory(key: string) {
+  async addHistory(key: string): Promise<boolean | undefined> {
     // maintain uniqueness
     const tryPos = this.data.indexOf(key);
     if (tryPos >= 0) {
@@ -50,9 +50,18 @@ export class meowHistory {
     }
 
     if (!this.init) {
-      return;
+      return undefined;
     }
 
-    saveHybrid(this.fullPath, this.data.join('\n'), true);
+    return saveHybrid(this.fullPath, this.data.join('\n'), true);
+  }
+
+  async deleteHistory(idx: number): Promise<boolean | undefined> {
+    if (idx >= this.data.length) {
+      console.warn(`[meowHistory][deleteHistory(${idx})] Failed! Index out of bound!`);
+      return undefined;
+    }
+    this.data.splice(idx, 1);
+    return saveHybrid(this.fullPath, this.data.join('\n'), true);
   }
 }

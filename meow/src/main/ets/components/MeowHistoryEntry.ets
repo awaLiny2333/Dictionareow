@@ -1,21 +1,22 @@
 import { deviceInfo } from '@kit.BasicServicesKit';
+import { resource2String } from '../utils/data';
+import { defaultAnima } from '../utils/ui';
 
 @ComponentV2
 struct MeowHistoryEntry {
   @Param keyword: string = 'Keyword';
-  // @Param info: string = 'Info';
   @Param clickAction?: (() => void) | undefined = undefined;
+  @Param contextMenuAction?: (() => void) | undefined = undefined;
+  // Runtime data
+  @Local isMenu: boolean = false;
+  context: Context = this.getUIContext().getHostContext()!;
 
   build() {
-    // Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(5) } }) {
-    Text(this.keyword)
-      .fontWeight(FontWeight.Bold)
+    Text(` ${this.keyword} `)
+      .fontWeight(this.isMenu ? FontWeight.Bolder : FontWeight.Medium)
+      .brightness(this.isMenu ? 1.1 : 1)
+      .animation(defaultAnima)
       .fontSize(16)
-      // Text(this.info)
-      //   .opacity(0.75)
-      //   .maxLines(1)
-      //   .textOverflow({ overflow: TextOverflow.Ellipsis })
-      // }
       .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
       .padding(8)
       .hoverEffect(HoverEffect.Highlight)
@@ -24,6 +25,36 @@ struct MeowHistoryEntry {
           this.clickAction();
         }
       })
+      .gesture(
+        LongPressGesture({ repeat: true })
+          .onAction(() => {
+            this.isMenu = true;
+          })
+      )
+      .onMouse((e) => {
+        if ((e.button = MouseButton.Right) && (e.action == MouseAction.Press)) {
+          this.isMenu = true;
+        }
+      })
+      .bindContextMenu(this.isMenu, this.bindMenuBuilder(), {
+        onDisappear: () => {
+          this.isMenu = false;
+        },
+        hapticFeedbackMode: HapticFeedbackMode.ENABLED
+      })
+  }
+
+  @Builder
+  bindMenuBuilder() {
+    Text(` 󰀁 ${resource2String($r('app.string.delete'), this.context)}`)
+      .onClick(() => {
+        if (this.contextMenuAction) {
+          this.contextMenuAction();
+        }
+      })
+      .padding(8)
+      .hoverEffect(HoverEffect.Highlight)
+      .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 5 : 18)
   }
 }
 

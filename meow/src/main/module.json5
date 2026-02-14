@@ -53,9 +53,19 @@
       }
     ],
     "requestPermissions": [
+      //      {
+      //        "name": "ohos.permission.INTERNET",
+      //        "reason": "$string:permission_reason_INTERNET",
+      //        "usedScene": {
+      //          "when": "inuse",
+      //          "abilities": [
+      //            "HomeAbility"
+      //          ]
+      //        }
+      //      },
       {
-        "name": "ohos.permission.INTERNET",
-        "reason": "$string:permission_reason_INTERNET",
+        "name": "ohos.permission.VIBRATE",
+        "reason": "$string:permission_reason_VIBRATE",
         "usedScene": {
           "when": "inuse",
           "abilities": [

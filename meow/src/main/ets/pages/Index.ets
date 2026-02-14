@@ -247,16 +247,21 @@ struct Index {
               Column() {
                 ForEach(this.myMeowHistory.data, ((tempHisKey: string, idx: number) => {
                   MeowHistoryEntry({
-                    keyword: this.myMeowHistory.data[idx], clickAction: () => {
+                    keyword: this.myMeowHistory.data[idx],
+                    clickAction: () => {
                       // Load
                       this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
                       this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], tempHisKey);
+                    },
+                    contextMenuAction: () => {
+                      this.myMeowHistory.deleteHistory(idx);
                     }
                   })
                 }))
               }
               .alignItems(this.topDown ? HorizontalAlign.Start : HorizontalAlign.End)
             }
+            .padding({ right: 6 })
             .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 75 })
             .scrollable(ScrollDirection.Vertical)
             .edgeEffect(EdgeEffect.Spring)
@@ -273,7 +278,12 @@ struct Index {
           .borderWidth(1)
           .borderColor($r('sys.color.comp_background_tertiary'))
           .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
-          .padding(10)
+          .padding({
+            top: 10,
+            left: 10,
+            bottom: 10,
+            right: 4
+          })
           .margin({
             left: 10,
             bottom: this.topDown ? 10 : this.myMeowAvoid.bottom + this.titleHeight() + 10,
@@ -668,11 +678,11 @@ struct Index {
   @Monitor('myMeowFreeWindowModeStatus.onFocus')
   focusSearch() {
     if (this.myMeowFreeWindowModeStatus.onFocus) {
-      // if (this.myMeowFreeWindowModeStatus.on) {
-      setTimeout(() => {
-        focusControl.requestFocus('searchInput');
-      }, 10)
-      // }
+      if (this.myMeowFreeWindowModeStatus.on) {
+        setTimeout(() => {
+          focusControl.requestFocus('searchInput');
+        }, 10)
+      }
     }
   }
 

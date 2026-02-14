@@ -71,6 +71,10 @@
     {
       "name": "history",
       "value": "历史"
+    },
+    {
+      "name": "permission_reason_VIBRATE",
+      "value": "在上下文菜单弹出时震动。"
     }
   ]
 }

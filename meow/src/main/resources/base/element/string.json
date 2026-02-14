@@ -71,6 +71,10 @@
     {
       "name": "history",
       "value": "Hist"
+    },
+    {
+      "name": "permission_reason_VIBRATE",
+      "value": "To vibrate on context menus."
     }
   ]
 }
