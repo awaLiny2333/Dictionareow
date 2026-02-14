@@ -53,7 +53,6 @@ struct Index {
 
   aboutToAppear(): void {
     console.warn(`[UI][aboutToAppear] TopDown: ${this.topDown}`);
-    this.myMeowHistory.initFrom(`${this.context.filesDir}/oops/history.txt`);
   }
 
   build() {

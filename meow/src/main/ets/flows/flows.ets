@@ -2,12 +2,12 @@ import { AppStorageV2, window } from '@kit.ArkUI';
 import { meow, meowLevel } from '../utils/catsLogger';
 import { getUpdateAvoid, getUpdateFreeWindowMode, listenAvoid, listenFocus, listenFreeWindowMode, meowLayoutModeStatus, meowPx2vp } from '../utils/ui';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { meowDictBundle } from '../hosts/meowDictBundle';
 import { fileIo } from '@kit.CoreFileKit';
 import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
 import { readArrayBufferSync, sandboxCreateDir, saveHybrid } from '../utils/storage';
 import { buffer } from '@kit.ArkTS';
 import { meowMisc } from '../hosts/meowMisc';
+import { meowHistory } from '../hosts/meowHistory';
 
 // Flows
 
@@ -94,6 +94,9 @@ export function initEnv(context: Context) {
         console.error(`[flow][initEnv] Create new home bundles failed! ${e}`);
       }
     })
+
+    let myMeowHistory = AppStorageV2.connect<meowHistory>(meowHistory, 'meowHistory', () => new meowHistory())!;
+    myMeowHistory.initFrom(`${context.filesDir}/oops/history.txt`);
   })
 }
 
