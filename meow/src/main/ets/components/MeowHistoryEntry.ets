@@ -40,7 +40,7 @@ struct MeowHistoryEntry {
         onDisappear: () => {
           this.isMenu = false;
         },
-        hapticFeedbackMode: HapticFeedbackMode.ENABLED
+        // hapticFeedbackMode: HapticFeedbackMode.ENABLED
       })
   }
 
