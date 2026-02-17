@@ -32,7 +32,7 @@ struct MeowHistoryEntry {
           })
       )
       .onMouse((e) => {
-        if ((e.button = MouseButton.Right) && (e.action == MouseAction.Press)) {
+        if ((e.button == MouseButton.Right) && (e.action == MouseAction.Press)) {
           this.isMenu = true;
         }
       })
