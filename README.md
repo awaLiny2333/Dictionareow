@@ -1,5 +1,7 @@
 # Dictionareow! 词典喵！
 
+![startIcon.png](meow/src/main/resources/base/media/startIcon.png)
+
 Supports MDX / MDD. 
 支持 MDX / MDD 文件。
 
