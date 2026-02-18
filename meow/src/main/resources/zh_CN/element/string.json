@@ -75,6 +75,25 @@
     {
       "name": "permission_reason_VIBRATE",
       "value": "在上下文菜单弹出时震动。"
+    }, {
+      "name": "privacy_view",
+      "value": "我们尊重您的权利和隐私。请在继续使用此 App 前查看并充分确认我们的隐私政策："
+    },
+    {
+      "name": "welcome",
+      "value": "欢迎来到词典喵！"
+    },
+    {
+      "name": "privacy_link",
+      "value": "词典喵《隐私政策》"
+    },
+    {
+      "name": "agree",
+      "value": "同意"
+    },
+    {
+      "name": "cancel",
+      "value": "取消"
     }
   ]
 }

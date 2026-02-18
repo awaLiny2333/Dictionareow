@@ -7,11 +7,24 @@
         "material": {
           "certpath": "C:\\Users\\meowDUO\\.ohos\\config\\default_Dictionareow_Qjp0A13jaQX_hHLyxDW4xpNEnHzPLn33au64jSuKgMY=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001A98D50FB2F8604D750C16B65961A5C50081F595EAB45C574FC74E771719C9E495818BC52187E0",
+          "keyPassword": "0000001ABA5EB709445A1637C70235C1F9009E2A13817D9F397781F10F858E606A05253EAE94CAE797FB",
           "profile": "C:\\Users\\meowDUO\\.ohos\\config\\default_Dictionareow_Qjp0A13jaQX_hHLyxDW4xpNEnHzPLn33au64jSuKgMY=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:\\Users\\meowDUO\\.ohos\\config\\default_Dictionareow_Qjp0A13jaQX_hHLyxDW4xpNEnHzPLn33au64jSuKgMY=.p12",
-          "storePassword": "0000001A8B72E30922AACADCF8A4C5BA8B1AB03DBB61804BAE44DAA9B0BC71AC258BAED360EA6FC70AB3"
+          "storePassword": "0000001A9C0D18ED9F119A3985E4A6CE63367176AA33ED9DA1A14A225F9338A963E73BD0B990559EEE17"
+        }
+      },
+      {
+        "name": "release",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "E:/linys/HarmonyOS/Dictionareow/Dictionareow.cer",
+          "keyAlias": "Dictionareow",
+          "keyPassword": "0000001C48D9F1DCC7BBECB39A9AAC81977FC009AB080A9E83A7B6EE61E713CF812A56DEEF7AC80A07FF7785",
+          "profile": "E:/linys/HarmonyOS/Dictionareow/DictionareowRelease.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "E:/linys/HarmonyOS/meowKeyStore.p12",
+          "storePassword": "0000001CE204F0E3CC696A1F78D74DF2CFDA745FA2764B4DC5B22028DBF6C745773FCDF80CE4B46CEE959113"
         }
       }
     ],
@@ -19,6 +32,19 @@
       {
         "name": "default",
         "signingConfig": "default",
+        "targetSdkVersion": "6.0.2(22)",
+        "compatibleSdkVersion": "6.0.0(20)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      },
+      {
+        "name": "release",
+        "signingConfig": "release",
         "targetSdkVersion": "6.0.2(22)",
         "compatibleSdkVersion": "6.0.0(20)",
         "runtimeOS": "HarmonyOS",
@@ -47,7 +73,8 @@
         {
           "name": "default",
           "applyToProducts": [
-            "default"
+            "default",
+            "release"
           ]
         }
       ]

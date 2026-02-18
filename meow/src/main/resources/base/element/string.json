@@ -75,6 +75,26 @@
     {
       "name": "permission_reason_VIBRATE",
       "value": "To vibrate on context menus."
+    },
+    {
+      "name": "privacy_view",
+      "value": "We respect your rights and privacy. Please check out our Privacy Policy before using this App:"
+    },
+    {
+      "name": "welcome",
+      "value": "Welcome to Dictionareow!"
+    },
+    {
+      "name": "privacy_link",
+      "value": "Privacy Policy of Dictionareow"
+    },
+    {
+      "name": "agree",
+      "value": "Agree"
+    },
+    {
+      "name": "cancel",
+      "value": "Cancel"
     }
   ]
 }
