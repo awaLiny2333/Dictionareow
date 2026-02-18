@@ -201,6 +201,12 @@ struct Index {
                     .selectedOptionBgColor($r('app.color.meow_iconSubEmphasize'))
                     .selectedOptionFontColor($r('sys.color.font'))
                     .selectedOptionFont({ weight: FontWeight.Bold })
+
+                  Button(`󰓞 ${resource2String($r('app.string.privacy_link'), this.context)}`)
+                    .backgroundColor($r('app.color.meow_brand'))
+                    .onClick(() => {
+                      openLink(privacyPolicyLink, this.context as common.UIAbilityContext);
+                    })
                 }
               }
               .edgeEffect(EdgeEffect.Spring)
@@ -211,7 +217,6 @@ struct Index {
 
               Scroll() {
                 Column({ space: 8 }) {
-
                   ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, idx: number) => {
                     meowBundleInfo({
                       bundle: bundle,
