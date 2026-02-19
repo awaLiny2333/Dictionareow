@@ -38,7 +38,6 @@ struct Index {
   @Local currentDictBundleTitle: string = '(～o￣3￣)～';
   @Local currentDictHasStats: boolean[] | undefined = undefined;
   // Runtime UI
-  @Local showPrivacy: boolean = false;
   @Local topDown: boolean = this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode;
   @Local render: boolean = false;
   @Local renderWeb: boolean = false;
@@ -57,15 +56,6 @@ struct Index {
 
   aboutToAppear(): void {
     console.warn(`[UI][aboutToAppear] TopDown: ${this.topDown}`);
-    try {
-      const r = fileIo.accessSync(`${this.context.filesDir}/agreePrivacyPolicy`)
-      if (!r) {
-        this.showPrivacy = true;
-      }
-    } catch (e) {
-      meow(`fileIo.access(${this.context.filesDir}/agreePrivacyPolicy) Failed: ${e}`, 'Index', meowLevel.ERROR);
-    }
-
   }
 
   build() {
@@ -415,9 +405,7 @@ struct Index {
                 .id('searchInput')
                 .onAppear(() => {
                   setTimeout(() => {
-                    if (!this.showPrivacy) {
-                      focusControl.requestFocus('searchInput');
-                    }
+                    focusControl.requestFocus('searchInput');
                   }, 10)
                 })
 
@@ -515,14 +503,6 @@ struct Index {
             }
           }, 500)
         }, 10)
-      })
-      .bindSheet($$this.showPrivacy, this.meowPrivacy(), {
-        title: { title: $r('app.string.welcome') },
-        showClose: false,
-        preferType: SheetType.CENTER,
-        onWillDismiss: (() => {
-          // Empty
-        })
       })
     }
   }
@@ -755,48 +735,6 @@ struct Index {
       });
     }, 10);
   }
-
-  // Builders
-
-  @Builder
-  meowPrivacy() {
-    Column({ space: 10 }) {
-      Blank()
-      Text($r('app.string.privacy_view'))
-        .textAlign(TextAlign.Center)
-      Text($r('app.string.privacy_link'))
-        .fontColor($r('app.color.meow_brand'))
-        .textAlign(TextAlign.Center)
-        .fontWeight(FontWeight.Bold)
-        .onClick(() => {
-          openLink(privacyPolicyLink, this.context as common.UIAbilityContext);
-        })
-        .hoverEffect(HoverEffect.Highlight)
-        .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
-        .padding(10)
-      Blank()
-      Row({ space: 10 }) {
-        Button($r('app.string.cancel'))
-          .backgroundColor($r('app.color.meow_brand'))
-          .onClick(() => {
-            (this.context as common.UIAbilityContext).terminateSelf()
-              .catch((e: BusinessError) => {
-                meow(`(this.context as common.UIAbilityContext).terminateSelf() Failed: ${e}`, 'Index', meowLevel.ERROR);
-              })
-          })
-        Blank()
-        Button($r('app.string.agree'))
-          .backgroundColor($r('app.color.meow_brand'))
-          .onClick(() => {
-            saveHybrid(`${this.context.filesDir}/agreePrivacyPolicy`, 'meow', true);
-            this.showPrivacy = false;
-          })
-      }.width('100%')
-    }
-    .height('100%')
-    .justifyContent(FlexAlign.Center)
-    .padding(30)
-  }
 }
 
-export const privacyPolicyLink: string = 'https://agreement-drcn.hispace.dbankcloud.cn/index.html?lang=zh&agreementId=1888851964880501056';
+export const privacyPolicyLink: string = 'https://agreement-drcn.hispace.dbankcloud.cn/index.html?lang=zh&agreementId=1889247809668921664';
