@@ -14,9 +14,9 @@ import { saveHybrid } from '../utils/storage';
 import { meowMisc } from '../hosts/meowMisc';
 import MeowHistoryEntry from '../components/MeowHistoryEntry';
 import { meowHistory } from '../hosts/meowHistory';
-import { meow, meowLevel } from '../utils/catsLogger';
 import { common } from '@kit.AbilityKit';
 import openLink from '../utils/jumps';
+import getPrivacyPolicyLink from '../utils/privacy';
 
 @Entry
 @ComponentV2
@@ -195,7 +195,10 @@ struct Index {
                   Button(`󰓞 ${resource2String($r('app.string.privacy_link'), this.context)}`)
                     .backgroundColor($r('app.color.meow_brand'))
                     .onClick(() => {
-                      openLink(privacyPolicyLink, this.context as common.UIAbilityContext);
+                      const link = getPrivacyPolicyLink('1889247809668921664'); // This may change if privacy policy in AGC changes
+                      if (link) {
+                        openLink(link, this.context as common.UIAbilityContext);
+                      }
                     })
                 }
               }
