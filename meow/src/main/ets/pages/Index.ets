@@ -16,7 +16,7 @@ import MeowHistoryEntry from '../components/MeowHistoryEntry';
 import { meowHistory } from '../hosts/meowHistory';
 import { common } from '@kit.AbilityKit';
 import openLink from '../utils/jumps';
-import getPrivacyPolicyLink from '../utils/privacy';
+import { getPrivacyPolicyLink } from '../utils/privacy';
 
 @Entry
 @ComponentV2
@@ -239,7 +239,7 @@ struct Index {
           .alignItems(HorizontalAlign.Start)
           .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
           .borderWidth(1)
-          .borderColor($r('sys.color.comp_background_tertiary'))
+          .borderColor($r('sys.color.icon_fourth'))
           .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
           .padding(10)
           .margin({
@@ -287,7 +287,7 @@ struct Index {
           .alignItems(HorizontalAlign.Start)
           .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
           .borderWidth(1)
-          .borderColor($r('sys.color.comp_background_tertiary'))
+          .borderColor($r('sys.color.icon_fourth'))
           .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
           .padding({
             top: 10,
@@ -431,7 +431,7 @@ struct Index {
           .animation(defaultAnima)
           .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
           .borderWidth(1)
-          .borderColor($r('sys.color.comp_background_tertiary'))
+          .borderColor($r('sys.color.icon_fourth'))
           .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
           .padding(10)
           .margin({

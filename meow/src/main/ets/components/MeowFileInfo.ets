@@ -52,7 +52,7 @@ struct MeowFileInfo {
     .alignItems(HorizontalAlign.Start)
     .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
     .borderWidth(1)
-    .borderColor($r('sys.color.comp_background_tertiary'))
+    .borderColor($r('sys.color.icon_fourth'))
     .backgroundColor($r('app.color.blur_background'))
     // .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
     .padding(10)

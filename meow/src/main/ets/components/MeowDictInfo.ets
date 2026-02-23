@@ -43,7 +43,7 @@ struct MeowDictInfo {
     .alignItems(HorizontalAlign.Start)
     .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
     .borderWidth(1)
-    .borderColor($r('sys.color.comp_background_tertiary'))
+    .borderColor($r('sys.color.icon_fourth'))
     .backgroundColor(this.dict.type == meowDictType.MDX ? $r('app.color.meow_iconSubEmphasize') : $r('app.color.blur_background'))
     // .backgroundEffect({ radius: 30, color: this.dict.type == meowDictType.MDX ? $r('app.color.meow_iconSubEmphasize') : $r('app.color.blur_background') })
     .padding(10)
