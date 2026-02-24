@@ -1,9 +1,9 @@
 {
   "app": {
     "bundleName": "meow.liny.dictionary.meow",
-    "vendor": "Cats!",
-    "versionCode": 8,
-    "versionName": "0.1.5",
+    "vendor": "Linys Workshop of Cats and Catzardry",
+    "versionCode": 9,
+    "versionName": "0.1.6",
     "icon": "$media:layered_image",
     "label": "$string:app_name",
     "multiAppMode": {
