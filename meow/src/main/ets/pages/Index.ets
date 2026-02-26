@@ -103,6 +103,7 @@ struct Index {
 
                 return false;
               })
+              .metaViewport(true)
               .onInterceptRequest((e) => {
                 const reqUrl = e.request.getRequestUrl();
                 const reqFilePath = reqUrl.split('/');
@@ -517,6 +518,8 @@ struct Index {
       return false;
     }
 
+    const head = '<head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>';
+
     const avoidPercentages = this.constructWebAvoidPercentages();
     const padTop = `<div id='dictionareowTopAvoid' style="height: ${avoidPercentages[0]}%"></div>`;
     const padBottom = `<div id='dictionareowBottomAvoid' style="height: ${avoidPercentages[1]}%"></div>`;
@@ -525,7 +528,7 @@ struct Index {
 
     try {
       // this.currentBase = base + 'meow/';
-      this.webController.loadData(padTop + content + padBottom, 'text/html', 'UTF-8', 'file://' + base, ' ');
+      this.webController.loadData(head + padTop + content + padBottom, 'text/html', 'UTF-8', 'file://' + base, ' ');
       // console.log(content);
       return true;
     } catch (e) {
