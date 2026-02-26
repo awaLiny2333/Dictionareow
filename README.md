@@ -15,4 +15,4 @@ There may exist some errors, but that should be fine.
 1. [mdict4j](https://mdict4j.readthedocs.io/en/latest/reference/fileformat.html#keyword-index-encryption)
 
 # Get the App
-[![HUAWEI HarmonyOS App Gallery](.meow/explore-it-on-appgallery.svg)](https://appgallery.huawei.com/app/detail?id=meow.liny.rename.batch.meow)
+[![HUAWEI HarmonyOS App Gallery](.meow/explore-it-on-appgallery.svg)](https://appgallery.huawei.com/app/detail?id=meow.liny.dictionary.meow)
