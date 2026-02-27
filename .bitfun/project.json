@@ -1,0 +1,100 @@
+{
+  "name": "Dictionareow",
+  "description": "",
+  "projectType": "hvigor",
+  "uri": {
+    "$type": 1,
+    "data": "file:///storage/Users/currentUser/Documents/Meow/Codes/HMOS/HarmonyOS_Projects/HarmonyOS_Projects/Dictionareow"
+  },
+  "buildTask": "",
+  "extendConfigs": {
+    "sourceSet": [],
+    "build": []
+  },
+  "subProjects": [
+    {
+      "name": "meow",
+      "description": "",
+      "projectType": "hvigor",
+      "uri": {
+        "$type": 1,
+        "data": "file:///storage/Users/currentUser/Documents/Meow/Codes/HMOS/HarmonyOS_Projects/HarmonyOS_Projects/Dictionareow/meow"
+      },
+      "buildTask": "",
+      "extendConfigs": {
+        "sourceSet": [],
+        "build": []
+      },
+      "subProjects": [],
+      "sourceSet": {
+        "include": {
+          "sourceFiles": [],
+          "resourceFiles": []
+        },
+        "exclude": {
+          "contentFiles": []
+        }
+      },
+      "dependencyProjects": []
+    }
+  ],
+  "sourceSet": {
+    "include": {
+      "sourceFiles": [
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Documents/Meow/Codes/HMOS/HarmonyOS_Projects/HarmonyOS_Projects/Dictionareow/meow/src/main/ets"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Documents/Meow/Codes/HMOS/HarmonyOS_Projects/HarmonyOS_Projects/Dictionareow/meow/src/ohosTest/ets"
+          }
+        }
+      ],
+      "resourceFiles": []
+    },
+    "exclude": {
+      "contentFiles": [
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Documents/Meow/Codes/HMOS/HarmonyOS_Projects/HarmonyOS_Projects/Dictionareow/oh_modules"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Documents/Meow/Codes/HMOS/HarmonyOS_Projects/HarmonyOS_Projects/Dictionareow/.hvigor"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Documents/Meow/Codes/HMOS/HarmonyOS_Projects/HarmonyOS_Projects/Dictionareow/build"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Documents/Meow/Codes/HMOS/HarmonyOS_Projects/HarmonyOS_Projects/Dictionareow/meow/.test"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Documents/Meow/Codes/HMOS/HarmonyOS_Projects/HarmonyOS_Projects/Dictionareow/meow/oh_modules"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Documents/Meow/Codes/HMOS/HarmonyOS_Projects/HarmonyOS_Projects/Dictionareow/meow/build"
+          }
+        }
+      ]
+    }
+  }
+}
