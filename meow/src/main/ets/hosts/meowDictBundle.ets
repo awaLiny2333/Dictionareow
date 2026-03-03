@@ -30,7 +30,7 @@ export class meowDictBundle {
     for (let fIdx = 0; fIdx < allFilesPlain.length; fIdx++) {
       const thisPath = allFilesPlain[fIdx];
       const thisPathLower = thisPath.toLowerCase();
-      if (thisPathLower.endsWith('.mdx')) {
+      if (thisPathLower.endsWith('.mdx') && !this.mdx) {
         // Is MDX
         let mdx = this.readMDict(thisPath, meowDictType.MDX, context);
         this.mdx = mdx;
@@ -82,8 +82,7 @@ export class meowDictBundle {
 
     const cacheIdx = this.cacheKeys.indexOf(key);
     if (cacheIdx >= 0) {
-      console.log(`[meowDictBundle][lookUpResourceFromMDDs] Fetched [${key}] from cache (${Date.now() -
-        startTime} ms)`);
+      console.log(`[meowDictBundle][lookUpResourceFromMDDs] Fetched [${key}] from cache (${Date.now() - startTime} ms)`);
       return this.cacheBufs[cacheIdx];
     }
 
@@ -202,13 +201,14 @@ export class meowDictBundle {
   async autoAdd(sourcePaths: string[], UIContext: UIContext) {
     for (let idx = 0; idx < sourcePaths.length; idx++) {
       const thisPath = sourcePaths[idx];
-      if (thisPath.toLowerCase()
-        .endsWith('.mdx')) {
-        if (!this.mdx) {
+      const thisPathLower = thisPath.toLowerCase();
+      if (thisPathLower.endsWith('.mdx')) {
+        if (this.mdx) {
+          console.log(`[autoAdd] ${thisPath} MDX exist! Skipping this mdx... Sorry :O`);
+        } else {
           await this.addMDX(thisPath, UIContext);
         }
-      } else if (thisPath.toLowerCase()
-        .endsWith('.mdd')) {
+      } else if (thisPathLower.endsWith('.mdd')) {
         await this.addMDD(thisPath, UIContext);
       } else {
         await this.addFile(thisPath, UIContext, false);
