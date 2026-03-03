@@ -511,6 +511,9 @@ struct Index {
           }, 500)
         }, 10)
       })
+      .keyboardShortcut(FunctionKey.ESC, [], () => {
+        this.minimizeWindow();
+      })
     }
   }
 
@@ -519,6 +522,16 @@ struct Index {
   appearJobs() {
     focusControl.requestFocus('searchInput');
     this.processNewWant();
+  }
+
+  minimizeWindow() {
+    if (!this.myMeowFreeWindowModeStatus.on) {
+      return;
+    }
+    this.myMeowLayout.window.minimize()
+      .catch((e: BusinessError) => {
+        console.error(`[Meow][minimizeWindow] Failed: ${e}`);
+      });
   }
 
   loadWeb(content: string | undefined, base: string = this.context.filesDir + '/') {

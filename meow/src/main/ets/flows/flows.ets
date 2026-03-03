@@ -55,10 +55,9 @@ export function onLoadContent(window: window.Window, context: Context) {
     const width = meowPx2vp(rect.width);
     const height = meowPx2vp(rect.height);
     const wideMode = width > 900;
-    AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode, width, height));
+    AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode, width, height, window));
   } catch (e) {
-    meow(`AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode)); Failed: ${e}`, 'init',
-      meowLevel.ERROR);
+    meow(`AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode, width, height, window)); Failed: ${e}`, 'init', meowLevel.ERROR);
   }
 
   getUpdateAvoid(window);
