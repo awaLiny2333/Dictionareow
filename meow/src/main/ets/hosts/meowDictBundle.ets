@@ -1,5 +1,5 @@
 import { addUnitsToSize, resource2String } from '../utils/data';
-import { fileCopy, saveHybrid } from '../utils/storage';
+import { fileCopy, listRecursivelyAllFilesUnderDir, saveHybrid } from '../utils/storage';
 import { meowDict, meowDictType } from './meowDict';
 import { fileIo } from '@kit.CoreFileKit';
 import { Context } from '@kit.AbilityKit';
@@ -9,7 +9,7 @@ import { toastDuration } from '../utils/ui';
 export class meowDictBundle {
   @Trace mdx: meowDict | undefined;
   @Trace mdds: meowDict[] = [];
-  @Trace files: string[] = [];
+  @Trace files: string[] = []; // Paths of files other than .mdd and .mdx
   @Trace fileSizes: number[] = [];
   @Trace totalSize: number = -1;
   sandboxPathWithEndSlash: string | undefined;
@@ -19,42 +19,35 @@ export class meowDictBundle {
   /**
    * Inits the bundle from given path.
    * @param sandboxPathWithEndSlash The path, ending with '/'. For example: 'bundles/catExample/'.
-   * This directory should guarantee that .../woof, .../honk and .../meow exist.
    * @param context The Context.
    * */
   async initFrom(sandboxPathWithEndSlash: string, context: Context) {
     this.sandboxPathWithEndSlash = sandboxPathWithEndSlash;
-    // MDX
-    fileIo.listFile(context.filesDir + '/' + sandboxPathWithEndSlash + 'woof/')
-      .then((r) => {
-        if (r.length > 0) {
-          let mdx = this.readMDict('/' + sandboxPathWithEndSlash + 'woof/' + r[0], meowDictType.MDX, context);
-          this.mdx = mdx;
-          console.log(`[readMDict] ${this.mdx?.header?.Title}`);
-          this.updateSizes();
-        } else {
-          console.warn(`[readMDict][${sandboxPathWithEndSlash}] NO MDX?`);
+
+    // Smart read
+    let allFilesPlain: string[] = await listRecursivelyAllFilesUnderDir(context.filesDir + '/' + sandboxPathWithEndSlash);
+
+    for (let fIdx = 0; fIdx < allFilesPlain.length; fIdx++) {
+      const thisPath = allFilesPlain[fIdx];
+      const thisPathLower = thisPath.toLowerCase();
+      if (thisPathLower.endsWith('.mdx')) {
+        // Is MDX
+        let mdx = this.readMDict(thisPath, meowDictType.MDX, context);
+        this.mdx = mdx;
+        console.log(`[readMDict] ${this.mdx?.header?.Title}`);
+      } else if (thisPathLower.endsWith('.mdd')) {
+        // Is MDD
+        let mdd = this.readMDict(thisPath, meowDictType.MDD, context);
+        if (mdd) {
+          this.mdds.push(mdd);
         }
-      })
-      .catch((e: BusinessError) => {
-        console.error(`[meowDictBundle][initFrom] fileIo.listFile(context.filesDir + '/honk/') Failed: ${e}`);
-      })
-    // MDD
-    fileIo.listFile(context.filesDir + '/' + sandboxPathWithEndSlash + 'honk/')
-      .then((r) => {
-        for (let index = 0; index < r.length; index++) {
-          let mdd = this.readMDict('/' + sandboxPathWithEndSlash + 'honk/' + r[index], meowDictType.MDD, context);
-          if (mdd) {
-            this.mdds.push(mdd);
-          }
-        }
-        this.updateSizes();
-      })
-      .catch((e: BusinessError) => {
-        console.error(`[meowDictBundle][initFrom] fileIo.listFile(context.filesDir + '/honk/') Failed: ${e}`);
-      })
+      }
+    }
+
     // Files
-    this.updateFilesSync(context);
+    await this.updateFiles(context, allFilesPlain);
+
+    this.updateSizes();
   }
 
   // Use
@@ -126,27 +119,24 @@ export class meowDictBundle {
    * @returns String of extracted file path or undefined if key not found.
    * */
   async extractFileToTemp(key: string, context: Context) {
-    return this.lookUpResourceFromMDDs(key).then((resultBuffer) => {
-      if (!resultBuffer) {
-        return undefined;
-      }
+    return this.lookUpResourceFromMDDs(key)
+      .then((resultBuffer) => {
+        if (!resultBuffer) {
+          return undefined;
+        }
 
-      console.log(`[MeowDictBundle][extractFile] Got result!`);
+        console.log(`[MeowDictBundle][extractFile] Got result!`);
 
-      let fileName = key;
-      if (fileName.substring(0, 1) == '\\') {
-        fileName = fileName.substring(1);
-      }
+        let fileName = key;
+        if (fileName.substring(0, 1) == '\\') {
+          fileName = fileName.substring(1);
+        }
 
-      const path = context.tempDir + '/' + fileName;
-      saveHybrid(path, resultBuffer);
+        const path = context.tempDir + '/' + fileName;
+        saveHybrid(path, resultBuffer);
 
-      return path;
-    })
-  }
-
-  getBase(context: Context) {
-    return context.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/';
+        return path;
+      })
   }
 
   // Status maintenance
@@ -155,26 +145,31 @@ export class meowDictBundle {
    * Updates the extra files additionally added.
    * @param context Context.
    * */
-  updateFilesSync(context: Context) {
+  async updateFiles(context: Context, allFilesPlain?: string[]) {
     // Files
-    console.log(`[MeowDictBundle][updateFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}]:`);
+    const files = allFilesPlain || (await listRecursivelyAllFilesUnderDir(context.filesDir + '/' + this.sandboxPathWithEndSlash));
     this.files = [];
-    try {
-      const r = fileIo.listFileSync(context.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/');
-      for (let index = 0; index < r.length; index++) {
-        const path = context.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/' + r[index];
-        this.files.push(path);
-        console.log(`    [MeowDictBundle][updateFiles][${context.filesDir +
-          '/' +
-          this.sandboxPathWithEndSlash}] [${path}]!`);
-        const stat = fileIo.statSync(path)
-        this.fileSizes.push(stat.size);
-        if (index == r.length - 1) {
-          this.updateSizes();
-        }
+
+    for (let index = 0; index < files.length; index++) {
+      const thisPath = files[index];
+      const thisPathLower = thisPath.toLowerCase();
+      if (thisPathLower.endsWith('.mdx') || thisPathLower.endsWith('.mdd')) {
+        continue; // Skip mdd and mdx files
       }
-    } catch (e) {
-      console.error(`[MeowDictBundle][updateFiles] Failed: ${e}`);
+
+      try {
+        console.log(`    [MeowDictBundle][updateFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}] [${thisPath}]!`);
+        const stat = fileIo.statSync(thisPath);
+        this.files.push(thisPath);
+        this.fileSizes.push(stat.size);
+      } catch (e) {
+        console.error(`    [MeowDictBundle][updateFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}] [${thisPath}] const stat = fileIo.statSync(thisPath) Failed! ${e}`);
+      }
+
+      if (index == this.files.length - 1) {
+        // If is last
+        this.updateSizes();
+      }
     }
   }
 
@@ -207,17 +202,19 @@ export class meowDictBundle {
   async autoAdd(sourcePaths: string[], UIContext: UIContext) {
     for (let idx = 0; idx < sourcePaths.length; idx++) {
       const thisPath = sourcePaths[idx];
-      if (thisPath.endsWith('.mdx')) {
+      if (thisPath.toLowerCase()
+        .endsWith('.mdx')) {
         if (!this.mdx) {
           await this.addMDX(thisPath, UIContext);
         }
-      } else if (thisPath.endsWith('.mdd')) {
+      } else if (thisPath.toLowerCase()
+        .endsWith('.mdd')) {
         await this.addMDD(thisPath, UIContext);
       } else {
         await this.addFile(thisPath, UIContext, false);
       }
     }
-    this.updateFilesSync(UIContext.getHostContext()!);
+    await this.updateFiles(UIContext.getHostContext()!);
   }
 
   /**
@@ -228,12 +225,7 @@ export class meowDictBundle {
   addMDX(sourcePath: string, UIContext: UIContext) {
     const sourcePathSplit = sourcePath.split('/');
     const fileName: string | undefined = sourcePathSplit[sourcePathSplit.length - 1];
-    const destPath: string =
-      UIContext.getHostContext()!.filesDir +
-      '/' +
-      this.sandboxPathWithEndSlash +
-      'woof/' +
-      fileName;
+    const destPath: string = UIContext.getHostContext()!.filesDir + '/' + this.sandboxPathWithEndSlash + fileName;
     this.toast(UIContext, `${resource2String($r('app.string.add_importing'), UIContext.getHostContext()!)} ${fileName}`);
     if (this.mdx) {
       try {
@@ -243,20 +235,20 @@ export class meowDictBundle {
       }
     }
     this.mdx = undefined;
-    return fileCopy(sourcePath, destPath, true).then((result) => {
-      if (result == true) {
-        this.mdx = new meowDict(meowDictType.MDX, destPath);
-        this.mdx.init();
-        console.log(`[MeowDictBundle][addMDX][${sourcePath}][${destPath}]`);
-        this.updateSizes();
-      }
-      if (result == false) {
-        this.toast(UIContext, `${resource2String($r('app.string.add_fail_general'), UIContext.getHostContext()!)} ${fileName}`);
-      } else {
-        this.toast(UIContext, `${resource2String($r('app.string.add_success'), UIContext.getHostContext()!)} ${fileName}`);
-      }
-    })
-    // sandboxSaveHybrid('woof/woof.mdx', r.buf!, this.context, true);
+    return fileCopy(sourcePath, destPath, true)
+      .then((result) => {
+        if (result == true) {
+          this.mdx = new meowDict(meowDictType.MDX, destPath);
+          this.mdx.init();
+          console.log(`[MeowDictBundle][addMDX][${sourcePath}][${destPath}]`);
+          this.updateSizes();
+        }
+        if (result == false) {
+          this.toast(UIContext, `${resource2String($r('app.string.add_fail_general'), UIContext.getHostContext()!)} ${fileName}`);
+        } else {
+          this.toast(UIContext, `${resource2String($r('app.string.add_success'), UIContext.getHostContext()!)} ${fileName}`);
+        }
+      })
   }
 
   /**
@@ -268,25 +260,26 @@ export class meowDictBundle {
     // Save (copy) file
     const targetPathSplit = sourcePath.split('/');
     const fileName: string | undefined = targetPathSplit[targetPathSplit.length - 1];
-    const destPath = UIContext.getHostContext()!.filesDir + '/' + this.sandboxPathWithEndSlash + 'honk/' + fileName;
+    const destPath = UIContext.getHostContext()!.filesDir + '/' + this.sandboxPathWithEndSlash + fileName;
     this.toast(UIContext, `${resource2String($r('app.string.add_importing'), UIContext.getHostContext()!)} ${fileName}`);
-    return fileCopy(sourcePath, destPath, false).then((result) => {
-      if (result == true) {
-        // Create object
-        let mdd = new meowDict(meowDictType.MDD, destPath);
-        this.mdds.push(mdd);
-        mdd.init();
-        console.log(`[MeowDictBundle][addMDD][${sourcePath}][${destPath}][${fileName}]`);
-        this.updateSizes();
-      }
-      if (result == undefined) {
-        this.toast(UIContext, `${resource2String($r('app.string.add_fail_same_name'), UIContext.getHostContext()!)} ${fileName}`);
-      } else if (result == false) {
-        this.toast(UIContext, `${resource2String($r('app.string.add_fail_general'), UIContext.getHostContext()!)} ${fileName}`);
-      } else {
-        this.toast(UIContext, `${resource2String($r('app.string.add_success'), UIContext.getHostContext()!)} ${fileName}`);
-      }
-    })
+    return fileCopy(sourcePath, destPath, false)
+      .then((result) => {
+        if (result == true) {
+          // Create object
+          let mdd = new meowDict(meowDictType.MDD, destPath);
+          this.mdds.push(mdd);
+          mdd.init();
+          console.log(`[MeowDictBundle][addMDD][${sourcePath}][${destPath}][${fileName}]`);
+          this.updateSizes();
+        }
+        if (result == undefined) {
+          this.toast(UIContext, `${resource2String($r('app.string.add_fail_same_name'), UIContext.getHostContext()!)} ${fileName}`);
+        } else if (result == false) {
+          this.toast(UIContext, `${resource2String($r('app.string.add_fail_general'), UIContext.getHostContext()!)} ${fileName}`);
+        } else {
+          this.toast(UIContext, `${resource2String($r('app.string.add_success'), UIContext.getHostContext()!)} ${fileName}`);
+        }
+      })
   }
 
   /**
@@ -298,34 +291,45 @@ export class meowDictBundle {
   addFile(sourcePath: string, UIContext: UIContext, updateFile: boolean = true) {
     const sourcePathSplit = sourcePath.split('/');
     const fileName: string | undefined = sourcePathSplit[sourcePathSplit.length - 1];
-    const destPath = UIContext.getHostContext()!.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/' + fileName;
+
+    const destPathPure = UIContext.getHostContext()!.filesDir + '/' + this.sandboxPathWithEndSlash;
+    const pathWithMeow = UIContext.getHostContext()!.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/';
+    let destPath = pathWithMeow + fileName;
+    try {
+      if (!fileIo.accessSync(pathWithMeow)) {
+        destPath = destPathPure + fileName;
+      }
+    } catch (e) {
+      // Leave this along first.
+    }
+
     this.toast(UIContext, `${resource2String($r('app.string.add_importing'), UIContext.getHostContext()!)} ${fileName}`);
     console.log(`[meowDictBundle][addFile][${sourcePath}][${fileName}]`);
-    return fileCopy(sourcePath, destPath, true).then((result) => {
-      if (updateFile) {
-        this.updateFilesSync(UIContext.getHostContext()!);
-      }
-      if (result == undefined) {
-        this.toast(UIContext, `${resource2String($r('app.string.add_fail_same_name'), UIContext.getHostContext()!)} ${fileName}`);
-      } else if (result == false) {
-        this.toast(UIContext, `${resource2String($r('app.string.add_fail_general'), UIContext.getHostContext()!)} ${fileName}`);
-      } else {
-        this.toast(UIContext, `${resource2String($r('app.string.add_success'), UIContext.getHostContext()!)} ${fileName}`);
-      }
-    })
-    // sandboxSaveHybrid('meow/' + r.fileName!, r.buf!, this.context, true);
+    return fileCopy(sourcePath, destPath, true)
+      .then((result) => {
+        if (updateFile) {
+          this.updateFiles(UIContext.getHostContext()!);
+        }
+        if (result == undefined) {
+          this.toast(UIContext, `${resource2String($r('app.string.add_fail_same_name'), UIContext.getHostContext()!)} ${fileName}`);
+        } else if (result == false) {
+          this.toast(UIContext, `${resource2String($r('app.string.add_fail_general'), UIContext.getHostContext()!)} ${fileName}`);
+        } else {
+          this.toast(UIContext, `${resource2String($r('app.string.add_success'), UIContext.getHostContext()!)} ${fileName}`);
+        }
+      })
   }
 
   /**
    * Reads an MDict file and store the meowDict file into appStorage of given key
-   * @param sandboxPath The sandbox path. With context.filesDir as base. With slash in front.
+   * @param sandboxPath The sandbox path. With context.filesDir as base. With slash in front. e.g. '/woof/woof.mdx'
    * @param type meowDictType
    * @param appStorageKey The key of appStorage record
    * @param context Context
    * @returns Nothing
    * */
-  private readMDict(sandboxPath: string = '/woof/woof.mdx', type: meowDictType = meowDictType.MDX, context: Context) {
-    const fullPath = context.filesDir + sandboxPath;
+  private readMDict(sandboxPath: string, type: meowDictType = meowDictType.MDX, context: Context) {
+    const fullPath = sandboxPath.startsWith(context.filesDir) ? sandboxPath : context.filesDir + sandboxPath;
     try {
       const existMdd = fileIo.accessSync(fullPath);
       if (existMdd) {
@@ -344,10 +348,11 @@ export class meowDictBundle {
 
   private toast(UIContext: UIContext, msg: ResourceStr) {
     try {
-      UIContext.getPromptAction().showToast({
-        message: msg,
-        duration: toastDuration
-      });
+      UIContext.getPromptAction()
+        .showToast({
+          message: msg,
+          duration: toastDuration
+        });
     } catch (e) {
       console.log(`[MeowDictBundle] showToast failed: ${e}`);
     }

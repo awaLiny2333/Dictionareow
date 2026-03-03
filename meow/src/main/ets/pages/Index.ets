@@ -52,7 +52,8 @@ struct Index {
   timeoutIdForAvoidReload: number | undefined;
   // Runtime Objects
   webController: WebviewController = new webview.WebviewController();
-  context: Context = this.getUIContext().getHostContext()!;
+  context: Context = this.getUIContext()
+    .getHostContext()!;
 
   aboutToAppear(): void {
     console.warn(`[UI][aboutToAppear] TopDown: ${this.topDown}`);
@@ -78,7 +79,8 @@ struct Index {
               .onLoadIntercept((e) => {
                 const reqUrl = e.data.getRequestUrl();
                 const reqFilePath = reqUrl.split('/');
-                const reqFileName = decodeURIComponent(reqFilePath.slice(1).join('\\'));
+                const reqFileName = decodeURIComponent(reqFilePath.slice(1)
+                  .join('\\'));
                 const reqFileScheme = reqFilePath[0];
 
                 if (['sound:'].includes(reqFileScheme)) {
@@ -105,21 +107,31 @@ struct Index {
               })
               .metaViewport(true)
               .onInterceptRequest((e) => {
-                const reqUrl = e.request.getRequestUrl();
-                const reqFilePath = reqUrl.split('/');
+                const reqFilePath = e.request
+                  .getRequestUrl()
+                  .split('/');
                 const reqFileScheme = reqFilePath[0];
+                const base = reqFileScheme + '//' + this.currentBase();
+                
+                // Deal with languages like Chinese
+                let decodedReqUrlParts: string[] = [];
+                for (let idx = 0; idx < reqFilePath.length; idx++) {
+                  decodedReqUrlParts.push(decodeURIComponent(reqFilePath[idx]));
+                }
+                let decodedReqUrl = decodedReqUrlParts.join('/');
 
                 // Process file name
-                let reqFileName = 'name';
-                const base = reqFileScheme + '//' + this.currentBase();
-                if (reqUrl.indexOf(base) == 0) {
-                  reqFileName = reqUrl.substring(base.length);
+                let reqFileName: string;
+                if (decodedReqUrl.startsWith(base)) {
+                  // In the base folder can we find the resource requested.
+                  reqFileName = decodedReqUrl.substring(base.length);
                 } else {
-                  reqFileName = reqUrl.substring((reqFileScheme + '//').length);
+                  // e.g. decodedReqUrl = 'sound://cat.mp3', we want 'cat.mp3' only.
+                  reqFileName = decodedReqUrl.substring((reqFileScheme + '//')
+                    .length);
                 }
-                reqFileName = decodeURIComponent(reqFileName);
 
-                console.log(`[Meow][Web][onInterceptRequest][${reqUrl}] ${reqFileName}`);
+                console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}][base="${base}"] ${reqFileName}`);
 
                 // Process according to schemes
                 if (reqFileScheme == 'file:') {
@@ -128,12 +140,13 @@ struct Index {
                   // Check existence
                   let exist = false;
                   try {
+                    console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}] looking for file '${reqFileName}' @ (${this.currentBase() + reqFileName})!`);
                     exist = fileIo.accessSync(this.currentBase() + reqFileName);
                   } catch (e) {
                     console.error(`[Meow][Web][onInterceptRequest] fileIo.accessSync() failed: ${e}`);
                   }
                   if (exist) {
-                    // console.log(`[Meow][Web][onInterceptRequest][${reqUrl}] file '${reqFileName}' exist!`);
+                    console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}] file '${reqFileName}' exist!`);
                     return null;
                   }
 
@@ -146,11 +159,11 @@ struct Index {
                   this.meowLibrarian.bundles[this.currentDictNo]?.lookUpResourceFromMDDs(regularFileName)
                     .then((resultBuffer) => {
                       if (resultBuffer) {
-                        console.log(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Loaded. (${addUnitsToSize(resultBuffer.byteLength)})`);
+                        console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}][${regularFileName}] Loaded. (${addUnitsToSize(resultBuffer.byteLength)})`);
                         response.setResponseData(resultBuffer);
                         response.setResponseMimeType(mimeOfFileName(regularFileName));
                       } else {
-                        console.warn(`[Meow][Web][onInterceptRequest][${reqUrl}][${regularFileName}] Not found.`);
+                        console.warn(`[Meow][Web][onInterceptRequest][${decodedReqUrl}][${regularFileName}] Not found.`);
                       }
                       response.setResponseIsReady(true);
                     })
@@ -548,7 +561,6 @@ struct Index {
     console.log(`[Meow][loadWeb] base is ${'file://' + base}`);
 
     try {
-      // this.currentBase = base + 'meow/';
       this.webController.loadData(head + padTop + content + padBottom, 'text/html', 'UTF-8', 'file://' + base, ' ');
       // console.log(content);
       return true;
@@ -590,7 +602,8 @@ struct Index {
       for (let index = 0; index < resultBuffers.length; index++) {
         let resultText = 'ERROR! ＞︿＜';
         try {
-          resultText = fastbuffer.from(resultBuffers[index]).toString(bundle.mdx!.header!.Encoding);
+          resultText = fastbuffer.from(resultBuffers[index])
+            .toString(bundle.mdx!.header!.Encoding);
           // console.log(`[Meow][MDX] ${resultText}`);
           console.log(`[Meow][MDX][${key}] RAW resultText = ${resultText}`);
 
@@ -641,7 +654,8 @@ struct Index {
       }
 
       try {
-        const resultTextExtra = fastbuffer.from(resultBufferJump).toString(bundle.mdx!.header!.Encoding);
+        const resultTextExtra = fastbuffer.from(resultBufferJump)
+          .toString(bundle.mdx!.header!.Encoding);
         pieces.push(resultTextExtra);
       } catch (e) {
         console.error(`[Meow][fetchJumpsAsync] Failed: ${e}`);
@@ -698,7 +712,16 @@ struct Index {
   }
 
   currentBase() {
-    return this.context.filesDir + '/' + this.meowLibrarian.bundles[this.currentDictNo]?.sandboxPathWithEndSlash + 'meow/';
+    const path = this.context.filesDir + '/' + this.meowLibrarian.bundles[this.currentDictNo]?.sandboxPathWithEndSlash;
+    const pathWithMeow = path + 'meow/';
+    try {
+      if (fileIo.accessSync(pathWithMeow)) {
+        return pathWithMeow;
+      }
+    } catch (e) {
+      // It's just not there *Ponder*
+    }
+    return path;
   }
 
   needExpandable() {
@@ -770,12 +793,14 @@ struct Index {
     this.timeoutIdForAvoidReload = setTimeout(() => {
       // this.loadWeb(this.currentContent);
       const avoidPercentages = this.constructWebAvoidPercentages();
-      this.webController.runJavaScript(`document.getElementById('dictionareowTopAvoid').style.height = "${avoidPercentages[0]}%"`).catch((e: BusinessError) => {
-        console.error(`[Meow][web][refreshWebToUpdateAvoid] this.webController.runJavaScript Top failed: ${e}`);
-      });
-      this.webController.runJavaScript(`document.getElementById('dictionareowBottomAvoid').style.height = "${avoidPercentages[1]}%"`).catch((e: BusinessError) => {
-        console.error(`[Meow][web][refreshWebToUpdateAvoid] this.webController.runJavaScript Bottom failed: ${e}`);
-      });
+      this.webController.runJavaScript(`document.getElementById('dictionareowTopAvoid').style.height = "${avoidPercentages[0]}%"`)
+        .catch((e: BusinessError) => {
+          console.error(`[Meow][web][refreshWebToUpdateAvoid] this.webController.runJavaScript Top failed: ${e}`);
+        });
+      this.webController.runJavaScript(`document.getElementById('dictionareowBottomAvoid').style.height = "${avoidPercentages[1]}%"`)
+        .catch((e: BusinessError) => {
+          console.error(`[Meow][web][refreshWebToUpdateAvoid] this.webController.runJavaScript Bottom failed: ${e}`);
+        });
     }, 10);
   }
 }

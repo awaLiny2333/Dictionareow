@@ -16,7 +16,8 @@ struct meowBundleInfo {
   @Local isExpanded: boolean = false;
   @Local renderExpanded: boolean = false;
   @Param deleteAction?: (() => void) | undefined = undefined;
-  context: Context = this.getUIContext().getHostContext()!;
+  context: Context = this.getUIContext()
+    .getHostContext()!;
 
   build() {
     Column({ space: 8 }) {
@@ -52,11 +53,12 @@ struct meowBundleInfo {
           Row({ space: 10 }) {
             Button(`󰘭 ${resource2String($r('app.string.add_files_smart'), this.context)}`)
               .onClick(() => {
-                fileDocumentPick2Path([], 233).then((r) => {
-                  if (r.succeed) {
-                    this.bundle.autoAdd(r.sourcePaths!, this.getUIContext());
-                  }
-                })
+                fileDocumentPick2Path([], 233)
+                  .then((r) => {
+                    if (r.succeed) {
+                      this.bundle.autoAdd(r.sourcePaths!, this.getUIContext());
+                    }
+                  })
               })
             Button(this.bundle.mdx?.header ? 'MDX  󰀓' : '󰀵 MDX')
               .onClick(() => {
@@ -84,13 +86,14 @@ struct meowBundleInfo {
               })
             Button(`${resource2String($r('app.string.add_files'), this.context)} (${this.bundle.files.length})`)
               .onClick(() => {
-                fileDocumentPick2Path([], 233).then((r) => {
-                  if (r.succeed) {
-                    for (let index = 0; index < r.sourcePaths!.length; index++) {
-                      this.bundle.addFile(r.sourcePaths![index], this.getUIContext(), index == r.sourcePaths!.length - 1);
+                fileDocumentPick2Path([], 233)
+                  .then((r) => {
+                    if (r.succeed) {
+                      for (let index = 0; index < r.sourcePaths!.length; index++) {
+                        this.bundle.addFile(r.sourcePaths![index], this.getUIContext(), index == r.sourcePaths!.length - 1);
+                      }
                     }
-                  }
-                })
+                  })
               })
             if (this.deleteAction) {
               Button(`󰀁 ${resource2String($r('app.string.delete'), this.context)}`)
@@ -146,7 +149,7 @@ struct meowBundleInfo {
               deleteAction: () => {
                 fileIo.unlink(path)
                   .then(() => {
-                    this.bundle.updateFilesSync(this.context);
+                    this.bundle.updateFiles(this.context);
                   })
                   .catch((e: BusinessError) => {
                     console.error(`[Meow][Info][Files] fileIo.unlink(path) Failed: ${e}`);

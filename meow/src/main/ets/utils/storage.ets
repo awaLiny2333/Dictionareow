@@ -1,7 +1,6 @@
 import lazy { fileIo, fileUri, picker } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import lazy { taskpool } from '@kit.ArkTS';
-
 export interface meowReadPickResult {
   succeed: boolean;
   sourcePaths?: string[];
@@ -15,10 +14,11 @@ export interface meowReadPickResult {
  * */
 export async function fileDocumentPick2Path(fileSuffixFilters: string[] = [".meow"], maxSelectNumber: number = 1): Promise<meowReadPickResult> {
   if (canIUse("SystemCapability.FileManagement.UserFileService")) {
-    return (new picker.DocumentViewPicker()).select({
-      maxSelectNumber: maxSelectNumber,
-      fileSuffixFilters: fileSuffixFilters
-    })
+    return (new picker.DocumentViewPicker())
+      .select({
+        maxSelectNumber: maxSelectNumber,
+        fileSuffixFilters: fileSuffixFilters
+      })
       .then((documentSelectResult) => {
         let sourcePaths: string[] = [];
 
@@ -153,9 +153,10 @@ export function readArrayBufferSync(fullFilePath: string, offset?: number, lengt
     let l = fileIo.readSync(file.fd, buf, { offset: offset, length: length });
     let readLen = l;
     let result = buf.slice(0, readLen);
-    fileIo.close(file).catch((e: BusinessError) => {
-      console.error(`[readArrayBuffer] fileIo.close(file) failed: ${e}`);
-    })
+    fileIo.close(file)
+      .catch((e: BusinessError) => {
+        console.error(`[readArrayBuffer] fileIo.close(file) failed: ${e}`);
+      })
     console.info(`[readArrayBuffer] read [${fullFilePath}][${offset}, ${length}] succeed, length: ${readLen} (${Date.now() - startTime} ms)`);
     return result;
 
@@ -192,6 +193,37 @@ export async function readArrayBufferConcurrent(fullFilePath: string, offset?: n
 
 // Operations
 
+export async function listRecursivelyAllFilesUnderDir(path: string): Promise<string[]> {
+  return fileIo.listFile(path)
+    .then(async (r) => {
+      let results: string[] = [];
+      for (let idx = 0; idx < r.length; idx++) {
+        const thisPath = `${path}${r[idx]}`;
+        try {
+          const stat = await fileIo.stat(thisPath);
+          const isFolder = stat.isDirectory();
+          const isFile = stat.isFile();
+          if (isFolder) {
+            let contents = await listRecursivelyAllFilesUnderDir(thisPath + '/');
+            for (let u = 0; u < contents.length; u++) {
+              results.push(contents[u]);
+            }
+          } else if (isFile) {
+            console.warn(`[listRecursivelyAllFilesUnderDir][${path}] Add [${thisPath}]!`);
+            results.push(thisPath);
+          }
+        } catch (e) {
+          console.error(`[listRecursivelyAllFilesUnderDir][${path}] const isFolder = (await fileIo.stat(${thisPath})).isDirectory() failed: ${e}`);
+        }
+      }
+      return results;
+    })
+    .catch((e: BusinessError) => {
+      console.error(`[listRecursivelyAllFilesUnderDir] fileIo.listFile(${path}) Failed: ${e}`);
+      return [];
+    })
+}
+
 /**
  * Creates a directory in sandbox directory
  * @param dirPath The folder path
@@ -208,32 +240,40 @@ export function sandboxCreateDir(dirPath: string, context: Context, overwrite = 
   }
   console.log(`[sandboxCreateDir] mkdirSync ${fullDirectory} GO.`);
 
-  return fileIo.access(fullDirectory, fileIo.AccessModeType.EXIST).then((r) => {
-    if (r) {
-      if (overwrite) {
-        return fileIo.rmdir(fullDirectory).then(() => {
-          return fileIo.mkdir(fullDirectory).then(() => {
-            console.log(`[sandboxCreateDir][r] mkdirSync ${dirPath} OK.`);
-          }).catch((e: BusinessError) => {
-            console.error(`[sandboxCreateDir][r] mkdirSync ${dirPath} return fileIo.mkdir(fullDirectory) failed: ${e}`);
-          })
-        }).catch((e: BusinessError) => {
-          console.error(`[sandboxCreateDir][r] mkdirSync ${dirPath} return fileIo.rmdir(fullDirectory) failed: ${e}`);
-        })
+  return fileIo.access(fullDirectory, fileIo.AccessModeType.EXIST)
+    .then((r) => {
+      if (r) {
+        if (overwrite) {
+          return fileIo.rmdir(fullDirectory)
+            .then(() => {
+              return fileIo.mkdir(fullDirectory)
+                .then(() => {
+                  console.log(`[sandboxCreateDir][r] mkdirSync ${dirPath} OK.`);
+                })
+                .catch((e: BusinessError) => {
+                  console.error(`[sandboxCreateDir][r] mkdirSync ${dirPath} return fileIo.mkdir(fullDirectory) failed: ${e}`);
+                })
+            })
+            .catch((e: BusinessError) => {
+              console.error(`[sandboxCreateDir][r] mkdirSync ${dirPath} return fileIo.rmdir(fullDirectory) failed: ${e}`);
+            })
+        } else {
+          console.warn(`[sandboxCreateDir][r] directory ${dirPath} exist! Returned.`);
+          return;
+        }
       } else {
-        console.warn(`[sandboxCreateDir][r] directory ${dirPath} exist! Returned.`);
-        return;
+        return fileIo.mkdir(fullDirectory)
+          .then(() => {
+            console.log(`[sandboxCreateDir][new] mkdirSync ${dirPath} OK.`);
+          })
+          .catch((e: BusinessError) => {
+            console.error(`[sandboxCreateDir][new] mkdirSync ${dirPath} return fileIo.mkdir(fullDirectory) failed: ${e}`);
+          })
       }
-    } else {
-      return fileIo.mkdir(fullDirectory).then(() => {
-        console.log(`[sandboxCreateDir][new] mkdirSync ${dirPath} OK.`);
-      }).catch((e: BusinessError) => {
-        console.error(`[sandboxCreateDir][new] mkdirSync ${dirPath} return fileIo.mkdir(fullDirectory) failed: ${e}`);
-      })
-    }
-  }).catch((e: BusinessError) => {
-    console.error(`[sandboxCreateDir] mkdirSync ${dirPath} fileIo.access(fullDirectory, fileIo.AccessModeType.EXIST) failed: ${e}`);
-  })
+    })
+    .catch((e: BusinessError) => {
+      console.error(`[sandboxCreateDir] mkdirSync ${dirPath} fileIo.access(fullDirectory, fileIo.AccessModeType.EXIST) failed: ${e}`);
+    })
 }
 
 // Utils

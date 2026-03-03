@@ -32,9 +32,6 @@ export class meowDictBundleLibrarian {
     console.log(`[meowDictBundleLibrarian][createBundle] baseDir: ${baseDir}`);
     try {
       fileIo.mkdirSync(baseDir);
-      fileIo.mkdirSync(baseDir + '/woof');
-      fileIo.mkdirSync(baseDir + '/meow');
-      fileIo.mkdirSync(baseDir + '/honk');
 
       let bundle = new meowDictBundle();
       bundle.initFrom(sandboxDir + '/', context);
@@ -53,13 +50,6 @@ export class meowDictBundleLibrarian {
     fileIo.rmdir(dir).catch((e: BusinessError) => {
       console.error(`[meowDictBundleLibrarian][deleteBundle][${dir}] Failed: ${e}`);
     });
-  }
-
-  getBase(context: Context, idx: number): string | undefined {
-    if (idx >= this.bundles.length) {
-      return undefined;
-    }
-    return this.bundles[idx].getBase(context);
   }
 
   // Helpers!
