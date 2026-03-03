@@ -2,7 +2,7 @@ import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.Ab
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { meow, meowLevel } from '../utils/catsLogger';
-import { aboutToLoadContent, onLoadContent } from '../flows/flows';
+import { aboutToLoadContent, onLoadContent, wantThis } from '../flows/flows';
 
 const DOMAIN = 0x0000;
 
@@ -14,6 +14,11 @@ export default class MeowAbility extends UIAbility {
       hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
     }
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
+    wantThis(want);
+  }
+
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    wantThis(want);
   }
 
   onDestroy(): void {

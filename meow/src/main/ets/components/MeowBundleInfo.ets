@@ -50,25 +50,39 @@ struct meowBundleInfo {
 
         Scroll() {
           Row({ space: 10 }) {
+            Button(`󰘭 ${resource2String($r('app.string.add_files_smart'), this.context)}`)
+              .onClick(() => {
+                fileDocumentPick2Path([], 233).then((r) => {
+                  if (r.succeed) {
+                    this.bundle.autoAdd(r.sourcePaths!, this.getUIContext());
+                  }
+                })
+              })
             Button(this.bundle.mdx?.header ? 'MDX  󰀓' : '󰀵 MDX')
               .onClick(() => {
-                fileDocumentPick2Path([`${resource2String($r('app.string.type_mdx'), this.context)}|.mdx`], 1).then((r) => {
-                  if (r.succeed) {
-                    this.bundle.addMDX(r.sourcePaths![0], this.getUIContext());
-                  }
-                })
-              })
-            Button(`󰀵 MDD (${this.bundle.mdds.length})`)
-              .onClick(() => {
-                fileDocumentPick2Path([`${resource2String($r('app.string.type_mdd'), this.context)}|.mdd`], 233).then((r) => {
-                  if (r.succeed) {
-                    for (let index = 0; index < r.sourcePaths!.length; index++) {
-                      this.bundle.addMDD(r.sourcePaths![index], this.getUIContext());
+                fileDocumentPick2Path([
+                  `${resource2String($r('app.string.type_mdx'), this.context)}|.mdx`
+                ], 1)
+                  .then((r) => {
+                    if (r.succeed) {
+                      this.bundle.addMDX(r.sourcePaths![0], this.getUIContext());
                     }
-                  }
-                })
+                  })
               })
-            Button(`󰀵 ${resource2String($r('app.string.add_files'), this.context)} (${this.bundle.files.length})`)
+            Button(`MDD (${this.bundle.mdds.length})`)
+              .onClick(() => {
+                fileDocumentPick2Path([
+                  `${resource2String($r('app.string.type_mdd'), this.context)}|.mdd`
+                ], 233)
+                  .then((r) => {
+                    if (r.succeed) {
+                      for (let index = 0; index < r.sourcePaths!.length; index++) {
+                        this.bundle.addMDD(r.sourcePaths![index], this.getUIContext());
+                      }
+                    }
+                  })
+              })
+            Button(`${resource2String($r('app.string.add_files'), this.context)} (${this.bundle.files.length})`)
               .onClick(() => {
                 fileDocumentPick2Path([], 233).then((r) => {
                   if (r.succeed) {
@@ -78,9 +92,8 @@ struct meowBundleInfo {
                   }
                 })
               })
-
             if (this.deleteAction) {
-              Button(` 󰀁 ${resource2String($r('app.string.delete'), this.context)}`)
+              Button(`󰀁 ${resource2String($r('app.string.delete'), this.context)}`)
                 .onClick(() => {
                   if (this.deleteAction) {
                     this.deleteAction();
@@ -97,6 +110,9 @@ struct meowBundleInfo {
         .edgeEffect(EdgeEffect.Spring)
 
         Column({ space: 8 }) {
+          if (this.bundle.totalSize == 0) {
+            Text('¯\\_(ツ)_/¯')
+          }
           if (this.bundle.mdx) {
             MeowDictInfo({
               dict: this.bundle.mdx,

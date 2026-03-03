@@ -224,6 +224,9 @@ struct Index {
                   }, (bundle: meowDictBundle) => {
                     return bundle.sandboxPathWithEndSlash;
                   })
+                  if (this.meowLibrarian.bundles.length == 0) {
+                    Text('¯\\_(ツ)_/¯')
+                  }
                 }
               }
               .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 91 })
@@ -409,7 +412,7 @@ struct Index {
                 .id('searchInput')
                 .onAppear(() => {
                   setTimeout(() => {
-                    focusControl.requestFocus('searchInput');
+                    this.appearJobs();
                   }, 10)
                 })
 
@@ -513,6 +516,11 @@ struct Index {
 
   // Actions
 
+  appearJobs() {
+    focusControl.requestFocus('searchInput');
+    this.processNewWant();
+  }
+
   loadWeb(content: string | undefined, base: string = this.context.filesDir + '/') {
     if (!content) {
       return false;
@@ -548,7 +556,7 @@ struct Index {
 
     // TODO: Finish # Jumps
     const keySplit = key.split('#');
-    key = keySplit[keySplit.length-1];
+    key = keySplit[keySplit.length - 1];
     if (this.lookUpWord != key) {
       this.lookUpWord = key;
     }
@@ -692,6 +700,22 @@ struct Index {
   @Monitor('myMeowFreeWindowModeStatus.onFocus')
   focusSearch() {
     if (this.myMeowFreeWindowModeStatus.onFocus) {
+      if (this.myMeowFreeWindowModeStatus.on) {
+        setTimeout(() => {
+          focusControl.requestFocus('searchInput');
+        }, 10)
+      }
+    }
+  }
+
+  @Monitor('myMeowMisc.wantKey')
+  processNewWant() {
+    if (this.myMeowMisc.wantKey) {
+      let targetDictNo = this.currentDictNo;
+      if (this.myMeowMisc.wantDictIdx >= 0 && this.myMeowMisc.wantDictIdx < this.meowLibrarian.bundles.length - 1) {
+        targetDictNo = this.myMeowMisc.wantDictIdx;
+      }
+      this.lookUpKey(this.meowLibrarian.bundles[targetDictNo], this.myMeowMisc.wantKey);
       if (this.myMeowFreeWindowModeStatus.on) {
         setTimeout(() => {
           focusControl.requestFocus('searchInput');

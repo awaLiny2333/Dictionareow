@@ -21,6 +21,10 @@
       "value": "文件"
     },
     {
+      "name": "add_files_smart",
+      "value": "智能添加"
+    },
+    {
       "name": "info",
       "value": "信息"
     },
@@ -75,7 +79,8 @@
     {
       "name": "permission_reason_VIBRATE",
       "value": "在上下文菜单弹出时震动。"
-    }, {
+    },
+    {
       "name": "privacy_view",
       "value": "我们尊重您的权利和隐私。请在继续使用此 App 前查看并充分确认我们的隐私政策："
     },

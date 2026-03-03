@@ -267,4 +267,4 @@ export function listenFocus(windowClass: window.Window) {
 
 // Toast
 
-export const toastDuration: number = 5000;
+export const toastDuration: number = 2000;

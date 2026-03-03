@@ -7,7 +7,7 @@
     "deviceTypes": [
       "phone",
       "tablet",
-      "2in1",
+      "2in1"
     ],
     "deliveryWithInstall": true,
     "installationFree": false,
@@ -31,7 +31,29 @@
             "actions": [
               "ohos.want.action.home"
             ]
-          }
+          },
+          {
+            "actions": [
+               // actions不能为空，actions为空会造成目标方匹配失败。
+              "ohos.want.action.viewData"
+            ],
+            "uris": [
+              {
+                 // scheme必选，可以自定义，以link为例，需要替换为实际的scheme
+                "scheme": "dictionary"
+              },
+              {
+                "scheme": "dict"
+              },
+              {
+                "scheme": "dictionareow"
+              },
+              {
+                "scheme": "eudic"
+              }
+            ]
+          },
+           // 新增一个skill对象，用于跳转场景。如果存在多个跳转场景，需配置多个skill对象。
         ]
       }
     ],
@@ -46,30 +68,30 @@
             "name": "ohos.extension.backup",
             "resource": "$profile:backup_config"
           }
-        ],
+        ]
       }
     ],
     "requestPermissions": [
-      //      {
-      //        "name": "ohos.permission.INTERNET",
-      //        "reason": "$string:permission_reason_INTERNET",
-      //        "usedScene": {
-      //          "when": "inuse",
-      //          "abilities": [
-      //            "HomeAbility"
-      //          ]
-      //        }
-      //      },
-//      {
-      //        "name": "ohos.permission.VIBRATE",
-      //        "reason": "$string:permission_reason_VIBRATE",
-      //        "usedScene": {
-      //          "when": "inuse",
-      //          "abilities": [
-      //            "HomeAbility"
-      //          ]
-      //        }
-      //      }
+       //      {
+       //        "name": "ohos.permission.INTERNET",
+       //        "reason": "$string:permission_reason_INTERNET",
+       //        "usedScene": {
+       //          "when": "inuse",
+       //          "abilities": [
+       //            "HomeAbility"
+       //          ]
+       //        }
+       //      },
+       //      {
+       //        "name": "ohos.permission.VIBRATE",
+       //        "reason": "$string:permission_reason_VIBRATE",
+       //        "usedScene": {
+       //          "when": "inuse",
+       //          "abilities": [
+       //            "HomeAbility"
+       //          ]
+       //        }
+       //      }
     ]
   }
 }

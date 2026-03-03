@@ -1,6 +1,14 @@
 import { AppStorageV2, window } from '@kit.ArkUI';
 import { meow, meowLevel } from '../utils/catsLogger';
-import { getUpdateAvoid, getUpdateFreeWindowMode, listenAvoid, listenFocus, listenFreeWindowMode, meowLayoutModeStatus, meowPx2vp } from '../utils/ui';
+import {
+  getUpdateAvoid,
+  getUpdateFreeWindowMode,
+  listenAvoid,
+  listenFocus,
+  listenFreeWindowMode,
+  meowLayoutModeStatus,
+  meowPx2vp
+} from '../utils/ui';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
@@ -8,9 +16,9 @@ import { readArrayBufferSync, sandboxCreateDir, saveHybrid } from '../utils/stor
 import { buffer } from '@kit.ArkTS';
 import { meowMisc } from '../hosts/meowMisc';
 import { meowHistory } from '../hosts/meowHistory';
+import Want from '@ohos.app.ability.Want';
 
 // Flows
-
 /**
  * Called in onWindowStageCreate, before windowStage.LoadContent
  * @param window window.Window
@@ -49,7 +57,8 @@ export function onLoadContent(window: window.Window, context: Context) {
     const wideMode = width > 900;
     AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode, width, height));
   } catch (e) {
-    meow(`AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode)); Failed: ${e}`, 'init', meowLevel.ERROR);
+    meow(`AppStorageV2.connect(meowLayoutModeStatus, () => new meowLayoutModeStatus(wideMode)); Failed: ${e}`, 'init',
+      meowLevel.ERROR);
   }
 
   getUpdateAvoid(window);
@@ -88,7 +97,7 @@ export function initEnv(context: Context) {
           fileIo.mkdirSync(context.filesDir + '/bundles');
           console.log(`[flow][initEnv] Created new home bundles!`);
         } else {
-          refreshAllBundles(context, defaultDictNumber);
+          refreshAllBundles(context);
         }
       } catch (e) {
         console.error(`[flow][initEnv] Create new home bundles failed! ${e}`);
@@ -100,8 +109,19 @@ export function initEnv(context: Context) {
   })
 }
 
-function refreshAllBundles(context: Context, defaultId: number) {
+function refreshAllBundles(context: Context) {
   console.log(`[flow][refreshAllBundles] BUILD!`);
   let librarian = AppStorageV2.connect<meowDictBundleLibrarian>(meowDictBundleLibrarian, 'meowDictBundleLibrarian', () => new meowDictBundleLibrarian())!;
-  librarian.initAll(context, defaultId);
+  librarian.initAll(context);
+}
+
+export function wantThis(w: Want) {
+  console.log(`[wantThis] ${JSON.stringify(w)}`);
+  if (w.uri) {
+    const wSplit = w.uri.split('/');
+    const key = wSplit[wSplit.length - 1];
+    let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
+    misc.wantKey = key;
+    misc.wantDictIdx = -1;
+  }
 }

@@ -21,6 +21,10 @@
       "value": "Files"
     },
     {
+      "name": "add_files_smart",
+      "value": "Smart Add"
+    },
+    {
       "name": "info",
       "value": "Info"
     },
