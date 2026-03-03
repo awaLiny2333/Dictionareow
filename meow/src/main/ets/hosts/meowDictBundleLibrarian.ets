@@ -62,7 +62,7 @@ export class meowDictBundleLibrarian {
     return this.bundles[idx].getBase(context);
   }
 
-  // Helpers
+  // Helpers!
 
   constructSelectOptions() {
     let options: SelectOption[] = [];
