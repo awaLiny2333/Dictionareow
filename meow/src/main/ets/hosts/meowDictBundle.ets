@@ -305,7 +305,7 @@ export class meowDictBundle {
 
     this.toast(UIContext, `${resource2String($r('app.string.add_importing'), UIContext.getHostContext()!)} ${fileName}`);
     console.log(`[meowDictBundle][addFile][${sourcePath}][${fileName}]`);
-    return fileCopy(sourcePath, destPath, true)
+    return fileCopy(sourcePath, destPath, false)
       .then((result) => {
         if (updateFile) {
           this.updateFiles(UIContext.getHostContext()!);

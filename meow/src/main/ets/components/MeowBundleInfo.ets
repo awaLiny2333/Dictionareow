@@ -89,9 +89,10 @@ struct meowBundleInfo {
                 fileDocumentPick2Path([], 233)
                   .then((r) => {
                     if (r.succeed) {
-                      for (let index = 0; index < r.sourcePaths!.length; index++) {
-                        this.bundle.addFile(r.sourcePaths![index], this.getUIContext(), index == r.sourcePaths!.length - 1);
-                      }
+                      this.bundle.autoAdd(r.sourcePaths!, this.getUIContext());
+                      // for (let index = 0; index < r.sourcePaths!.length; index++) {
+                      //   this.bundle.addFile(r.sourcePaths![index], this.getUIContext(), index == r.sourcePaths!.length - 1);
+                      // }
                     }
                   })
               })

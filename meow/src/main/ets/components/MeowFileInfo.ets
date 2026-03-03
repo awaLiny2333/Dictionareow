@@ -8,19 +8,18 @@ struct MeowFileInfo {
   @Param @Require filePath: string;
   @Param @Require fileSize: number;
   @Param deleteAction?: (() => void) | undefined = undefined;
-  @Local name: string = 'file';
+  // @Local name: string = 'cat';
   context: Context = this.getUIContext().getHostContext()!;
 
-  @Monitor('filePath')
-  aboutToAppear(): void {
-    const spl = this.filePath.split('/');
-    this.name = spl[spl.length-1];
-  }
+  // @Monitor('filePath')
+  // aboutToAppear(): void {
+  //   this.name = this.filePath.split('/').pop() || 'cat';
+  // }
 
   build() {
     Column({ space: 5 }) {
       Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(5), cross: LengthMetrics.vp(2) } }) {
-        Text(this.name)
+        Text(this.filePath.split('/').pop() || 'catFile')
           .fontSize(16)
           .opacity(0.75)
 

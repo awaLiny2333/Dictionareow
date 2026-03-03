@@ -525,7 +525,7 @@ struct Index {
         }, 10)
       })
       .keyboardShortcut(FunctionKey.ESC, [], () => {
-        this.minimizeWindow();
+        this.onKeyESC();
       })
     }
   }
@@ -537,8 +537,13 @@ struct Index {
     this.processNewWant();
   }
 
-  minimizeWindow() {
+  onKeyESC() {
     if (!this.myMeowFreeWindowModeStatus.on) {
+      return;
+    }
+    if (this.isShowingInfo || this.isShowingHistory) {
+      this.isShowingInfo = false;
+      this.isShowingHistory = false;
       return;
     }
     this.myMeowLayout.window.minimize()
