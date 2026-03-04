@@ -112,7 +112,7 @@ struct Index {
                   .split('/');
                 const reqFileScheme = reqFilePath[0];
                 const base = reqFileScheme + '//' + this.currentBase();
-                
+
                 // Deal with languages like Chinese
                 let decodedReqUrlParts: string[] = [];
                 for (let idx = 0; idx < reqFilePath.length; idx++) {
@@ -194,17 +194,19 @@ struct Index {
                       this.meowLibrarian.createBundle(this.context);
                     })
 
-                  Select(this.meowLibrarian.constructSelectOptions())
-                    .selected(this.myMeowMisc.defaultDictBundleIndex)
-                    .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title)
-                    .onSelect((index: number) => {
-                      console.info('[Meow][Select] Select:' + index);
-                      this.myMeowMisc.defaultDictBundleIndex = index;
-                      saveHybrid(this.context.filesDir + '/oops/default.txt', index.toString(), true);
-                    })
-                    .selectedOptionBgColor($r('app.color.meow_iconSubEmphasize'))
-                    .selectedOptionFontColor($r('sys.color.font'))
-                    .selectedOptionFont({ weight: FontWeight.Bold })
+                  if (this.meowLibrarian.bundles.length > 0) {
+                    Select(this.meowLibrarian.constructSelectOptions())
+                      .selected(this.myMeowMisc.defaultDictBundleIndex)
+                      .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title)
+                      .onSelect((index: number) => {
+                        console.info('[Meow][Select] Select:' + index);
+                        this.myMeowMisc.defaultDictBundleIndex = index;
+                        saveHybrid(this.context.filesDir + '/oops/default.txt', index.toString(), true);
+                      })
+                      .selectedOptionBgColor($r('app.color.meow_iconSubEmphasize'))
+                      .selectedOptionFontColor($r('sys.color.font'))
+                      .selectedOptionFont({ weight: FontWeight.Bold })
+                  }
 
                   Button(`󰓞 ${resource2String($r('app.string.privacy_link'), this.context)}`)
                     .backgroundColor($r('app.color.meow_brand'))
@@ -239,6 +241,7 @@ struct Index {
                   })
                   if (this.meowLibrarian.bundles.length == 0) {
                     Text('¯\\_(ツ)_/¯')
+                      .padding(10)
                   }
                 }
               }
@@ -349,15 +352,17 @@ struct Index {
 
                   // Default
 
-                  Button(`󰀲 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title || ''}`)
-                    .onClick(() => {
-                      this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
-                      this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], this.lookUpWord);
-                    })
-                    .opacity(this.currentDictHasStats ? (this.currentDictHasStats[this.myMeowMisc.defaultDictBundleIndex] ? 1 : 0.5) : 0.5)
-                    .border(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
-                    .brightness(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? 1.1 : 1)
-                    .animation(defaultAnima)
+                  if (this.meowLibrarian.bundles.length > 0) {
+                    Button(`󰀲 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title || ''}`)
+                      .onClick(() => {
+                        this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
+                        this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], this.lookUpWord);
+                      })
+                      .opacity(this.currentDictHasStats ? (this.currentDictHasStats[this.myMeowMisc.defaultDictBundleIndex] ? 1 : 0.5) : 0.5)
+                      .border(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
+                      .brightness(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? 1.1 : 1)
+                      .animation(defaultAnima)
+                  }
 
                   // Others
 
@@ -409,14 +414,12 @@ struct Index {
                 .onChange((e) => {
                   this.lookUpWord = e;
                 })
+                .onPaste((e) => {
+                  this.lookUpWord = e;
+                  this.submitCurrent();
+                })
                 .onSubmit(() => {
-                  // this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
-                  this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord);
-                  if (this.myMeowFreeWindowModeStatus.on) {
-                    setTimeout(() => {
-                      focusControl.requestFocus('searchInput');
-                    }, 10)
-                  }
+                  this.submitCurrent();
                 })
                 .selectAll(true)
                 .selectedBackgroundColor($r('app.color.meow_iconSubEmphasize'))
@@ -431,8 +434,8 @@ struct Index {
 
               Button(`󰈱`)
                 .onClick(() => {
-                  // this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
-                  this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord);
+                  // this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord);
+                  this.submitCurrent();
                 })
             } // Search bar
             .id('searchBar')
@@ -550,6 +553,15 @@ struct Index {
       .catch((e: BusinessError) => {
         console.error(`[Meow][minimizeWindow] Failed: ${e}`);
       });
+  }
+  
+  submitCurrent() {
+    this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord);
+    if (this.myMeowFreeWindowModeStatus.on) {
+      setTimeout(() => {
+        focusControl.requestFocus('searchInput');
+      }, 10)
+    }
   }
 
   loadWeb(content: string | undefined, base: string = this.context.filesDir + '/') {
