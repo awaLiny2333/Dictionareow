@@ -23,6 +23,7 @@ export class meowDictBundle {
    * */
   async initFrom(sandboxPathWithEndSlash: string, context: Context) {
     this.sandboxPathWithEndSlash = sandboxPathWithEndSlash;
+    this.files = []; // Reset. Even though not necessary.
 
     // Smart read
     let allFilesPlain: string[] = await listRecursivelyAllFilesUnderDir(context.filesDir + '/' + sandboxPathWithEndSlash);
@@ -30,22 +31,37 @@ export class meowDictBundle {
     for (let fIdx = 0; fIdx < allFilesPlain.length; fIdx++) {
       const thisPath = allFilesPlain[fIdx];
       const thisPathLower = thisPath.toLowerCase();
-      if (thisPathLower.endsWith('.mdx') && !this.mdx) {
+
+      if (thisPathLower.endsWith('.mdx')) {
         // Is MDX
-        let mdx = this.readMDict(thisPath, meowDictType.MDX, context);
-        this.mdx = mdx;
-        console.log(`[readMDict] ${this.mdx?.header?.Title}`);
+        if (!this.mdx) {
+          let mdx = this.readMDict(thisPath, meowDictType.MDX, context);
+          this.mdx = mdx;
+          console.log(`[MeowDictBundle][initFrom][MDX][${thisPath}] ${this.mdx?.header?.Title}`);
+        } else {
+          console.log(`[MeowDictBundle][initFrom][MDX][${thisPath}] Rejected!`);
+        }
       } else if (thisPathLower.endsWith('.mdd')) {
         // Is MDD
         let mdd = this.readMDict(thisPath, meowDictType.MDD, context);
         if (mdd) {
           this.mdds.push(mdd);
+          console.log(`[MeowDictBundle][initFrom][MDD][${thisPath}] ${mdd.header?.Title}`);
+        } else {
+          console.log(`[MeowDictBundle][initFrom][MDD][${thisPath}] Failed or rejectd.`);
+        }
+      } else {
+        // Is File
+        try {
+          this.files.push(thisPath);
+          const stat = fileIo.statSync(thisPath);
+          this.fileSizes.push(stat.size);
+          console.log(`[MeowDictBundle][initFrom][File][${thisPath}]`);
+        } catch (e) {
+          console.error(`[MeowDictBundle][initFrom][File][${thisPath}] const stat = fileIo.statSync(thisPath) Failed! ${e}`);
         }
       }
     }
-
-    // Files
-    await this.updateFiles(context, allFilesPlain);
 
     this.updateSizes();
   }
@@ -141,10 +157,10 @@ export class meowDictBundle {
   // Status maintenance
 
   /**
-   * Updates the extra files additionally added.
+   * Updates the extra files additionally added (Other than .mdx & .mdd)
    * @param context Context.
    * */
-  async updateFiles(context: Context, allFilesPlain?: string[]) {
+  async refreshExtraFiles(context: Context, allFilesPlain?: string[]) {
     // Files
     const files = allFilesPlain || (await listRecursivelyAllFilesUnderDir(context.filesDir + '/' + this.sandboxPathWithEndSlash));
     this.files = [];
@@ -157,12 +173,12 @@ export class meowDictBundle {
       }
 
       try {
-        console.log(`    [MeowDictBundle][updateFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}] [${thisPath}]!`);
+        console.log(`[MeowDictBundle][refreshExtraFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}] [${thisPath}]!`);
         const stat = fileIo.statSync(thisPath);
         this.files.push(thisPath);
         this.fileSizes.push(stat.size);
       } catch (e) {
-        console.error(`    [MeowDictBundle][updateFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}] [${thisPath}] const stat = fileIo.statSync(thisPath) Failed! ${e}`);
+        console.error(`[MeowDictBundle][refreshExtraFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}] [${thisPath}] const stat = fileIo.statSync(thisPath) Failed! ${e}`);
       }
 
       if (index == this.files.length - 1) {
@@ -174,7 +190,7 @@ export class meowDictBundle {
 
   /**
    * Calculates and updates the totalSize of this bundle.
-   * Included in updateFilesSync.
+   * Included in refreshExtraFiles.
    * */
   updateSizes() {
     console.log(`[MeowDictBundle][updateSizes]!`);
@@ -215,7 +231,7 @@ export class meowDictBundle {
         await this.addFile(thisPath, UIContext, idx + 1, total);
       }
     }
-    await this.updateFiles(UIContext.getHostContext()!);
+    await this.refreshExtraFiles(UIContext.getHostContext()!);
   }
 
   /**

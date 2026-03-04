@@ -26,11 +26,13 @@ import Want from '@ohos.app.ability.Want';
 export async function aboutToLoadContent(windowStage: window.WindowStage, window: window.Window, context: Context) {
   initEnv(context);
 
-  windowStage.setWindowRectAutoSave(true).then(() => {
-    meow('windowStage.setWindowRectAutoSave(true) Success!', 'init', meowLevel.INFO);
-  }).catch((err: BusinessError) => {
-    meow(`windowStage.setWindowRectAutoSave(true) Failed: ${err}`, 'init', meowLevel.ERROR);
-  });
+  windowStage.setWindowRectAutoSave(true)
+    .then(() => {
+      meow('windowStage.setWindowRectAutoSave(true) Success!', 'init', meowLevel.INFO);
+    })
+    .catch((err: BusinessError) => {
+      meow(`windowStage.setWindowRectAutoSave(true) Failed: ${err}`, 'init', meowLevel.ERROR);
+    });
 
   try {
     window.setImmersiveModeEnabledState(true);
@@ -76,36 +78,42 @@ export function onLoadContent(window: window.Window, context: Context) {
  * @param context The context.
  * */
 export function initEnv(context: Context) {
-  sandboxCreateDir('oops', context).then(() => {
-    saveHybrid(context.filesDir + '/oops/default.txt', '0', false).then((result) => {
-      let defaultDictNumber = 0;
-      if (result == undefined) {
-        // Should read
-        const read = readArrayBufferSync(context.filesDir + '/oops/default.txt');
-        const readString = buffer.from(read).toString();
-        defaultDictNumber = Number(readString);
-        console.log(`[initEnv] Read default dictionary is ${defaultDictNumber}!`);
-        let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
-        misc.defaultDictBundleIndex = defaultDictNumber;
-      }
+  sandboxCreateDir('oops', context)
+    .then(() => {
+      saveHybrid(context.filesDir + '/oops/default.txt', '0', false)
+        .then((result) => {
+          let defaultDictNumber = 0;
+          if (result == undefined) {
+            // Exist default file. Should read
+            const read = readArrayBufferSync(context.filesDir + '/oops/default.txt');
+            const readString = buffer.from(read)
+              .toString();
+            defaultDictNumber = Number(readString);
+            console.log(`[initEnv] Read default dictionary is ${defaultDictNumber}!`);
+            let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
+            misc.defaultDictBundleIndex = defaultDictNumber;
+          }
 
-      // New home
-      try {
-        let homeExist = fileIo.accessSync(context.filesDir + '/bundles');
-        if (!homeExist) {
-          fileIo.mkdirSync(context.filesDir + '/bundles');
-          console.log(`[flow][initEnv] Created new home bundles!`);
-        } else {
-          refreshAllBundles(context);
-        }
-      } catch (e) {
-        console.error(`[flow][initEnv] Create new home bundles failed! ${e}`);
-      }
+          // New home
+          try {
+            let homeExist = fileIo.accessSync(context.filesDir + '/bundles');
+            if (!homeExist) {
+              fileIo.mkdirSync(context.filesDir + '/bundles');
+              console.log(`[flow][initEnv] Created new home bundles!`);
+            } else {
+              refreshAllBundles(context);
+            }
+          } catch (e) {
+            console.error(`[flow][initEnv] Create new home bundles failed! ${e}`);
+          }
+        })
+      
+      // Put this here to avoid stuck on main thread?
+      setTimeout(() => {
+        let myMeowHistory = AppStorageV2.connect<meowHistory>(meowHistory, 'meowHistory', () => new meowHistory())!;
+        myMeowHistory.initFrom(`${context.filesDir}/oops/history.txt`);
+      }, 500);
     })
-
-    let myMeowHistory = AppStorageV2.connect<meowHistory>(meowHistory, 'meowHistory', () => new meowHistory())!;
-    myMeowHistory.initFrom(`${context.filesDir}/oops/history.txt`);
-  })
 }
 
 function refreshAllBundles(context: Context) {

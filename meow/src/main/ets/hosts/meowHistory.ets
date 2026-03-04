@@ -9,32 +9,44 @@ export class meowHistory {
   @Trace init: boolean = false;
 
   async initFrom(fullPath: string) {
+    const t0 = Date.now();
     const arrayBuffer = await readArrayBufferConcurrent(fullPath);
     if (arrayBuffer) {
-      try {
-        const text = fastbuffer.from(arrayBuffer).toString();
-        // console.log(`[meowHistory][initFrom] Text: ${text}`);
-        const readData = text.split('\n');
-        const needSave = this.data.length > 0;
+      if (arrayBuffer.byteLength > 0) {
+        try {
+          const buffer = fastbuffer.from(arrayBuffer);
+          const text = buffer.toString();
+          // console.log(`[meowHistory][initFrom] Text: ${text}`);
+          const readData = text.split('\n');
 
-        console.log(`[meowHistory][initFrom] Initialized from ${fullPath}: ${readData}`);
-        this.data = this.data.concat(readData);
+          console.log(`[meowHistory][initFrom] Initialized from ${fullPath}: ${readData.slice(0, 10)}...`);
+          const extraData = this.data; // History entries produced by searches submitted before history is loaded.
+          this.data = readData;
 
-        if (needSave) {
-          saveHybrid(fullPath, '', true);
+          // Put these back to history data.
+          for (let idxHis = 0; idxHis < extraData.length; idxHis++) {
+            this.addHistory(extraData[idxHis]);
+            console.log(`    [meowHistory][initFrom] added extra history entry ${extraData[idxHis]}`);
+          }
+          if (extraData.length > 0) {
+            saveHybrid(fullPath, this.data.join('\n'), true);
+          }
+
+        } catch (e) {
+          console.error(`[meowHistory][initFrom] Failed: ${e}`);
         }
-
-      } catch (e) {
-        console.error(`[meowHistory][initFrom] Failed: ${e}`);
+      } else {
+        console.warn(`[meowHistory][initFrom] History file @ ${fullPath} is empty!`);
       }
 
-      this.init = true;
     } else {
       // First use
       await saveHybrid(fullPath, '');
       console.warn(`[meowHistory][initFrom] Created blank history file @ ${fullPath}`);
     }
+    this.init = true;
     this.fullPath = fullPath;
+    console.log(`[meowHistory][initFrom] initialized! (${Date.now() - t0} ms)`);
   }
 
   async addHistory(key: string): Promise<boolean | undefined> {

@@ -53,6 +53,7 @@ export async function fileDocumentPick2Path(fileSuffixFilters: string[] = [".meo
 
 /**
  * Save a text file or ArrayBuffer to sandbox storage, overwrites whatever that was at that place.
+ * @returns undefined if overwrite is false and there exists the file already. A boolean if overwrite is true, stating if the action is successful.
  * @param filePath A string, setting the file's name.
  * @param context The content.
  * @param content A string or an ArrayBuffer, fills the file's content.
@@ -61,9 +62,9 @@ export async function fileDocumentPick2Path(fileSuffixFilters: string[] = [".meo
 export async function saveHybrid(filePath: string, content: string | ArrayBuffer, overwrite = false) {
   let fullDirectory = filePath;
   try {
-    if (fileIo.accessSync(fullDirectory)) {
+    if (await fileIo.access(fullDirectory)) {
       if (overwrite) {
-        fileIo.unlinkSync(fullDirectory);
+        await fileIo.unlink(fullDirectory);
       } else {
         console.warn(`[saveHybrid] file ${filePath} exist! Returned.`);
         return undefined;
@@ -76,7 +77,7 @@ export async function saveHybrid(filePath: string, content: string | ArrayBuffer
       console.info(`[saveHybrid] about to write to file ${filePath}, content length = ${content.byteLength}`);
     }
 
-    let file = fileIo.openSync(fullDirectory, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
+    let file = await fileIo.open(fullDirectory, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
     return fileIo.write(file.fd, content)
       .then((writeLen) => {
         console.info(`[saveHybrid] write to file ${filePath} succeed, size = ${writeLen}`);

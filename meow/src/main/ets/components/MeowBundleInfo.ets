@@ -116,7 +116,7 @@ struct meowBundleInfo {
               deleteAction: () => {
                 fileIo.unlink(path)
                   .then(() => {
-                    this.bundle.updateFiles(this.context);
+                    this.bundle.refreshExtraFiles(this.context);
                   })
                   .catch((e: BusinessError) => {
                     console.error(`[Meow][Info][Files] fileIo.unlink(path) Failed: ${e}`);

@@ -25,7 +25,7 @@ struct Index {
   @Local myMeowFreeWindowModeStatus: meowFreeWindowModeStatus = AppStorageV2.connect<meowFreeWindowModeStatus>(meowFreeWindowModeStatus)!;
   @Local myMeowLayout: meowLayoutModeStatus = AppStorageV2.connect<meowLayoutModeStatus>(meowLayoutModeStatus)!;
   @Local myMeowMisc: meowMisc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
-  @Local myMeowHistory: meowHistory = AppStorageV2.connect<meowHistory>(meowHistory, 'meowHistory', () => new meowHistory())!;
+  @Local myMeowHistory: meowHistory = AppStorageV2.connect<meowHistory>(meowHistory, 'meowHistory', () => new meowHistory())!; // Need initialization here because the load of history in flows.ets may be delayed.
   @Local windowTopAvoid: number = 0;
   // Data
   @Local meowLibrarian: meowDictBundleLibrarian = AppStorageV2.connect<meowDictBundleLibrarian>(meowDictBundleLibrarian, 'meowDictBundleLibrarian', () => new meowDictBundleLibrarian())!;
@@ -346,6 +346,7 @@ struct Index {
                       this.isShowingInfo = false;
                       this.isShowingHistory = !this.isShowingHistory;
                     })
+                    .opacity(this.myMeowHistory.init ? 1 : 0.5)
                     .border(this.isShowingHistory ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
                     .brightness(this.isShowingHistory ? 1.1 : 1)
                     .animation(defaultAnima)
@@ -554,7 +555,7 @@ struct Index {
         console.error(`[Meow][minimizeWindow] Failed: ${e}`);
       });
   }
-  
+
   submitCurrent() {
     this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord);
     if (this.myMeowFreeWindowModeStatus.on) {
