@@ -412,7 +412,7 @@ struct Index {
                     })
                 }
 
-                TextInput({ placeholder: `󰀩 ${this.bundleTitle()}`, text: this.lookUpWord })
+                TextInput({ placeholder: `󰀩 ${this.bundleTitle()} ｜ Ctrl ← ｜ Ctrl →`, text: this.lookUpWord })
                   .layoutWeight(1)
                   .onChange((e) => {
                     this.lookUpWord = e;
@@ -533,6 +533,12 @@ struct Index {
       .keyboardShortcut(FunctionKey.ESC, [], () => {
         this.onKeyESC();
       })
+      .keyboardShortcut(FunctionKey.DPAD_RIGHT, [ModifierKey.CTRL], () => {
+        this.lookUpInNextAvailableDict();
+      })
+      .keyboardShortcut(FunctionKey.DPAD_LEFT, [ModifierKey.CTRL], () => {
+        this.lookUpInLastAvailableDict();
+      })
     }
   }
 
@@ -567,6 +573,63 @@ struct Index {
     }
   }
 
+  lookUpInNextAvailableDict() {
+    if (!this.currentDictHasStats) {
+      return;
+    }
+    const list = this.constructCurrentDictHasStatsList();
+    if (list.length == 0) {
+      return;
+    }
+
+    let index = 0;
+    if (list.length == 1) {
+      index = list[0];
+    } else {
+      let indexInList = list.indexOf(this.currentDictNo);
+      if (indexInList > -1) {
+        if (indexInList == list.length - 1) {
+          // Is last in list. Next should be the first in list.
+          index = list[0];
+        } else {
+          index = list[indexInList + 1];
+        }
+      }
+    }
+
+    this.currentDictNo = index;
+    this.lookUpKey(index, this.lookUpWord);
+  }
+
+  lookUpInLastAvailableDict() {
+    if (!this.currentDictHasStats) {
+      return;
+    }
+    const list = this.constructCurrentDictHasStatsList();
+    if (list.length == 0) {
+      return;
+    }
+
+    let index = 0;
+    if (list.length == 1) {
+      index = list[0];
+    } else {
+      let indexInList = list.indexOf(this.currentDictNo);
+      if (indexInList > -1) {
+        if (indexInList == 0) {
+          // Is first in list, last should be the last in list.
+          index = list.pop()!;
+        } else {
+          index = list[indexInList - 1];
+        }
+      }
+    }
+
+
+    this.currentDictNo = index;
+    this.lookUpKey(index, this.lookUpWord);
+  }
+
   loadWeb(content: string | undefined, base: string = this.context.filesDir + '/') {
     if (!content) {
       return false;
@@ -591,6 +654,11 @@ struct Index {
   }
 
   async lookUpKey(bundleIdx: number, key: string, retryLayer = 0) {
+    if (key == '') {
+      console.warn(`[index][lookUpKey] Trying to lookup key "${key}" in bundle #${bundleIdx}. Rejected for empty key.`);
+      return false;
+    }
+
     console.log(`[index][lookUpKey] Trying to lookup key "${key}" in bundle #${bundleIdx}!`);
     const bundle: meowDictBundle | undefined = this.meowLibrarian.bundles[bundleIdx];
 
@@ -718,6 +786,27 @@ struct Index {
   bundleTitle() {
     const t = this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title;
     return t || 'ヽ（´ー｀）┌';
+  }
+
+  /**
+   * Constructs the list of indices of dicts that contains current key, in natural order (default dict at #0).
+   * @returns The number[] of dict indices.
+   */
+  constructCurrentDictHasStatsList(): number[] {
+    if (!this.currentDictHasStats) {
+      return [];
+    }
+    let result: number[] = [];
+    for (let i = 0; i < this.currentDictHasStats.length; i++) {
+      if (this.currentDictHasStats[i]) {
+        if (i == this.myMeowMisc.defaultDictBundleIndex) {
+          result.unshift(i);
+        } else {
+          result.push(i);
+        }
+      }
+    }
+    return result;
   }
 
   /**
