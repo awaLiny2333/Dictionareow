@@ -18,7 +18,7 @@ export class meowDict {
   size: number = -1;
   type: meowDictType;
   @Trace header: meowDictHeader | undefined;
-  keyword: meowDictKeyword | undefined;
+  @Trace keyword: meowDictKeyword | undefined;
   @Trace record: meowDictRecord | undefined;
 
   constructor(type: meowDictType, fullPath: string) {
@@ -39,21 +39,22 @@ export class meowDict {
     const startTime: number = Date.now();
 
     let globalOffset: number = 0;
-    return this.processHeader().then((val) => {
-      globalOffset += val;
-      globalOffset += this.processKeyword(globalOffset);
-      this.processRecord(globalOffset);
+    return this.processHeader()
+      .then((val) => {
+        globalOffset += val;
+        globalOffset += this.processKeyword(globalOffset);
+        this.processRecord(globalOffset);
 
-      // Ending mark
-      console.log(`[meowDict][${this.fullPath}] READY! (${Date.now() - startTime} ms)`);
-    })
+        // Ending mark
+        console.log(`[meowDict][${this.fullPath}] READY! (${Date.now() - startTime} ms)`);
+      })
   }
 
   /**
    * Process the header section
    * @returns The length of header section (in bytes).
    * */
-  private async processHeader() {
+  private async processHeader(checksum: boolean = false) {
     const startTime: number = Date.now();
 
     const block04 = readArrayBufferSync(this.fullPath!, 0, 4);
@@ -62,8 +63,16 @@ export class meowDict {
     const headerContentBuffer = readArrayBufferSync(this.fullPath!, 4, headerContentLength);
     const headerContent = arrayBuffer2UTF16LE(headerContentBuffer);
 
-    const headerChecksumBuffer = readArrayBufferSync(this.fullPath!, 4 + headerContentLength, 4);
-    const headerChecksumNumber = arrayBuffer2Int32LE(headerChecksumBuffer) || 0;
+    if (checksum) {
+      const headerChecksumBuffer = readArrayBufferSync(this.fullPath!, 4 + headerContentLength, 4);
+      const headerChecksumNumber = arrayBuffer2Int32LE(headerChecksumBuffer) || 0;
+      const verify = alder32ChecksumVerify(headerContentBuffer, headerChecksumNumber);
+      if (verify) {
+        console.log(`[meowDict][processHeader] Checksum verify: ${verify}`);
+      } else {
+        console.warn(`[meowDict][processHeader] Checksum verify: ${verify}`);
+      }
+    }
 
     if (headerContent) {
       this.header = meowDictHeader.fromXMLString(headerContent, this.fullPath);
@@ -78,13 +87,6 @@ export class meowDict {
         this.header.Encoding = 'utf-16le';
         console.warn(`[meowDict][processHeader] Is MDD! Use utf-16le! UnitLength = ${getUnitEncodingLength(this.header.Encoding)}`);
       }
-    }
-
-    const verify = alder32ChecksumVerify(headerContentBuffer, headerChecksumNumber);
-    if (verify) {
-      console.log(`[meowDict][processHeader] Checksum verify: ${verify}`);
-    } else {
-      console.warn(`[meowDict][processHeader] Checksum verify: ${verify}`);
     }
 
     console.log(`[meowDict][processHeader] Header total length: ${8 + headerContentLength} (${Date.now() - startTime} ms)`);
@@ -137,47 +139,49 @@ export class meowDict {
       return undefined;
     }
 
-    key = key.replace(/\0/g, '').replace(/\UFEFF/g, '');
+    key = key.replace(/\0/g, '')
+      .replace(/\UFEFF/g, '');
 
-    return this.keyword!.lookUpRecordEntryOffset(key, exact).then(async (offsets) => {
-      if (offsets !== null && offsets !== undefined) {
-        let arrayBuffers: ArrayBuffer[] = [];
-        for (let index = 0; index < offsets.length; index++) {
-          console.log(`[meowDict][lookUpWord][${key}][${index + 1}/${offsets.length}] Get entry!`);
-          let buf: ArrayBuffer | undefined = undefined;
-          if (offsets[index][1] < 0) {
-            // The last word in the entire dictionary?!
-            buf = await this.record!.getRecordEntry(offsets[index][0], undefined, key + ' <end>')
-          } else {
-            buf = await this.record!.getRecordEntry(offsets[index][0], offsets[index][1], key);
-          }
-          let isNew = true;
+    return this.keyword!.lookUpRecordEntryOffset(key, exact)
+      .then(async (offsets) => {
+        if (offsets !== null && offsets !== undefined) {
+          let arrayBuffers: ArrayBuffer[] = [];
+          for (let index = 0; index < offsets.length; index++) {
+            console.log(`[meowDict][lookUpWord][${key}][${index + 1}/${offsets.length}] Get entry!`);
+            let buf: ArrayBuffer | undefined = undefined;
+            if (offsets[index][1] < 0) {
+              // The last word in the entire dictionary?!
+              buf = await this.record!.getRecordEntry(offsets[index][0], undefined, key + ' <end>')
+            } else {
+              buf = await this.record!.getRecordEntry(offsets[index][0], offsets[index][1], key);
+            }
+            let isNew = true;
 
-          try {
-            if (this.type == meowDictType.MDX && buf && buf.byteLength < 1000) {
-              const fastBuf = fastbuffer.from(buf);
-              for (let index = 0; index < arrayBuffers.length; index++) {
-                if (arrayBuffers[index].byteLength < 1000) {
-                  if (fastBuf.equals(fastbuffer.from(arrayBuffers[index]))) {
-                    isNew = false;
+            try {
+              if (this.type == meowDictType.MDX && buf && buf.byteLength < 1000) {
+                const fastBuf = fastbuffer.from(buf);
+                for (let index = 0; index < arrayBuffers.length; index++) {
+                  if (arrayBuffers[index].byteLength < 1000) {
+                    if (fastBuf.equals(fastbuffer.from(arrayBuffers[index]))) {
+                      isNew = false;
+                    }
                   }
                 }
               }
+            } catch (e) {
+              console.error(`[meowDict][lookUpWord] Compare equal and eliminate duplication failed: ${e}`);
             }
-          } catch (e) {
-            console.error(`[meowDict][lookUpWord] Compare equal and eliminate duplication failed: ${e}`);
-          }
 
-          if (buf && isNew) {
-            arrayBuffers.push(buf);
+            if (buf && isNew) {
+              arrayBuffers.push(buf);
+            }
           }
+          return arrayBuffers;
+        } else {
+          console.warn(`[meowDict][lookUpWord] this.keyword!.lookUpRecordEntryOffset(word) is null or undefined??`);
+          return undefined;
         }
-        return arrayBuffers;
-      } else {
-        console.warn(`[meowDict][lookUpWord] this.keyword!.lookUpRecordEntryOffset(word) is null or undefined??`);
-        return undefined;
-      }
-    });
+      });
   }
 
   /**
@@ -191,24 +195,28 @@ export class meowDict {
       return undefined;
     }
 
-    key = key.replace(/\0/g, '').replace(/\UFEFF/g, '');
+    key = key.replace(/\0/g, '')
+      .replace(/\UFEFF/g, '');
 
-    return this.keyword!.jumpToExactRecordEntryOffset(key).then((offsets) => {
-      if (offsets !== null && offsets !== undefined) {
-        if (offsets[1] < 0) {
-          // The last word in the entire dictionary?!
-          return this.record!.getRecordEntry(offsets[0], undefined, key + ' <end>').then((buf) => {
-            return buf;
-          })
+    return this.keyword!.jumpToExactRecordEntryOffset(key)
+      .then((offsets) => {
+        if (offsets !== null && offsets !== undefined) {
+          if (offsets[1] < 0) {
+            // The last word in the entire dictionary?!
+            return this.record!.getRecordEntry(offsets[0], undefined, key + ' <end>')
+              .then((buf) => {
+                return buf;
+              })
+          }
+          return this.record!.getRecordEntry(offsets[0], offsets[1], key)
+            .then((buf) => {
+              return buf;
+            })
+        } else {
+          console.warn(`[meowDict][lookUpWord] this.keyword!.lookUpRecordEntryOffset(word) is null or undefined??`);
+          return undefined;
         }
-        return this.record!.getRecordEntry(offsets[0], offsets[1], key).then((buf) => {
-          return buf;
-        })
-      } else {
-        console.warn(`[meowDict][lookUpWord] this.keyword!.lookUpRecordEntryOffset(word) is null or undefined??`);
-        return undefined;
-      }
-    })
+      })
   }
 
   /**
@@ -222,7 +230,8 @@ export class meowDict {
       return undefined;
     }
 
-    key = key.replace(/\0/g, '').replace(/\UFEFF/g, '');
+    key = key.replace(/\0/g, '')
+      .replace(/\UFEFF/g, '');
 
     return this.keyword!.lookUpRecordEntryOffset(key, exact, false).then((offsets) => {
       return (offsets !== null && offsets !== undefined);
@@ -237,7 +246,7 @@ export class meowDict {
     if (!this.header || !this.keyword || !this.record) {
       return false;
     }
-    if (!this.keyword.index) {
+    if (!this.keyword.ready) {
       return false;
     }
     if (!this.record.ready) {

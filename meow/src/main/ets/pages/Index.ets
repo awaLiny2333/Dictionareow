@@ -33,9 +33,9 @@ struct Index {
   @Local lookUpWord: string = '';
   @Local keywordsInSameIndexBlock: string[] = [];
   @Local keywordsInSameIndexBlockRelevant: string[] = [];
+  @Local lookupRetryingInterval: number | undefined = undefined;
   // Dictionaries
   @Local currentDictNo: number = this.myMeowMisc.defaultDictBundleIndex;
-  @Local currentDictBundleTitle: string = '(～o￣3￣)～';
   @Local currentDictHasStats: boolean[] | undefined = undefined;
   // Runtime UI
   @Local topDown: boolean = this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode;
@@ -62,270 +62,272 @@ struct Index {
   build() {
     WithTheme({ theme: new meowTheme() }) {
       Stack({ alignContent: Alignment.TopStart }) {
-        Stack() {
-          if (this.renderWeb) {
-            Web({ controller: this.webController, src: '' })
-              .darkMode(WebDarkMode.Auto)
-              .forceDarkAccess(true)
-              .javaScriptAccess(true)
-              .imageAccess(true)
-              .onlineImageAccess(true)
-              .mixedMode(MixedMode.All)
-              .fileAccess(true)
-              .domStorageAccess(true)
-              .databaseAccess(true)
-              .allowWindowOpenMethod(true)
-              .multiWindowAccess(true)
-              .onLoadIntercept((e) => {
-                const reqUrl = e.data.getRequestUrl();
-                const reqFilePath = reqUrl.split('/');
-                const reqFileName = decodeURIComponent(reqFilePath.slice(1)
-                  .join('\\'));
-                const reqFileScheme = reqFilePath[0];
 
-                if (['sound:'].includes(reqFileScheme)) {
-                  if (reqUrl.length < 256) {
-                    console.warn(`[Meow][Web][onLoadIntercept][${reqUrl}], reqFileScheme = ${reqFileScheme}, reqFileName = ${reqFileName}`);
-                  } else {
-                    console.warn(`[Meow][Web][onLoadIntercept][long] reqFileScheme = ${reqFileScheme}`);
-                  }
+        if (this.render) {
+          Stack() {
+            if (this.renderWeb) {
+              Web({ controller: this.webController, src: '' })
+                .darkMode(WebDarkMode.Auto)
+                .forceDarkAccess(true)
+                .javaScriptAccess(true)
+                .imageAccess(true)
+                .onlineImageAccess(true)
+                .mixedMode(MixedMode.All)
+                .fileAccess(true)
+                .domStorageAccess(true)
+                .databaseAccess(true)
+                .allowWindowOpenMethod(true)
+                .multiWindowAccess(true)
+                .onLoadIntercept((e) => {
+                  const reqUrl = e.data.getRequestUrl();
+                  const reqFilePath = reqUrl.split('/');
+                  const reqFileName = decodeURIComponent(reqFilePath.slice(1)
+                    .join('\\'));
+                  const reqFileScheme = reqFilePath[0];
 
-                  // Load
-                  this.meowLibrarian.bundles[this.currentDictNo]?.extractFileToTemp(reqFileName, this.context)
-                    .then(async (r) => {
-                      if (r) {
-                        playThisForMe(r, `[Meow][Web][onLoadIntercept][Media][${reqUrl}]`);
-                      } else {
-                        console.warn(`[Meow][Web][onLoadIntercept][${reqUrl}] Not found.`);
-                      }
-                    })
+                  if (['sound:'].includes(reqFileScheme)) {
+                    if (reqUrl.length < 256) {
+                      console.warn(`[Meow][Web][onLoadIntercept][${reqUrl}], reqFileScheme = ${reqFileScheme}, reqFileName = ${reqFileName}`);
+                    } else {
+                      console.warn(`[Meow][Web][onLoadIntercept][long] reqFileScheme = ${reqFileScheme}`);
+                    }
 
-                  return true;
-                }
-
-                return false;
-              })
-              .metaViewport(true)
-              .onInterceptRequest((e) => {
-                const reqFilePath = e.request
-                  .getRequestUrl()
-                  .split('/');
-                const reqFileScheme = reqFilePath[0];
-                const base = reqFileScheme + '//' + this.currentBase();
-
-                // Deal with languages like Chinese
-                let decodedReqUrlParts: string[] = [];
-                for (let idx = 0; idx < reqFilePath.length; idx++) {
-                  decodedReqUrlParts.push(decodeURIComponent(reqFilePath[idx]));
-                }
-                let decodedReqUrl = decodedReqUrlParts.join('/');
-
-                // Process file name
-                let reqFileName: string;
-                if (decodedReqUrl.startsWith(base)) {
-                  // In the base folder can we find the resource requested.
-                  reqFileName = decodedReqUrl.substring(base.length);
-                } else {
-                  // e.g. decodedReqUrl = 'sound://cat.mp3', we want 'cat.mp3' only.
-                  reqFileName = decodedReqUrl.substring((reqFileScheme + '//')
-                    .length);
-                }
-
-                console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}][base="${base}"] ${reqFileName}`);
-
-                // Process according to schemes
-                if (reqFileScheme == 'file:') {
-                  reqFileName = reqFileName.replaceAll('/', '\\');
-
-                  // Check existence
-                  let exist = false;
-                  try {
-                    console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}] looking for file '${reqFileName}' @ (${this.currentBase() + reqFileName})!`);
-                    exist = fileIo.accessSync(this.currentBase() + reqFileName);
-                  } catch (e) {
-                    console.error(`[Meow][Web][onInterceptRequest] fileIo.accessSync() failed: ${e}`);
-                  }
-                  if (exist) {
-                    console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}] file '${reqFileName}' exist!`);
-                    return null;
-                  }
-
-                  // Get the files
-                  let response = new WebResourceResponse();
-                  let regularFileName = reqFileName;
-                  if (regularFileName.substring(0, 1) != '\\') {
-                    regularFileName = '\\' + regularFileName;
-                  }
-                  this.meowLibrarian.bundles[this.currentDictNo]?.lookUpResourceFromMDDs(regularFileName)
-                    .then((resultBuffer) => {
-                      if (resultBuffer) {
-                        console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}][${regularFileName}] Loaded. (${addUnitsToSize(resultBuffer.byteLength)})`);
-                        response.setResponseData(resultBuffer);
-                        response.setResponseMimeType(mimeOfFileName(regularFileName));
-                      } else {
-                        console.warn(`[Meow][Web][onInterceptRequest][${decodedReqUrl}][${regularFileName}] Not found.`);
-                      }
-                      response.setResponseIsReady(true);
-                    })
-
-                  // Response
-                  response.setResponseIsReady(false);
-                  return response;
-                }
-
-                if (reqFileScheme == 'entry:') {
-                  this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], decodeURIComponent(reqFileName));
-                }
-
-                return null;
-              })
-              // .borderRadius(15)
-              .backgroundColor(Color.Transparent)
-              .id('mainWeb')
-              .linearGradientBlur(30, this.linearBlurOps)
-          }
-
-          Column({ space: 8 }) {
-            if (this.renderMore) {
-              Scroll() {
-                Row({ space: 8 }) {
-                  Button(`󰀵 ${resource2String($r('app.string.new_dictionary'), this.context)}`)
-                    .onClick(() => {
-                      this.meowLibrarian.createBundle(this.context);
-                    })
-
-                  if (this.meowLibrarian.bundles.length > 0) {
-                    Select(this.meowLibrarian.constructSelectOptions())
-                      .selected(this.myMeowMisc.defaultDictBundleIndex)
-                      .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title)
-                      .onSelect((index: number) => {
-                        console.info('[Meow][Select] Select:' + index);
-                        this.myMeowMisc.defaultDictBundleIndex = index;
-                        saveHybrid(this.context.filesDir + '/oops/default.txt', index.toString(), true);
-                      })
-                      .selectedOptionBgColor($r('app.color.meow_iconSubEmphasize'))
-                      .selectedOptionFontColor($r('sys.color.font'))
-                      .selectedOptionFont({ weight: FontWeight.Bold })
-                  }
-
-                  Button(`󰓞 ${resource2String($r('app.string.privacy_link'), this.context)}`)
-                    .backgroundColor($r('app.color.meow_brand'))
-                    .onClick(() => {
-                      const link = getPrivacyPolicyLink('1889247809668921664'); // This may change if privacy policy in AGC changes
-                      if (link) {
-                        openLink(link, this.context as common.UIAbilityContext);
-                      }
-                    })
-                }
-              }
-              .edgeEffect(EdgeEffect.Spring)
-              .scrollable(ScrollDirection.Horizontal)
-              .scrollBar(BarState.Off)
-              .clip(true)
-              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
-
-              Scroll() {
-                Column({ space: 8 }) {
-                  ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, idx: number) => {
-                    meowBundleInfo({
-                      bundle: bundle,
-                      deleteAction: () => {
-                        this.meowLibrarian.deleteBundle(idx, this.context);
-                        if (idx == this.myMeowMisc.defaultDictBundleIndex) {
-                          this.myMeowMisc.defaultDictBundleIndex = 0;
+                    // Load
+                    this.meowLibrarian.bundles[this.currentDictNo]?.extractFileToTemp(reqFileName, this.context)
+                      .then(async (r) => {
+                        if (r) {
+                          playThisForMe(r, `[Meow][Web][onLoadIntercept][Media][${reqUrl}]`);
+                        } else {
+                          console.warn(`[Meow][Web][onLoadIntercept][${reqUrl}] Not found.`);
                         }
-                      }
-                    })
-                  }, (bundle: meowDictBundle) => {
-                    return bundle.sandboxPathWithEndSlash;
-                  })
-                  if (this.meowLibrarian.bundles.length == 0) {
-                    Text('¯\\_(ツ)_/¯')
-                      .padding(10)
+                      })
+
+                    return true;
+                  }
+
+                  return false;
+                })
+                .metaViewport(true)
+                .onInterceptRequest((e) => {
+                  const reqFilePath = e.request
+                    .getRequestUrl()
+                    .split('/');
+                  const reqFileScheme = reqFilePath[0];
+                  const base = reqFileScheme + '//' + this.currentBase();
+
+                  // Deal with languages like Chinese
+                  let decodedReqUrlParts: string[] = [];
+                  for (let idx = 0; idx < reqFilePath.length; idx++) {
+                    decodedReqUrlParts.push(decodeURIComponent(reqFilePath[idx]));
+                  }
+                  let decodedReqUrl = decodedReqUrlParts.join('/');
+
+                  // Process file name
+                  let reqFileName: string;
+                  if (decodedReqUrl.startsWith(base)) {
+                    // In the base folder can we find the resource requested.
+                    reqFileName = decodedReqUrl.substring(base.length);
+                  } else {
+                    // e.g. decodedReqUrl = 'sound://cat.mp3', we want 'cat.mp3' only.
+                    reqFileName = decodedReqUrl.substring((reqFileScheme + '//')
+                      .length);
+                  }
+
+                  console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}][base="${base}"] ${reqFileName}`);
+
+                  // Process according to schemes
+                  if (reqFileScheme == 'file:') {
+                    reqFileName = reqFileName.replaceAll('/', '\\');
+
+                    // Check existence
+                    let exist = false;
+                    try {
+                      console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}] looking for file '${reqFileName}' @ (${this.currentBase() + reqFileName})!`);
+                      exist = fileIo.accessSync(this.currentBase() + reqFileName);
+                    } catch (e) {
+                      console.error(`[Meow][Web][onInterceptRequest] fileIo.accessSync() failed: ${e}`);
+                    }
+                    if (exist) {
+                      console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}] file '${reqFileName}' exist!`);
+                      return null;
+                    }
+
+                    // Get the files
+                    let response = new WebResourceResponse();
+                    let regularFileName = reqFileName;
+                    if (regularFileName.substring(0, 1) != '\\') {
+                      regularFileName = '\\' + regularFileName;
+                    }
+                    this.meowLibrarian.bundles[this.currentDictNo]?.lookUpResourceFromMDDs(regularFileName)
+                      .then((resultBuffer) => {
+                        if (resultBuffer) {
+                          console.log(`[Meow][Web][onInterceptRequest][${decodedReqUrl}][${regularFileName}] Loaded. (${addUnitsToSize(resultBuffer.byteLength)})`);
+                          response.setResponseData(resultBuffer);
+                          response.setResponseMimeType(mimeOfFileName(regularFileName));
+                        } else {
+                          console.warn(`[Meow][Web][onInterceptRequest][${decodedReqUrl}][${regularFileName}] Not found.`);
+                        }
+                        response.setResponseIsReady(true);
+                      })
+
+                    // Response
+                    response.setResponseIsReady(false);
+                    return response;
+                  }
+
+                  if (reqFileScheme == 'entry:') {
+                    this.lookUpKey(this.currentDictNo, decodeURIComponent(reqFileName));
+                  }
+
+                  return null;
+                })
+                // .borderRadius(15)
+                .backgroundColor(Color.Transparent)
+                .id('mainWeb')
+                .linearGradientBlur(30, this.linearBlurOps)
+            }
+
+            Column({ space: 8 }) {
+              if (this.renderMore) {
+                Scroll() {
+                  Row({ space: 8 }) {
+                    Button(`󰀵 ${resource2String($r('app.string.new_dictionary'), this.context)}`)
+                      .onClick(() => {
+                        this.meowLibrarian.createBundle(this.context);
+                      })
+
+                    if (this.meowLibrarian.bundles.length > 0) {
+                      Select(this.meowLibrarian.constructSelectOptions())
+                        .selected(this.myMeowMisc.defaultDictBundleIndex)
+                        .value(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title)
+                        .onSelect((index: number) => {
+                          console.info('[Meow][Select] Select:' + index);
+                          this.myMeowMisc.defaultDictBundleIndex = index;
+                          saveHybrid(this.context.filesDir + '/oops/default.txt', index.toString(), true);
+                        })
+                        .selectedOptionBgColor($r('app.color.meow_iconSubEmphasize'))
+                        .selectedOptionFontColor($r('sys.color.font'))
+                        .selectedOptionFont({ weight: FontWeight.Bold })
+                    }
+
+                    Button(`󰓞 ${resource2String($r('app.string.privacy_link'), this.context)}`)
+                      .backgroundColor($r('app.color.meow_brand'))
+                      .onClick(() => {
+                        const link = getPrivacyPolicyLink('1889247809668921664'); // This may change if privacy policy in AGC changes
+                        if (link) {
+                          openLink(link, this.context as common.UIAbilityContext);
+                        }
+                      })
                   }
                 }
+                .edgeEffect(EdgeEffect.Spring)
+                .scrollable(ScrollDirection.Horizontal)
+                .scrollBar(BarState.Off)
+                .clip(true)
+                .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
+
+                Scroll() {
+                  Column({ space: 8 }) {
+                    ForEach(this.meowLibrarian.bundles, (bundle: meowDictBundle, idx: number) => {
+                      meowBundleInfo({
+                        bundle: bundle,
+                        deleteAction: () => {
+                          this.meowLibrarian.deleteBundle(idx, this.context);
+                          if (idx == this.myMeowMisc.defaultDictBundleIndex) {
+                            this.myMeowMisc.defaultDictBundleIndex = 0;
+                          }
+                        }
+                      })
+                    }, (bundle: meowDictBundle) => {
+                      return bundle.sandboxPathWithEndSlash;
+                    })
+                    if (this.meowLibrarian.bundles.length == 0) {
+                      Text('¯\\_(ツ)_/¯')
+                        .padding(10)
+                    }
+                  }
+                }
+                .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 91 })
+                .width('100%')
+                .align(Alignment.Top)
+                .scrollable(ScrollDirection.Vertical)
+                .edgeEffect(EdgeEffect.Spring)
+                .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
               }
-              .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 91 })
-              .width('100%')
-              .align(Alignment.Top)
+            } // More panel
+            .visibility(this.isShowingInfo ? Visibility.Visible : Visibility.None)
+            .animation(defaultAnima)
+            .clip(true)
+            .alignItems(HorizontalAlign.Start)
+            .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
+            .borderWidth(1)
+            .borderColor($r('sys.color.icon_fourth'))
+            .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
+            .padding(10)
+            .margin({
+              left: 10,
+              bottom: this.topDown ? 10 : this.myMeowAvoid.bottom + this.titleHeight() + 10,
+              right: 10,
+              top: this.topDown ? this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10 : this.windowTopAvoid + 10
+            })
+            .shadow(ShadowStyle.OUTER_DEFAULT_SM)
+
+            Column() {
+              Text(`(${this.myMeowHistory.data.length}/${this.myMeowHistory.limit})`)
+                .opacity(0.75)
+                .padding(8)
+              Scroll() {
+                Column() {
+                  ForEach(this.myMeowHistory.data, ((tempHisKey: string, idx: number) => {
+                    MeowHistoryEntry({
+                      keyword: this.myMeowHistory.data[idx],
+                      clickAction: () => {
+                        // Load
+                        this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
+                        this.lookUpKey(this.myMeowMisc.defaultDictBundleIndex, tempHisKey);
+                      },
+                      contextMenuAction: () => {
+                        this.myMeowHistory.deleteHistory(idx);
+                      }
+                    })
+                  }))
+                }
+                .alignItems(this.topDown ? HorizontalAlign.Start : HorizontalAlign.End)
+              }
+              .padding({ right: 6 })
+              .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 75 })
               .scrollable(ScrollDirection.Vertical)
               .edgeEffect(EdgeEffect.Spring)
-              .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 8 : 20)
-            }
-          } // More panel
-          .visibility(this.isShowingInfo ? Visibility.Visible : Visibility.None)
-          .animation(defaultAnima)
-          .clip(true)
-          .alignItems(HorizontalAlign.Start)
-          .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
-          .borderWidth(1)
-          .borderColor($r('sys.color.icon_fourth'))
-          .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
-          .padding(10)
-          .margin({
-            left: 10,
-            bottom: this.topDown ? 10 : this.myMeowAvoid.bottom + this.titleHeight() + 10,
-            right: 10,
-            top: this.topDown ? this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10 : this.windowTopAvoid + 10
-          })
-          .shadow(ShadowStyle.OUTER_DEFAULT_SM)
 
-          Column() {
-            Text(`(${this.myMeowHistory.data.length}/${this.myMeowHistory.limit})`)
-              .opacity(0.75)
-              .padding(8)
-            Scroll() {
-              Column() {
-                ForEach(this.myMeowHistory.data, ((tempHisKey: string, idx: number) => {
-                  MeowHistoryEntry({
-                    keyword: this.myMeowHistory.data[idx],
-                    clickAction: () => {
-                      // Load
-                      this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
-                      this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], tempHisKey);
-                    },
-                    contextMenuAction: () => {
-                      this.myMeowHistory.deleteHistory(idx);
-                    }
-                  })
-                }))
+              if (this.myMeowHistory.data.length == 0) {
+                Text('¯\\_(ツ)_/¯')
               }
-              .alignItems(this.topDown ? HorizontalAlign.Start : HorizontalAlign.End)
-            }
-            .padding({ right: 6 })
-            .constraintSize({ maxHeight: this.myMeowLayout.height - this.windowTopAvoid - this.myMeowAvoid.bottom - this.titleHeight() - 75 })
-            .scrollable(ScrollDirection.Vertical)
-            .edgeEffect(EdgeEffect.Spring)
+            } // History panel
+            .visibility(this.isShowingHistory ? Visibility.Visible : Visibility.None)
+            .animation(defaultAnima)
+            .clip(true)
+            .alignItems(HorizontalAlign.Start)
+            .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
+            .borderWidth(1)
+            .borderColor($r('sys.color.icon_fourth'))
+            .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
+            .padding({
+              top: 10,
+              left: 10,
+              bottom: 10,
+              right: 4
+            })
+            .margin({
+              left: 10,
+              bottom: this.topDown ? 10 : this.myMeowAvoid.bottom + this.titleHeight() + 10,
+              right: 10,
+              top: this.topDown ? this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10 : this.windowTopAvoid + 10
+            })
+            .constraintSize({ maxWidth: Math.max(400, this.myMeowLayout.width * 0.4) })
+            .shadow(ShadowStyle.OUTER_DEFAULT_SM)
 
-            if (this.myMeowHistory.data.length == 0) {
-              Text('¯\\_(ツ)_/¯')
-            }
-          } // History panel
-          .visibility(this.isShowingHistory ? Visibility.Visible : Visibility.None)
-          .animation(defaultAnima)
-          .clip(true)
-          .alignItems(HorizontalAlign.Start)
-          .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
-          .borderWidth(1)
-          .borderColor($r('sys.color.icon_fourth'))
-          .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
-          .padding({
-            top: 10,
-            left: 10,
-            bottom: 10,
-            right: 4
-          })
-          .margin({
-            left: 10,
-            bottom: this.topDown ? 10 : this.myMeowAvoid.bottom + this.titleHeight() + 10,
-            right: 10,
-            top: this.topDown ? this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0) + this.titleHeight() + 10 : this.windowTopAvoid + 10
-          })
-          .constraintSize({ maxWidth: Math.max(400, this.myMeowLayout.width * 0.4) })
-          .shadow(ShadowStyle.OUTER_DEFAULT_SM)
-
-          RelativeContainer() {
-            if (this.render) {
+            RelativeContainer() {
+              // if (this.render) {
               Row() {
                 Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
 
@@ -357,7 +359,7 @@ struct Index {
                     Button(`󰀲 ${this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex]?.mdx?.header?.Title || ''}`)
                       .onClick(() => {
                         this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
-                        this.lookUpKey(this.meowLibrarian.bundles[this.myMeowMisc.defaultDictBundleIndex], this.lookUpWord);
+                        this.lookUpKey(this.myMeowMisc.defaultDictBundleIndex, this.lookUpWord);
                       })
                       .opacity(this.currentDictHasStats ? (this.currentDictHasStats[this.myMeowMisc.defaultDictBundleIndex] ? 1 : 0.5) : 0.5)
                       .border(this.currentDictNo == this.myMeowMisc.defaultDictBundleIndex ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
@@ -372,7 +374,7 @@ struct Index {
                       Button(`${bundle.mdx?.header?.Title}`)
                         .onClick(() => {
                           this.currentDictNo = index;
-                          this.lookUpKey(bundle, this.lookUpWord);
+                          this.lookUpKey(index, this.lookUpWord);
                         })
                         .opacity(this.currentDictHasStats ? (this.currentDictHasStats[index] ? 1 : 0.5) : 0.5)
                         .border(this.currentDictNo == index ? { width: 2, color: $r('app.color.button_border') } : { width: 2, color: Color.Transparent })
@@ -400,98 +402,98 @@ struct Index {
               .clip(true)
               .alignRules({ left: { anchor: '__container__', align: HorizontalAlign.Start }, top: { anchor: '__container__', align: VerticalAlign.Top } })
               .id('fileControlButtons')
-            }
+              // }
 
-            Row({ space: 10 }) {
-              if (this.needExpandable()) {
-                Button(this.buttonsExpanded ? (this.topDown ? '󰃘' : '󰃛') : (!this.topDown ? '󰃘' : '󰃛'))
-                  .onClick(() => {
-                    this.buttonsExpanded = !this.buttonsExpanded;
-                  })
-              }
-
-              TextInput({ placeholder: `󰀩 ${this.currentDictBundleTitle}`, text: this.lookUpWord })
-                .layoutWeight(1)
-                .onChange((e) => {
-                  this.lookUpWord = e;
-                })
-                .onPaste((e) => {
-                  this.lookUpWord = e;
-                  this.submitCurrent();
-                })
-                .onSubmit(() => {
-                  this.submitCurrent();
-                })
-                .selectAll(true)
-                .selectedBackgroundColor($r('app.color.meow_iconSubEmphasize'))
-                .keyboardAppearance(KeyboardAppearance.IMMERSIVE)
-                .keyboardShortcut('F', [ModifierKey.CTRL])
-                .id('searchInput')
-                .onAppear(() => {
-                  setTimeout(() => {
-                    this.appearJobs();
-                  }, 10)
-                })
-
-              Button(`󰈱`)
-                .onClick(() => {
-                  // this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord);
-                  this.submitCurrent();
-                })
-            } // Search bar
-            .id('searchBar')
-            .alignRules({
-              left: { anchor: '__container__', align: HorizontalAlign.Start },
-              right: { anchor: '__container__', align: HorizontalAlign.End },
-              bottom: { anchor: '__container__', align: VerticalAlign.Bottom }
-            })
-            .animation(defaultAnima)
-
-          } // Title
-          .height(this.titleHeight())
-          .animation(defaultAnima)
-          .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
-          .borderWidth(1)
-          .borderColor($r('sys.color.icon_fourth'))
-          .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
-          .padding(10)
-          .margin({
-            left: 10,
-            bottom: this.myMeowAvoid.bottom,
-            right: 10,
-            top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0)
-          })
-          .shadow(ShadowStyle.OUTER_DEFAULT_SM)
-          .gesture(
-            PanGesture({ direction: PanDirection.Up | PanDirection.Down })
-              .onActionStart(() => {
-                console.info('Pan start');
-                this.buttonsPanY = 0;
-              })
-              .onActionUpdate((e: GestureEvent) => {
-                this.buttonsPanY += e.offsetY;
-              })
-              .onActionEnd(() => {
-                if (this.topDown) {
-                  this.buttonsExpanded = this.buttonsPanY > 0;
-                } else {
-                  this.buttonsExpanded = this.buttonsPanY < 0;
+              Row({ space: 10 }) {
+                if (this.needExpandable()) {
+                  Button(this.buttonsExpanded ? (this.topDown ? '󰃘' : '󰃛') : (!this.topDown ? '󰃘' : '󰃛'))
+                    .onClick(() => {
+                      this.buttonsExpanded = !this.buttonsExpanded;
+                    })
                 }
+
+                TextInput({ placeholder: `󰀩 ${this.bundleTitle()}`, text: this.lookUpWord })
+                  .layoutWeight(1)
+                  .onChange((e) => {
+                    this.lookUpWord = e;
+                  })
+                  .onPaste((e) => {
+                    this.lookUpWord = e;
+                    this.submitCurrent();
+                  })
+                  .onSubmit(() => {
+                    this.submitCurrent();
+                  })
+                  .selectAll(true)
+                  .selectedBackgroundColor($r('app.color.meow_iconSubEmphasize'))
+                  .keyboardAppearance(KeyboardAppearance.IMMERSIVE)
+                  .keyboardShortcut('F', [ModifierKey.CTRL])
+                  .id('searchInput')
+                  .onAppear(() => {
+                    setTimeout(() => {
+                      this.appearJobs();
+                    }, 10)
+                  })
+
+                Button(`󰈱`)
+                  .onClick(() => {
+                    // this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord);
+                    this.submitCurrent();
+                  })
+              } // Search bar
+              .id('searchBar')
+              .alignRules({
+                left: { anchor: '__container__', align: HorizontalAlign.Start },
+                right: { anchor: '__container__', align: HorizontalAlign.End },
+                bottom: { anchor: '__container__', align: VerticalAlign.Bottom }
               })
-          )
+              .animation(defaultAnima)
 
-          // if (this.myMeowMisc.debugOutput) {
-          //   TextArea({ text: this.myMeowMisc.debugOutput })
-          // }
+            } // Title
+            .height(this.titleHeight())
+            .animation(defaultAnima)
+            .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 15 : 30)
+            .borderWidth(1)
+            .borderColor($r('sys.color.icon_fourth'))
+            .backgroundEffect({ radius: 30, color: $r('app.color.blur_background') })
+            .padding(10)
+            .margin({
+              left: 10,
+              bottom: this.myMeowAvoid.bottom,
+              right: 10,
+              top: this.myMeowAvoid.top + (this.myMeowFreeWindowModeStatus.on ? defaultDecorHeight : 0)
+            })
+            .shadow(ShadowStyle.OUTER_DEFAULT_SM)
+            .gesture(
+              PanGesture({ direction: PanDirection.Up | PanDirection.Down })
+                .onActionStart(() => {
+                  console.info('Pan start');
+                  this.buttonsPanY = 0;
+                })
+                .onActionUpdate((e: GestureEvent) => {
+                  this.buttonsPanY += e.offsetY;
+                })
+                .onActionEnd(() => {
+                  if (this.topDown) {
+                    this.buttonsExpanded = this.buttonsPanY > 0;
+                  } else {
+                    this.buttonsExpanded = this.buttonsPanY < 0;
+                  }
+                })
+            )
+
+            // if (this.myMeowMisc.debugOutput) {
+            //   TextArea({ text: this.myMeowMisc.debugOutput })
+            // }
+          }
+          .height('100%')
+          .width('100%')
+          .alignContent(this.topDown ? Alignment.TopStart : Alignment.BottomEnd)
+          .animation(defaultAnima)
         }
-        .height('100%')
-        .width('100%')
-        .alignContent(this.topDown ? Alignment.TopStart : Alignment.BottomEnd)
-        .animation(defaultAnima)
-
 
         if (this.myMeowFreeWindowModeStatus.on || this.myMeowLayout.wideMode) {
-          Text(this.currentDictBundleTitle)
+          Text(this.bundleTitle())
             .padding(10)
             .width('100%')
             .textAlign(TextAlign.Center)
@@ -526,7 +528,7 @@ struct Index {
               this.renderWeb = true;
             }
           }, 500)
-        }, 10)
+        }, 20)
       })
       .keyboardShortcut(FunctionKey.ESC, [], () => {
         this.onKeyESC();
@@ -557,7 +559,7 @@ struct Index {
   }
 
   submitCurrent() {
-    this.lookUpKey(this.meowLibrarian.bundles[this.currentDictNo], this.lookUpWord);
+    this.lookUpKey(this.currentDictNo, this.lookUpWord)
     if (this.myMeowFreeWindowModeStatus.on) {
       setTimeout(() => {
         focusControl.requestFocus('searchInput');
@@ -588,8 +590,21 @@ struct Index {
     }
   }
 
-  async lookUpKey(bundle: meowDictBundle | undefined, key: string) {
+  async lookUpKey(bundleIdx: number, key: string, retryLayer = 0) {
+    console.log(`[index][lookUpKey] Trying to lookup key "${key}" in bundle #${bundleIdx}!`);
+    const bundle: meowDictBundle | undefined = this.meowLibrarian.bundles[bundleIdx];
+
+    // Reject & retry
     if (!bundle || !bundle.mdx || !bundle.mdx.isReady()) {
+      const retryIntervalBase = 10;
+      const retryIntervalThis = retryIntervalBase * (1 + retryLayer / 10);
+      console.warn(`[index][lookUpKey]["${this.myMeowMisc.wantKey}"][retryLayer=${retryLayer}] !bundle || !bundle.mdx || !bundle.mdx.isReady() Rejected! Retrying in ${retryIntervalThis} ms...`);
+      if (retryLayer < 50) {
+        clearInterval(this.lookupRetryingInterval);
+        this.lookupRetryingInterval = setTimeout(() => {
+          this.lookUpKey(bundleIdx, key, retryLayer + 1);
+        }, retryIntervalThis);
+      }
       return false;
     }
 
@@ -604,8 +619,10 @@ struct Index {
       this.lookUpWord = key;
     }
 
+    // Force web to render
     if (!this.renderWeb) {
       this.renderWeb = true;
+      console.warn(`[Index][loadWeb] Forced render web!`);
     }
 
     const query = key.toLowerCase();
@@ -695,6 +712,15 @@ struct Index {
   }
 
   /**
+   * Current bundle title.
+   * @returns The current bundle title or a kaomoji.
+   */
+  bundleTitle() {
+    const t = this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title;
+    return t || 'ヽ（´ー｀）┌';
+  }
+
+  /**
    * Constructs the linear blur options for top blur.
    * @returns The options.
    * */
@@ -751,6 +777,15 @@ struct Index {
 
   // Events
 
+  // @Monitor('dictReady')
+  // trySatisfyLaunchWant() {
+  //   if (this.myMeowMisc.launchWantSatisfied) {
+  //     return;
+  //   }
+  //   console.log(`[index][trySatisfyLaunchWant] ${this.myMeowMisc.wantKey}!`);
+  //   this.processNewWant();
+  // }
+
   @Monitor('myMeowFreeWindowModeStatus.onFocus')
   focusSearch() {
     if (this.myMeowFreeWindowModeStatus.onFocus) {
@@ -769,7 +804,8 @@ struct Index {
       if (this.myMeowMisc.wantDictIdx >= 0 && this.myMeowMisc.wantDictIdx < this.meowLibrarian.bundles.length - 1) {
         targetDictNo = this.myMeowMisc.wantDictIdx;
       }
-      this.lookUpKey(this.meowLibrarian.bundles[targetDictNo], this.myMeowMisc.wantKey);
+      this.lookUpKey(targetDictNo, this.myMeowMisc.wantKey);
+      this.myMeowMisc.launchWantSatisfied = true;
       if (this.myMeowFreeWindowModeStatus.on) {
         setTimeout(() => {
           focusControl.requestFocus('searchInput');
@@ -786,11 +822,6 @@ struct Index {
       uwu.push(r);
     }
     this.currentDictHasStats = uwu;
-  }
-
-  @Monitor('currentDictNo', 'renderWeb')
-  refreshBundleTitle() {
-    this.currentDictBundleTitle = this.meowLibrarian.bundles[this.currentDictNo]?.mdx?.header?.Title || '';
   }
 
   @Monitor('myMeowFreeWindowModeStatus.on', 'myMeowAvoid.top', 'myMeowLayout.height', 'myMeowLayout.width', 'myMeowLayout.wideMode', 'buttonsWidth', 'buttonsHeight')
@@ -822,5 +853,3 @@ struct Index {
     }, 10);
   }
 }
-
-export const privacyPolicyLink: string = 'https://agreement-drcn.hispace.dbankcloud.cn/index.html?lang=zh&agreementId=1889247809668921664';

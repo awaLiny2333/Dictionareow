@@ -16,6 +16,7 @@ import { meowDictHeader } from './meowDictHeader';
 import { decryptType1Block } from '../utils/decryption';
 import { readArrayBufferConcurrent, readArrayBufferSync } from '../utils/storage';
 
+@ObservedV2
 export class meowDictKeyword {
   globalOffset: number; // The offset from the head of the entire raw data.
   globalEncoding: string;
@@ -28,6 +29,7 @@ export class meowDictKeyword {
   headerChecksum: number = 0;
   index: meowDictKeywordIndex | undefined;
   lookUpBlockIndex: number = 0;
+  @Trace ready: boolean = false; // Set to true when index: meowDictKeywordIndex | undefined; finishes loading.
 
   constructor(globalOffset: number, fullPath: string, header: meowDictHeader, type1Encrypted: boolean, type2Encrypted: boolean) {
     this.globalOffset = globalOffset;
@@ -95,6 +97,7 @@ export class meowDictKeyword {
 
     index.init(this.globalEncoding, config).then(() => {
       this.index = index;
+      this.ready = true;
       console.log(`[meowDictKeyword][Index][init] Index loaded! (${Date.now() - startTime} ms)`);
     })
   }

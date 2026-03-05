@@ -69,6 +69,8 @@ export function onLoadContent(window: window.Window, context: Context) {
   listenFreeWindowMode(context, window);
 
   listenFocus(window);
+
+  // initEnv(context);
 }
 
 // Actions
@@ -86,10 +88,11 @@ export function initEnv(context: Context) {
           if (result == undefined) {
             // Exist default file. Should read
             const read = readArrayBufferSync(context.filesDir + '/oops/default.txt');
-            const readString = buffer.from(read)
-              .toString();
+            const readBuffer = buffer.from(read)
+            const readString = readBuffer.toString();
             defaultDictNumber = Number(readString);
             console.log(`[initEnv] Read default dictionary is ${defaultDictNumber}!`);
+
             let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
             misc.defaultDictBundleIndex = defaultDictNumber;
           }
@@ -101,18 +104,20 @@ export function initEnv(context: Context) {
               fileIo.mkdirSync(context.filesDir + '/bundles');
               console.log(`[flow][initEnv] Created new home bundles!`);
             } else {
-              refreshAllBundles(context);
+              setTimeout(() => {
+                refreshAllBundles(context);
+              }, 100);
             }
           } catch (e) {
             console.error(`[flow][initEnv] Create new home bundles failed! ${e}`);
           }
         })
-      
+
       // Put this here to avoid stuck on main thread?
       setTimeout(() => {
         let myMeowHistory = AppStorageV2.connect<meowHistory>(meowHistory, 'meowHistory', () => new meowHistory())!;
         myMeowHistory.initFrom(`${context.filesDir}/oops/history.txt`);
-      }, 500);
+      }, 200);
     })
 }
 

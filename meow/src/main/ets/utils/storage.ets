@@ -210,7 +210,7 @@ export async function listRecursivelyAllFilesUnderDir(path: string): Promise<str
               results.push(contents[u]);
             }
           } else if (isFile) {
-            console.warn(`[listRecursivelyAllFilesUnderDir][${path}] Add [${thisPath}]!`);
+            // console.warn(`[listRecursivelyAllFilesUnderDir][${path}] Add [${thisPath}]!`);
             results.push(thisPath);
           }
         } catch (e) {

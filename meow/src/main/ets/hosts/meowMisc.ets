@@ -4,4 +4,5 @@ export class meowMisc {
   @Trace debugOutput: string = '';
   @Trace wantKey: string = '';
   @Trace wantDictIdx: number = -1; // -1 for default
+  @Trace launchWantSatisfied: boolean = false;
 }

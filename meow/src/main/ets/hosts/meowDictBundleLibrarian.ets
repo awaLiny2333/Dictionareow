@@ -6,6 +6,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 export class meowDictBundleLibrarian {
   basePath = 'bundles/';
   @Trace bundles: meowDictBundle[] = [];
+  @Trace init: boolean = false;
 
   /**
    * Scans the bundles.
@@ -19,6 +20,7 @@ export class meowDictBundleLibrarian {
           bundle.initFrom(this.basePath + listResult[index] + '/', context);
           this.bundles.push(bundle);
         }
+        this.init = true;
         console.log(`[meowDictBundleLibrarian][initAll] OK. Total bundles.length = ${this.bundles.length}`);
       })
       .catch((e: BusinessError) => {
