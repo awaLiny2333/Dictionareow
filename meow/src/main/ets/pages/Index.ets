@@ -282,6 +282,7 @@ struct Index {
                     MeowHistoryEntry({
                       keyword: this.myMeowHistory.data[idx],
                       clickAction: () => {
+                        this.isShowingHistory = false;
                         // Load
                         this.currentDictNo = this.myMeowMisc.defaultDictBundleIndex;
                         this.lookUpKey(this.myMeowMisc.defaultDictBundleIndex, tempHisKey);
@@ -545,7 +546,13 @@ struct Index {
   // Actions
 
   appearJobs() {
-    focusControl.requestFocus('searchInput');
+    if (this.myMeowMisc.wantKey.length && !this.myMeowFreeWindowModeStatus.on) {
+      // Do nothing
+      // E.g. share a word to Dictionareow on phone.
+      // I just want to view the information, i don't want to type yet.
+    } else {
+      focusControl.requestFocus('searchInput');
+    }
     this.processNewWant();
   }
 
