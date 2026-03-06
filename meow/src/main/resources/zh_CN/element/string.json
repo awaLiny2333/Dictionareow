@@ -99,6 +99,14 @@
     {
       "name": "cancel",
       "value": "取消"
+    },
+    {
+      "name": "dir_sandbox",
+      "value": "沙盒目录"
+    },
+    {
+      "name": "dir_download",
+      "value": "下载目录"
     }
   ]
 }

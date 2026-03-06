@@ -8,9 +8,9 @@ import { meowTheme } from '../hosts/meowTheme';
 import lazy { playThisForMe } from '../utils/av';
 import lazy { fastbuffer } from '@kit.ArkTS';
 import meowBundleInfo from '../components/MeowBundleInfo';
-import { meowDictBundle } from '../hosts/meowDictBundle';
+import { meowDictBundle, positionType } from '../hosts/meowDictBundle';
 import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
-import { saveHybrid } from '../utils/storage';
+import { retrieveDownloadDirectory, saveHybrid, uri_2_path } from '../utils/storage';
 import { meowMisc } from '../hosts/meowMisc';
 import MeowHistoryEntry from '../components/MeowHistoryEntry';
 import { meowHistory } from '../hosts/meowHistory';
@@ -192,9 +192,7 @@ struct Index {
                 Scroll() {
                   Row({ space: 8 }) {
                     Button(`󰀵 ${resource2String($r('app.string.new_dictionary'), this.context)}`)
-                      .onClick(() => {
-                        this.meowLibrarian.createBundle(this.context);
-                      })
+                      .bindMenu(this.newBundlePosition)
 
                     if (this.meowLibrarian.bundles.length > 0) {
                       Select(this.meowLibrarian.constructSelectOptions())
@@ -232,14 +230,14 @@ struct Index {
                       meowBundleInfo({
                         bundle: bundle,
                         deleteAction: () => {
-                          this.meowLibrarian.deleteBundle(idx, this.context);
+                          this.meowLibrarian.deleteBundle(idx);
                           if (idx == this.myMeowMisc.defaultDictBundleIndex) {
                             this.myMeowMisc.defaultDictBundleIndex = 0;
                           }
                         }
                       })
                     }, (bundle: meowDictBundle) => {
-                      return bundle.sandboxPathWithEndSlash;
+                      return bundle.dirPathWithEndSlash;
                     })
                     if (this.meowLibrarian.bundles.length == 0) {
                       Text('¯\\_(ツ)_/¯')
@@ -383,7 +381,7 @@ struct Index {
                         .animation(defaultAnima)
                     }
                   }, (bundle: meowDictBundle) => {
-                    return bundle.sandboxPathWithEndSlash;
+                    return bundle.dirPathWithEndSlash;
                   })
                 }
                 .animation(defaultAnima)
@@ -543,6 +541,32 @@ struct Index {
     }
   }
 
+  @Builder
+  newBundlePosition() {
+    Column() {
+      Text(` 󰏯 ${resource2String($r('app.string.dir_download'), this.context)}`)
+        .onClick(() => {
+          retrieveDownloadDirectory(this.context)
+            .then((r) => {
+              if (r) {
+                this.meowLibrarian.createBundle(this.context, uri_2_path(r), positionType.DOWNLOAD);
+              }
+            })
+        })
+        .padding(8)
+        .hoverEffect(HoverEffect.Highlight)
+        .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 5 : 18)
+      Text(` 󰇶 ${resource2String($r('app.string.dir_sandbox'), this.context)}`)
+        .onClick(() => {
+          this.meowLibrarian.createBundle(this.context, this.context.filesDir + '/' + this.meowLibrarian.sandboxBasePath, positionType.SANDBOX);
+        })
+        .padding(8)
+        .hoverEffect(HoverEffect.Highlight)
+        .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 5 : 18)
+    }
+    .alignItems(HorizontalAlign.Start)
+  }
+
   // Actions
 
   appearJobs() {
@@ -649,7 +673,7 @@ struct Index {
     this.lookUpKey(index, this.lookUpWord);
   }
 
-  loadWeb(content: string | undefined, base: string = this.context.filesDir + '/') {
+  loadWeb(content: string | undefined, base: string) {
     if (!content) {
       return false;
     }
@@ -870,7 +894,7 @@ struct Index {
   }
 
   currentBase() {
-    const path = this.context.filesDir + '/' + this.meowLibrarian.bundles[this.currentDictNo]?.sandboxPathWithEndSlash;
+    const path = this.meowLibrarian.bundles[this.currentDictNo]?.dirPathWithEndSlash;
     const pathWithMeow = path + 'meow/';
     try {
       if (fileIo.accessSync(pathWithMeow)) {

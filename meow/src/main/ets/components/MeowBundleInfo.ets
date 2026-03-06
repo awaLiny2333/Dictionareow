@@ -6,7 +6,7 @@ import { AppStorageV2, LengthMetrics } from '@kit.ArkUI';
 import MeowDictInfo from './MeowDictInfo';
 import MeowFileInfo from './MeowFileInfo';
 import { fileIo } from '@kit.CoreFileKit';
-import { meowDictBundle } from '../hosts/meowDictBundle';
+import { meowDictBundle, positionType } from '../hosts/meowDictBundle';
 import { fileDocumentPick2Path } from '../utils/storage';
 
 @ComponentV2
@@ -28,6 +28,11 @@ struct meowBundleInfo {
           .opacity(0.9)
           .layoutWeight(1)
 
+        SymbolGlyph(this.bundle.position == positionType.SANDBOX ? $r('sys.symbol.archivebox') : $r('sys.symbol.download'))
+          .fontColor([$r('sys.color.font')])
+          .fontSize(26)
+          .opacity(0.4)
+        
         SymbolGlyph(this.isExpanded ? $r('sys.symbol.arrow_down_right_and_arrow_up_left') : $r('sys.symbol.square_and_pencil'))
           .fontColor([$r('sys.color.font')])
           .fontSize(26)
@@ -42,7 +47,7 @@ struct meowBundleInfo {
             .fontWeight(FontWeight.Bolder)
             .opacity(0.75)
 
-          Text(`${this.context.filesDir}/${this.bundle.sandboxPathWithEndSlash}`)
+          Text(`${this.bundle.dirPathWithEndSlash}`)
             .fontWeight(FontWeight.Medium)
             .opacity(0.5)
         }

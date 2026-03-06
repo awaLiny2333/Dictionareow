@@ -5,6 +5,12 @@ import { fileIo } from '@kit.CoreFileKit';
 import { Context } from '@kit.AbilityKit';
 import { toastDuration } from '../utils/ui';
 
+export enum positionType {
+  SANDBOX,
+  DOWNLOAD,
+  FOLDER
+}
+
 @ObservedV2
 export class meowDictBundle {
   @Trace mdx: meowDict | undefined;
@@ -12,21 +18,28 @@ export class meowDictBundle {
   @Trace files: string[] = []; // Paths of files other than .mdd and .mdx
   @Trace fileSizes: number[] = [];
   @Trace totalSize: number = -1;
-  sandboxPathWithEndSlash: string | undefined;
+  position: positionType = positionType.SANDBOX;
+  dirPathWithEndSlash: string | undefined;
   cacheKeys: string[] = []
   cacheBufs: ArrayBuffer[] = []
 
   /**
    * Inits the bundle from given path.
-   * @param sandboxPathWithEndSlash The path, ending with '/'. For example: 'bundles/catExample/'.
+   * @param dirPath The path. For example: `${context.filesDir}/bundles/catExample/`.
    * @param context The Context.
+   * @param type The position type.
    * */
-  async initFrom(sandboxPathWithEndSlash: string, context: Context) {
-    this.sandboxPathWithEndSlash = sandboxPathWithEndSlash;
+  async initFrom(dirPath: string, context: Context, type: positionType) {
+    this.position = type;
+
+    if (!dirPath.endsWith('/')) {
+      dirPath = dirPath + '/';
+    }
+    this.dirPathWithEndSlash = dirPath;
     this.files = []; // Reset. Even though not necessary.
 
     // Smart read
-    let allFilesPlain: string[] = await listRecursivelyAllFilesUnderDir(context.filesDir + '/' + sandboxPathWithEndSlash);
+    let allFilesPlain: string[] = await listRecursivelyAllFilesUnderDir(dirPath);
 
     for (let fIdx = 0; fIdx < allFilesPlain.length; fIdx++) {
       const thisPath = allFilesPlain[fIdx];
@@ -161,8 +174,12 @@ export class meowDictBundle {
    * @param context Context.
    * */
   async refreshExtraFiles(context: Context, allFilesPlain?: string[]) {
+    if (!this.dirPathWithEndSlash) {
+      return;
+    }
+    
     // Files
-    const files = allFilesPlain || (await listRecursivelyAllFilesUnderDir(context.filesDir + '/' + this.sandboxPathWithEndSlash));
+    const files = allFilesPlain || (await listRecursivelyAllFilesUnderDir(this.dirPathWithEndSlash));
     this.files = [];
 
     for (let index = 0; index < files.length; index++) {
@@ -173,12 +190,12 @@ export class meowDictBundle {
       }
 
       try {
-        console.log(`[MeowDictBundle][refreshExtraFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}] [${thisPath}]!`);
+        console.log(`[MeowDictBundle][refreshExtraFiles][${this.dirPathWithEndSlash}] [${thisPath}]!`);
         const stat = fileIo.statSync(thisPath);
         this.files.push(thisPath);
         this.fileSizes.push(stat.size);
       } catch (e) {
-        console.error(`[MeowDictBundle][refreshExtraFiles][${context.filesDir + '/' + this.sandboxPathWithEndSlash}] [${thisPath}] const stat = fileIo.statSync(thisPath) Failed! ${e}`);
+        console.error(`[MeowDictBundle][refreshExtraFiles][${this.dirPathWithEndSlash}] [${thisPath}] const stat = fileIo.statSync(thisPath) Failed! ${e}`);
       }
 
       if (index == this.files.length - 1) {
@@ -242,7 +259,7 @@ export class meowDictBundle {
   async addMDX(sourcePath: string, UIContext: UIContext, thisIdx: number, total: number) {
     const sourcePathSplit = sourcePath.split('/');
     const fileName: string | undefined = sourcePathSplit[sourcePathSplit.length - 1];
-    const destPath: string = UIContext.getHostContext()!.filesDir + '/' + this.sandboxPathWithEndSlash + fileName;
+    const destPath: string = this.dirPathWithEndSlash + fileName;
     this.toast(UIContext, `${resource2String($r('app.string.add_importing'), UIContext.getHostContext()!)} ${fileName} (${thisIdx}/${total})`);
     if (this.mdx) {
       try {
@@ -277,7 +294,7 @@ export class meowDictBundle {
     // Save (copy) file
     const targetPathSplit = sourcePath.split('/');
     const fileName: string | undefined = targetPathSplit[targetPathSplit.length - 1];
-    const destPath = UIContext.getHostContext()!.filesDir + '/' + this.sandboxPathWithEndSlash + fileName;
+    const destPath = this.dirPathWithEndSlash + fileName;
     this.toast(UIContext, `${resource2String($r('app.string.add_importing'), UIContext.getHostContext()!)} ${fileName} (${thisIdx}/${total})`);
     await fileCopy(sourcePath, destPath, false)
       .then((result) => {
@@ -309,8 +326,8 @@ export class meowDictBundle {
     const sourcePathSplit = sourcePath.split('/');
     const fileName: string | undefined = sourcePathSplit[sourcePathSplit.length - 1];
 
-    const destPathPure = UIContext.getHostContext()!.filesDir + '/' + this.sandboxPathWithEndSlash;
-    const pathWithMeow = UIContext.getHostContext()!.filesDir + '/' + this.sandboxPathWithEndSlash + 'meow/';
+    const destPathPure = this.dirPathWithEndSlash;
+    const pathWithMeow = this.dirPathWithEndSlash + 'meow/';
     let destPath = pathWithMeow + fileName;
     try {
       if (!fileIo.accessSync(pathWithMeow)) {
@@ -336,14 +353,13 @@ export class meowDictBundle {
 
   /**
    * Reads an MDict file and store the meowDict file into appStorage of given key
-   * @param sandboxPath The sandbox path. With context.filesDir as base. With slash in front. e.g. '/woof/woof.mdx'
+   * @param fullPath The path. With slash in front. e.g. '/woof/woof.mdx'
    * @param type meowDictType
    * @param appStorageKey The key of appStorage record
    * @param context Context
    * @returns Nothing
    * */
-  private readMDict(sandboxPath: string, type: meowDictType = meowDictType.MDX, context: Context) {
-    const fullPath = sandboxPath.startsWith(context.filesDir) ? sandboxPath : context.filesDir + sandboxPath;
+  private readMDict(fullPath: string, type: meowDictType = meowDictType.MDX, context: Context) {
     try {
       const existMdd = fileIo.accessSync(fullPath);
       if (existMdd) {

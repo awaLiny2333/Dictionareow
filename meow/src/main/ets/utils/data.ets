@@ -159,7 +159,7 @@ export function wrapHtml(content: string = '', options: meowWrapHtmlOptions = {
  * @returns The HTML code.
  * */
 export function division(prompt: string) {
-  return `<div><p> </p><hr style='border: none; height: 3px; background: #ccc; margin: 0;'><p>　(～o￣3￣)～　${prompt}</p><hr style='border: none; height: 3px; background: #ccc; margin: 0;'><p> </p></div>`;
+  return `<div style="background-color: #f5f5f5; border-radius: 16px; padding: 1px 1px; width: 100%; box-sizing: border-box; margin: 8px 0;"><p>　(～o￣3￣)～　${prompt}</p></div>`;
 }
 
 /**

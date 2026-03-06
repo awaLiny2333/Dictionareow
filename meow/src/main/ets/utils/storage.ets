@@ -8,6 +8,21 @@ export interface meowReadPickResult {
 
 // Picker
 
+export async function retrieveDownloadDirectory(context: Context) {
+  const documentSaveOptions = new picker.DocumentSaveOptions();
+  documentSaveOptions.pickerMode = picker.DocumentPickerMode.DOWNLOAD;
+  const documentViewPicker = new picker.DocumentViewPicker(context);
+  return documentViewPicker.save(documentSaveOptions)
+    .then((uris: Array<string>) => {
+      console.log(`[retrieveDownloadDirectory] DocumentViewPicker.save successfully, uris[0]: ${uris[0]}`);
+      return uris[0];
+    })
+    .catch((e: BusinessError) => {
+      console.error(`[retrieveDownloadDirectory] DocumentViewPicker.save failed with err: ${e}`);
+      return undefined;
+    })
+}
+
 /**
  * Pick a file from device storage, pulling up a DocumentViewPicker.
  * @returns Majorly the path.

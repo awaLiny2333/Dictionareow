@@ -99,6 +99,14 @@
     {
       "name": "cancel",
       "value": "Cancel"
+    },
+    {
+      "name": "dir_sandbox",
+      "value": "Sandbox Directory"
+    },
+    {
+      "name": "dir_download",
+      "value": "Download Directory"
     }
   ]
 }
