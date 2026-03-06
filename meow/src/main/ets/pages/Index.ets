@@ -779,6 +779,10 @@ struct Index {
       const thisLoad = resultTexts.join(division(resource2String($r('app.string.link_to'), this.context)));
       const thisBase = this.currentBase();
 
+      if (!thisBase) {
+        return false;
+      }
+
       this.myMeowHistory.addHistory(key);
 
       this.loadWeb(thisLoad, thisBase);
