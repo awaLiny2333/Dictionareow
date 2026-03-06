@@ -233,7 +233,7 @@ export class meowDictKeyword {
       return this.index.indexEntries[indexInBlocks].builtBlock;
     }
 
-    console.warn(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] Begin to build KeywordBlock!`);
+    console.info(`[meowDictKeyword][Index][getKeyBlockArrayBuffer] Begin to build KeywordBlock!`);
 
     let offsetFromRawHead = this.globalOffset + 44 + this.keyIndexCompLen;
     for (let index = 0; index < indexInBlocks; index++) {

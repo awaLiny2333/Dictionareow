@@ -575,15 +575,17 @@ struct Index {
 
   lookUpInNextAvailableDict() {
     if (!this.currentDictHasStats) {
+      console.warn(`[index][lookUpInNextAvailableDict] this.currentDictHasStats EMTPY!`);
       return;
     }
+    console.log(`[index][lookUpInNextAvailableDict] NEXT for ${this.lookUpWord}`)
     const list = this.constructCurrentDictHasStatsList();
     if (list.length == 0) {
       return;
     }
 
     let index = 0;
-    if (list.length == 1) {
+    if (list.length == 1 || !this.currentDictHasStats[this.currentDictNo]) {
       index = list[0];
     } else {
       let indexInList = list.indexOf(this.currentDictNo);
@@ -611,7 +613,7 @@ struct Index {
     }
 
     let index = 0;
-    if (list.length == 1) {
+    if (list.length == 1 || !this.currentDictHasStats[this.currentDictNo]) {
       index = list[0];
     } else {
       let indexInList = list.indexOf(this.currentDictNo);
@@ -653,9 +655,11 @@ struct Index {
     }
   }
 
-  async lookUpKey(bundleIdx: number, key: string, retryLayer = 0) {
+  async lookUpKey(bundleIdx: number, key: string, postAction: (result: boolean) => void = () => {
+  }, retryLayer = 0) {
     if (key == '') {
       console.warn(`[index][lookUpKey] Trying to lookup key "${key}" in bundle #${bundleIdx}. Rejected for empty key.`);
+      postAction(false);
       return false;
     }
 
@@ -670,8 +674,10 @@ struct Index {
       if (retryLayer < 50) {
         clearInterval(this.lookupRetryingInterval);
         this.lookupRetryingInterval = setTimeout(() => {
-          this.lookUpKey(bundleIdx, key, retryLayer + 1);
+          this.lookUpKey(bundleIdx, key, postAction, retryLayer + 1);
         }, retryIntervalThis);
+      } else {
+        // Stop
       }
       return false;
     }
@@ -697,6 +703,7 @@ struct Index {
     return bundle.lookUpKeyFromMDX(query)?.then(async (resultBuffers) => {
       if (!resultBuffers) {
         // Not found
+        postAction(false);
         return false;
       }
 
@@ -736,6 +743,7 @@ struct Index {
       this.loadWeb(thisLoad, thisBase);
       // console.log(`[Meow][MDX] Got result!`);
 
+      postAction(true);
       return true;
     })
   }
@@ -866,15 +874,6 @@ struct Index {
 
   // Events
 
-  // @Monitor('dictReady')
-  // trySatisfyLaunchWant() {
-  //   if (this.myMeowMisc.launchWantSatisfied) {
-  //     return;
-  //   }
-  //   console.log(`[index][trySatisfyLaunchWant] ${this.myMeowMisc.wantKey}!`);
-  //   this.processNewWant();
-  // }
-
   @Monitor('myMeowFreeWindowModeStatus.onFocus')
   focusSearch() {
     if (this.myMeowFreeWindowModeStatus.onFocus) {
@@ -888,18 +887,30 @@ struct Index {
 
   @Monitor('myMeowMisc.wantKey')
   processNewWant() {
-    if (this.myMeowMisc.wantKey) {
-      let targetDictNo = this.currentDictNo;
-      if (this.myMeowMisc.wantDictIdx >= 0 && this.myMeowMisc.wantDictIdx < this.meowLibrarian.bundles.length - 1) {
-        targetDictNo = this.myMeowMisc.wantDictIdx;
+    if (!this.myMeowMisc.wantKey) {
+      return;
+    }
+    let targetDictNo = this.currentDictNo;
+    if (this.myMeowMisc.wantDictIdx >= 0 && this.myMeowMisc.wantDictIdx < this.meowLibrarian.bundles.length - 1) {
+      targetDictNo = this.myMeowMisc.wantDictIdx;
+    }
+    this.lookUpKey(targetDictNo, this.myMeowMisc.wantKey, (r) => {
+      if (!r) {
+        console.warn(`[index][processNewWant] LookUpKey result [${r}]! Looking up in next available dictionary.`);
+        this.refreshHasStats() // TODO: Would cause duplicated calculation.
+          .then(() => {
+            this.lookUpInNextAvailableDict();
+          })
+      } else {
+        console.log(`[index][processNewWant] LookUpKey result [${r}]!`);
       }
-      this.lookUpKey(targetDictNo, this.myMeowMisc.wantKey);
-      this.myMeowMisc.launchWantSatisfied = true;
-      if (this.myMeowFreeWindowModeStatus.on) {
-        setTimeout(() => {
-          focusControl.requestFocus('searchInput');
-        }, 10)
-      }
+      this.myMeowMisc.wantKey = '';
+    })
+    this.myMeowMisc.launchWantSatisfied = true;
+    if (this.myMeowFreeWindowModeStatus.on) {
+      setTimeout(() => {
+        focusControl.requestFocus('searchInput');
+      }, 10)
     }
   }
 
@@ -911,6 +922,7 @@ struct Index {
       uwu.push(r);
     }
     this.currentDictHasStats = uwu;
+    console.warn(`[index][refreshHasStats] for key [${this.lookUpWord}]! ${uwu.join(', ')}`);
   }
 
   @Monitor('myMeowFreeWindowModeStatus.on', 'myMeowAvoid.top', 'myMeowLayout.height', 'myMeowLayout.width', 'myMeowLayout.wideMode', 'buttonsWidth', 'buttonsHeight')

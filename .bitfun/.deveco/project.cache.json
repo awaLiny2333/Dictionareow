@@ -1,9 +1,9 @@
 {
   "lastOhpmInstallResult": true,
   "CommonInfo": {
-    "current.select.product": "default",
-    "current.select.buildMode": "debug"
+    "current.select.buildMode": "debug",
+    "current.select.product": "default"
   },
   "projectSizeTraceTmpKey": true,
-  "lastProjectSizeTraceTime": "1772616742"
+  "lastProjectSizeTraceTime": "1772757024"
 }

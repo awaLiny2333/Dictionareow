@@ -17,6 +17,7 @@ import { buffer } from '@kit.ArkTS';
 import { meowMisc } from '../hosts/meowMisc';
 import { meowHistory } from '../hosts/meowHistory';
 import Want from '@ohos.app.ability.Want';
+import { systemShare } from '@kit.ShareKit';
 
 // Flows
 /**
@@ -129,11 +130,26 @@ function refreshAllBundles(context: Context) {
 
 export function wantThis(w: Want) {
   console.log(`[wantThis] ${JSON.stringify(w)}`);
+  let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
+  misc.wantDictIdx = -1;
+
   if (w.uri) {
     const wSplit = w.uri.split('/');
     const key = wSplit[wSplit.length - 1];
-    let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
     misc.wantKey = key;
-    misc.wantDictIdx = -1;
+  } else {
+    systemShare.getSharedData(w)
+      .then((data) => {
+        if (data) {
+          const firstData = data.getRecords()[0].content;
+          console.log(`[wantThis] Got first data: ${firstData}`);
+          if (firstData) {
+            misc.wantKey = firstData;
+          }
+        }
+      })
+      .catch((e: BusinessError) => {
+        console.error(`[wantThis] systemShare.getSharedData(w) Failed: ${e}`);
+      })
   }
 }

@@ -17,8 +17,8 @@
         "name": "MeowAbility",
         "srcEntry": "./ets/meowability/MeowAbility.ets",
         "description": "$string:MeowAbility_desc",
-         // "icon": "$media:layered_image",
-         // "label": "$string:MeowAbility_label",
+        "icon": "$media:layered_image",
+        "label": "$string:MeowAbility_label",
         "startWindowIcon": "$media:startIcon",
         "startWindowBackground": "$color:start_window_background",
         "orientation": "auto_rotation_restricted",
@@ -54,6 +54,18 @@
             ]
           },
            // 新增一个skill对象，用于跳转场景。如果存在多个跳转场景，需配置多个skill对象。
+          {
+            "actions": [
+              "ohos.want.action.sendData"
+            ],
+            "uris": [
+              {
+                "scheme": "file",
+                "utd": "general.text",
+                "maxFileSupported": 1
+              }
+            ]
+          }
         ]
       }
     ],
