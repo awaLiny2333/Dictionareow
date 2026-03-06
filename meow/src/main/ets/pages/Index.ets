@@ -565,7 +565,17 @@ struct Index {
   }
 
   submitCurrent() {
-    this.lookUpKey(this.currentDictNo, this.lookUpWord)
+    this.lookUpKey(this.currentDictNo, this.lookUpWord, (r) => {
+      if (!r) {
+        console.warn(`[index][processNewWant] LookUpKey result [${r}]! Looking up in next available dictionary.`);
+        this.refreshHasStats() // TODO: Would cause duplicated calculation.
+          .then(() => {
+            this.lookUpInNextAvailableDict();
+          })
+      } else {
+        console.log(`[index][processNewWant] LookUpKey result [${r}]!`);
+      }
+    })
     if (this.myMeowFreeWindowModeStatus.on) {
       setTimeout(() => {
         focusControl.requestFocus('searchInput');
@@ -904,8 +914,8 @@ struct Index {
       } else {
         console.log(`[index][processNewWant] LookUpKey result [${r}]!`);
       }
-      this.myMeowMisc.wantKey = '';
     })
+    this.myMeowMisc.wantKey = '';
     this.myMeowMisc.launchWantSatisfied = true;
     if (this.myMeowFreeWindowModeStatus.on) {
       setTimeout(() => {
