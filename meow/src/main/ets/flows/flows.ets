@@ -12,7 +12,7 @@ import {
 import { BusinessError } from '@kit.BasicServicesKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
-import { readArrayBufferSync, sandboxCreateDir, saveHybrid } from '../utils/storage';
+import { readArrayBufferSync, retrieveDownloadDirectory, sandboxCreateDir, saveHybrid } from '../utils/storage';
 import { buffer } from '@kit.ArkTS';
 import { meowMisc } from '../hosts/meowMisc';
 import { meowHistory } from '../hosts/meowHistory';
@@ -32,13 +32,17 @@ export async function aboutToLoadContent(windowStage: window.WindowStage, window
       meow('windowStage.setWindowRectAutoSave(true) Success!', 'init', meowLevel.INFO);
     })
     .catch((err: BusinessError) => {
-      meow(`windowStage.setWindowRectAutoSave(true) Failed: ${err}`, 'init', meowLevel.ERROR);
+      meow(`windowStage.setWindowRectAutoSave(true) Failed: ${JSON.stringify(err)}`, 'init', meowLevel.ERROR);
     });
 
   try {
     window.setImmersiveModeEnabledState(true);
   } catch (e) {
-    meow(`window.setImmersiveModeEnabledState(true) Failed: ${e}`, 'init', meowLevel.ERROR);
+    meow(`window.setImmersiveModeEnabledState(true) Failed: ${JSON.stringify(e)}`, 'init', meowLevel.ERROR);
+  }
+
+  if (context) {
+    meow(`[aboutToLoadContent] Context is True! Context is True!!`, 'flow', meowLevel.INFO);
   }
 }
 
@@ -47,6 +51,7 @@ export async function aboutToLoadContent(windowStage: window.WindowStage, window
  * @param window window.Window
  * */
 export function onLoadContent(window: window.Window, context: Context) {
+
   try {
     window.setWindowDecorVisible(false);
   } catch (e) {
@@ -80,52 +85,50 @@ export function onLoadContent(window: window.Window, context: Context) {
  * Inits the environment. Creates the folders and tries to read files.
  * @param context The context.
  * */
-export function initEnv(context: Context) {
-  sandboxCreateDir('oops', context)
-    .then(() => {
-      saveHybrid(context.filesDir + '/oops/default.txt', '0', false)
-        .then((result) => {
-          let defaultDictNumber = 0;
-          if (result == undefined) {
-            // Exist default file. Should read
-            const read = readArrayBufferSync(context.filesDir + '/oops/default.txt');
-            const readBuffer = buffer.from(read)
-            const readString = readBuffer.toString();
-            defaultDictNumber = Number(readString);
-            console.log(`[initEnv] Read default dictionary is ${defaultDictNumber}!`);
+export async function initEnv(context: Context) {
+  await sandboxCreateDir('oops', context);
+  const result = await saveHybrid(context.filesDir + '/oops/default.txt', '0', false);
+  let defaultDictNumber = 0;
+  
+  if (result == undefined) {
+    // Exist default file. Should read
+    const read = readArrayBufferSync(context.filesDir + '/oops/default.txt');
+    const readBuffer = buffer.from(read)
+    const readString = readBuffer.toString();
+    defaultDictNumber = Number(readString);
+    console.log(`[initEnv] Read default dictionary is ${defaultDictNumber}!`);
 
-            let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
-            misc.defaultDictBundleIndex = defaultDictNumber;
-          }
+    let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
+    misc.defaultDictBundleIndex = defaultDictNumber;
+  }
 
-          // New home
-          try {
-            let homeExist = fileIo.accessSync(context.filesDir + '/bundles');
-            if (!homeExist) {
-              fileIo.mkdirSync(context.filesDir + '/bundles');
-              console.log(`[flow][initEnv] Created new home bundles!`);
-            } else {
-              setTimeout(() => {
-                refreshAllBundles(context);
-              }, 100);
-            }
-          } catch (e) {
-            console.error(`[flow][initEnv] Create new home bundles failed! ${e}`);
-          }
-        })
+  // New home
+  try {
+    let homeExist = fileIo.accessSync(context.filesDir + '/bundles');
+    if (!homeExist) {
+      fileIo.mkdirSync(context.filesDir + '/bundles');
+      console.log(`[flow][initEnv] Created new home bundles!`);
+    }
+    refreshAllBundles(context);
+  } catch (e) {
+    console.error(`[flow][initEnv] Create new home bundles failed! ${e}`);
+  }
 
-      // Put this here to avoid stuck on main thread?
-      setTimeout(() => {
-        let myMeowHistory = AppStorageV2.connect<meowHistory>(meowHistory, 'meowHistory', () => new meowHistory())!;
-        myMeowHistory.initFrom(`${context.filesDir}/oops/history.txt`);
-      }, 200);
-    })
+  // Put this here to avoid stuck on main thread?
+  setTimeout(() => {
+    let myMeowHistory = AppStorageV2.connect<meowHistory>(meowHistory, 'meowHistory', () => new meowHistory())!;
+    myMeowHistory.initFrom(`${context.filesDir}/oops/history.txt`);
+  }, 100);
 }
 
-function refreshAllBundles(context: Context) {
+async function refreshAllBundles(context: Context) {
   console.log(`[flow][refreshAllBundles] BUILD!`);
   let librarian = AppStorageV2.connect<meowDictBundleLibrarian>(meowDictBundleLibrarian, 'meowDictBundleLibrarian', () => new meowDictBundleLibrarian())!;
-  librarian.initAll(context);
+  const downloadUri = await retrieveDownloadDirectory();
+  librarian.downloadUri = downloadUri;
+  setTimeout(() => {
+    librarian.initAll(context);
+  }, 10)
 }
 
 export function wantThis(w: Want) {

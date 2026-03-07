@@ -1,6 +1,7 @@
 import lazy { fileIo, fileUri, picker } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import lazy { taskpool } from '@kit.ArkTS';
+import { bundleManager } from '@kit.AbilityKit';
 export interface meowReadPickResult {
   succeed: boolean;
   sourcePaths?: string[];
@@ -8,19 +9,14 @@ export interface meowReadPickResult {
 
 // Picker
 
-export async function retrieveDownloadDirectory(context: Context) {
-  const documentSaveOptions = new picker.DocumentSaveOptions();
-  documentSaveOptions.pickerMode = picker.DocumentPickerMode.DOWNLOAD;
-  const documentViewPicker = new picker.DocumentViewPicker(context);
-  return documentViewPicker.save(documentSaveOptions)
-    .then((uris: Array<string>) => {
-      console.log(`[retrieveDownloadDirectory] DocumentViewPicker.save successfully, uris[0]: ${uris[0]}`);
-      return uris[0];
-    })
-    .catch((e: BusinessError) => {
-      console.error(`[retrieveDownloadDirectory] DocumentViewPicker.save failed with err: ${e}`);
-      return undefined;
-    })
+export async function retrieveDownloadDirectory() {
+  const bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION;
+  const data = await bundleManager.getBundleInfoForSelf(bundleFlags);
+  const bundleName = data.name;
+
+  const dlUri = `file://docs/storage/Users/currentUser/Download/${bundleName}`;
+  console.log(`[retrieveDownloadDirectory] fast dlUri = ${dlUri}`);
+  return dlUri;
 }
 
 /**

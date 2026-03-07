@@ -1,18 +1,41 @@
 import { meowDictBundle, positionType } from './meowDictBundle';
 import { fileIo } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { retrieveDownloadDirectory, uri_2_path } from '../utils/storage';
+import { uri_2_path } from '../utils/storage';
 
 @ObservedV2
 export class meowDictBundleLibrarian {
   sandboxBasePath = 'bundles/';
   @Trace bundles: meowDictBundle[] = [];
+  @Trace downloadUri: string | undefined = undefined;
   @Trace init: boolean = false;
 
   /**
    * Scans the bundles.
    * */
   async initAll(context: Context) {
+    if (this.downloadUri) {
+      console.log(`[meowDictBundleLibrarian][initAll][dl] DocumentViewPicker.save successfully, uris[0]: ${this.downloadUri}`);
+      let downloadPath = uri_2_path(this.downloadUri);
+      if (!downloadPath.endsWith('/')) {
+        downloadPath = downloadPath + '/';
+      }
+      fileIo.listFile(downloadPath)
+        .then((listResult) => {
+          for (let index = 0; index < listResult.length; index++) {
+            console.log(`[meowDictBundleLibrarian][initAll][dl] Found bundle [${listResult[index]}]`);
+            let bundle = new meowDictBundle();
+            bundle.initFrom(`${downloadPath}${listResult[index]}/`, context, positionType.DOWNLOAD);
+            this.bundles.push(bundle);
+          }
+          this.init = true;
+          console.log(`[meowDictBundleLibrarian][initAll][dl] OK. Total bundles.length = ${this.bundles.length}`);
+        })
+        .catch((e: BusinessError) => {
+          console.error(`[meowDictBundleLibrarian][initAll][dl] Failed! ${JSON.stringify(e)}`);
+        })
+    }
+
     // Base path in sandbox
     await fileIo.listFile(context.filesDir + '/' + this.sandboxBasePath)
       .then((listResult) => {
@@ -26,32 +49,7 @@ export class meowDictBundleLibrarian {
         console.log(`[meowDictBundleLibrarian][initAll][base] OK. Total bundles.length = ${this.bundles.length}`);
       })
       .catch((e: BusinessError) => {
-        console.error(`[meowDictBundleLibrarian][initAll][base] Failed! ${e}`);
-      })
-
-    await retrieveDownloadDirectory(context)
-      .then((uri: string | undefined) => {
-        if (uri) {
-          console.log(`[meowDictBundleLibrarian][initAll][dl] DocumentViewPicker.save successfully, uris[0]: ${uri}`);
-          let downloadPath = uri_2_path(uri);
-          if (!downloadPath.endsWith('/')) {
-            downloadPath = downloadPath + '/';
-          }
-          fileIo.listFile(downloadPath)
-            .then((listResult) => {
-              for (let index = 0; index < listResult.length; index++) {
-                console.log(`[meowDictBundleLibrarian][initAll][dl] Found bundle [${listResult[index]}]`);
-                let bundle = new meowDictBundle();
-                bundle.initFrom(`${downloadPath}${listResult[index]}/`, context, positionType.DOWNLOAD);
-                this.bundles.push(bundle);
-              }
-              this.init = true;
-              console.log(`[meowDictBundleLibrarian][initAll][dl] OK. Total bundles.length = ${this.bundles.length}`);
-            })
-            .catch((e: BusinessError) => {
-              console.error(`[meowDictBundleLibrarian][initAll][dl] Failed! ${e}`);
-            })
-        }
+        console.error(`[meowDictBundleLibrarian][initAll][base] Failed! ${JSON.stringify(e)}`);
       })
   }
 
