@@ -89,13 +89,18 @@ export async function initEnv(context: Context) {
   await sandboxCreateDir('oops', context);
   const result = await saveHybrid(context.filesDir + '/oops/default.txt', '0', false);
   let defaultDictNumber = 0;
-  
+
   if (result == undefined) {
     // Exist default file. Should read
-    const read = readArrayBufferSync(context.filesDir + '/oops/default.txt');
-    const readBuffer = buffer.from(read)
-    const readString = readBuffer.toString();
-    defaultDictNumber = Number(readString);
+    try {
+      const read = readArrayBufferSync(context.filesDir + '/oops/default.txt');
+      const readBuffer = buffer.from(read);
+      const readString = readBuffer.toString();
+      defaultDictNumber = Number(readString);
+    } catch (e) {
+      console.error(`[initEnv] Read default dictionary failed! ${e}`);
+    }
+
     console.log(`[initEnv] Read default dictionary is ${defaultDictNumber}!`);
 
     let misc = AppStorageV2.connect<meowMisc>(meowMisc, 'meowMisc', () => new meowMisc())!;
