@@ -1,7 +1,7 @@
 import lazy { fileIo, fileUri, picker } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import lazy { taskpool } from '@kit.ArkTS';
-import { bundleManager } from '@kit.AbilityKit';
+import { bundleManager, common } from '@kit.AbilityKit';
 export interface meowReadPickResult {
   succeed: boolean;
   sourcePaths?: string[];
@@ -9,14 +9,43 @@ export interface meowReadPickResult {
 
 // Picker
 
-export async function retrieveDownloadDirectory() {
+export async function retrieveDownloadDirectory(context: common.UIAbilityContext) {
   const bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION;
   const data = await bundleManager.getBundleInfoForSelf(bundleFlags);
   const bundleName = data.name;
+  const processName = context.processName;
+
+  console.warn(`[retrieveDownloadDirectory] processName: ${processName}`);
+  console.warn(`[retrieveDownloadDirectory] bundleName: ${bundleName}`);
 
   const dlUri = `file://docs/storage/Users/currentUser/Download/${bundleName}`;
   console.log(`[retrieveDownloadDirectory] fast dlUri = ${dlUri}`);
   return dlUri;
+}
+
+/**
+ * Ensure the download directory exists.
+ * @returns true if ok. False if error.
+ */
+export async function ensureDownloadDirectory(context: common.UIAbilityContext) {
+  const dlUri = await retrieveDownloadDirectory(context);
+  const path = uri_2_path(dlUri);
+  try {
+    if (await fileIo.access(path)) {
+      console.log(`[ensureDownloadDirectory] directory ${path} exists.`)
+      return true;
+    } else {
+      const documentViewPicker = new picker.DocumentViewPicker(context);
+      const documentSaveOptions = new picker.DocumentSaveOptions();
+      documentSaveOptions.pickerMode = picker.DocumentPickerMode.DOWNLOAD;
+      const uris = await documentViewPicker.save(documentSaveOptions);
+      console.log(`[ensureDownloadDirectory] directory ${path} created. uris = ${uris}`);
+      return true;
+    }
+  } catch (e) {
+    console.error(`[ensureDownloadDirectory] Failed: ${e}`);
+    return false;
+  }
 }
 
 /**

@@ -15,7 +15,7 @@ export class meowDictBundleLibrarian {
    * */
   async initAll(context: Context) {
     if (this.downloadUri) {
-      console.log(`[meowDictBundleLibrarian][initAll][dl] DocumentViewPicker.save successfully, uris[0]: ${this.downloadUri}`);
+      console.log(`[meowDictBundleLibrarian][initAll][dl] downloadUri: ${this.downloadUri}`);
       let downloadPath = uri_2_path(this.downloadUri);
       if (!downloadPath.endsWith('/')) {
         downloadPath = downloadPath + '/';
@@ -25,14 +25,14 @@ export class meowDictBundleLibrarian {
           for (let index = 0; index < listResult.length; index++) {
             console.log(`[meowDictBundleLibrarian][initAll][dl] Found bundle [${listResult[index]}]`);
             let bundle = new meowDictBundle();
-            bundle.initFrom(`${downloadPath}${listResult[index]}/`, context, positionType.DOWNLOAD);
+            bundle.initFrom(`${downloadPath}${listResult[index]}/`, positionType.DOWNLOAD);
             this.bundles.push(bundle);
           }
           this.init = true;
           console.log(`[meowDictBundleLibrarian][initAll][dl] OK. Total bundles.length = ${this.bundles.length}`);
         })
         .catch((e: BusinessError) => {
-          console.error(`[meowDictBundleLibrarian][initAll][dl] Failed! ${JSON.stringify(e)}`);
+          console.error(`[meowDictBundleLibrarian][initAll][dl] fileIo.listFile(${downloadPath}) Failed! ${JSON.stringify(e)}`);
         })
     }
 
@@ -42,7 +42,7 @@ export class meowDictBundleLibrarian {
         for (let index = 0; index < listResult.length; index++) {
           console.log(`[meowDictBundleLibrarian][initAll][base] Found bundle [${listResult[index]}]`);
           let bundle = new meowDictBundle();
-          bundle.initFrom(`${context.filesDir + '/' + this.sandboxBasePath}${listResult[index]}/`, context, positionType.SANDBOX);
+          bundle.initFrom(`${context.filesDir + '/' + this.sandboxBasePath}${listResult[index]}/`, positionType.SANDBOX);
           this.bundles.push(bundle);
         }
         this.init = true;
@@ -53,7 +53,7 @@ export class meowDictBundleLibrarian {
       })
   }
 
-  createBundle(context: Context, rootDir: string, position: positionType) {
+  createBundle(rootDir: string, position: positionType) {
     const folderName = Date.now()
       .toString(16);
     if (!rootDir.endsWith('/')) {
@@ -65,7 +65,7 @@ export class meowDictBundleLibrarian {
       fileIo.mkdirSync(baseDir);
 
       let bundle = new meowDictBundle();
-      bundle.initFrom(baseDir + '/', context, position);
+      bundle.initFrom(baseDir + '/', position);
       this.bundles.push(bundle);
 
     } catch (e) {

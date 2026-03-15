@@ -554,7 +554,7 @@ struct Index {
       Text(` 󰏯 ${resource2String($r('app.string.dir_download'), this.context)}`)
         .onClick(() => {
           if (this.meowLibrarian.downloadUri) {
-            this.meowLibrarian.createBundle(this.context, uri_2_path(this.meowLibrarian.downloadUri), positionType.DOWNLOAD);
+            this.meowLibrarian.createBundle(uri_2_path(this.meowLibrarian.downloadUri), positionType.DOWNLOAD);
           }
         })
         .padding(8)
@@ -562,7 +562,7 @@ struct Index {
         .borderRadius(deviceInfo.deviceType == deviceInfo.DeviceTypes.TYPE_2IN1 ? 5 : 18)
       Text(` 󰇶 ${resource2String($r('app.string.dir_sandbox'), this.context)}`)
         .onClick(() => {
-          this.meowLibrarian.createBundle(this.context, this.context.filesDir + '/' + this.meowLibrarian.sandboxBasePath, positionType.SANDBOX);
+          this.meowLibrarian.createBundle(this.context.filesDir + '/' + this.meowLibrarian.sandboxBasePath, positionType.SANDBOX);
         })
         .padding(8)
         .hoverEffect(HoverEffect.Highlight)

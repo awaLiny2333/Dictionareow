@@ -12,12 +12,13 @@ import {
 import { BusinessError } from '@kit.BasicServicesKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { meowDictBundleLibrarian } from '../hosts/meowDictBundleLibrarian';
-import { readArrayBufferSync, retrieveDownloadDirectory, sandboxCreateDir, saveHybrid } from '../utils/storage';
+import { ensureDownloadDirectory, readArrayBufferSync, retrieveDownloadDirectory, sandboxCreateDir, saveHybrid } from '../utils/storage';
 import { buffer } from '@kit.ArkTS';
 import { meowMisc } from '../hosts/meowMisc';
 import { meowHistory } from '../hosts/meowHistory';
 import Want from '@ohos.app.ability.Want';
 import { systemShare } from '@kit.ShareKit';
+import { common } from '@kit.AbilityKit';
 
 // Flows
 /**
@@ -129,7 +130,8 @@ export async function initEnv(context: Context) {
 async function refreshAllBundles(context: Context) {
   console.log(`[flow][refreshAllBundles] BUILD!`);
   let librarian = AppStorageV2.connect<meowDictBundleLibrarian>(meowDictBundleLibrarian, 'meowDictBundleLibrarian', () => new meowDictBundleLibrarian())!;
-  const downloadUri = await retrieveDownloadDirectory();
+  const downloadUri = await retrieveDownloadDirectory(context as common.UIAbilityContext);
+  await ensureDownloadDirectory(context as common.UIAbilityContext);
   librarian.downloadUri = downloadUri;
   setTimeout(() => {
     librarian.initAll(context);

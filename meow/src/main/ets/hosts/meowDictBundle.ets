@@ -29,7 +29,7 @@ export class meowDictBundle {
    * @param context The Context.
    * @param type The position type.
    * */
-  async initFrom(dirPath: string, context: Context, type: positionType) {
+  async initFrom(dirPath: string, type: positionType) {
     this.position = type;
 
     if (!dirPath.endsWith('/')) {
@@ -48,7 +48,7 @@ export class meowDictBundle {
       if (thisPathLower.endsWith('.mdx')) {
         // Is MDX
         if (!this.mdx) {
-          let mdx = this.readMDict(thisPath, meowDictType.MDX, context);
+          let mdx = this.readMDict(thisPath, meowDictType.MDX);
           this.mdx = mdx;
           console.log(`[MeowDictBundle][initFrom][MDX][${thisPath}] ${this.mdx?.header?.Title}`);
         } else {
@@ -56,7 +56,7 @@ export class meowDictBundle {
         }
       } else if (thisPathLower.endsWith('.mdd')) {
         // Is MDD
-        let mdd = this.readMDict(thisPath, meowDictType.MDD, context);
+        let mdd = this.readMDict(thisPath, meowDictType.MDD);
         if (mdd) {
           this.mdds.push(mdd);
           console.log(`[MeowDictBundle][initFrom][MDD][${thisPath}] ${mdd.header?.Title}`);
@@ -173,13 +173,13 @@ export class meowDictBundle {
    * Updates the extra files additionally added (Other than .mdx & .mdd)
    * @param context Context.
    * */
-  async refreshExtraFiles(context: Context, allFilesPlain?: string[]) {
+  async refreshExtraFiles() {
     if (!this.dirPathWithEndSlash) {
       return;
     }
-    
+
     // Files
-    const files = allFilesPlain || (await listRecursivelyAllFilesUnderDir(this.dirPathWithEndSlash));
+    const files = await listRecursivelyAllFilesUnderDir(this.dirPathWithEndSlash);
     this.files = [];
 
     for (let index = 0; index < files.length; index++) {
@@ -248,7 +248,7 @@ export class meowDictBundle {
         await this.addFile(thisPath, UIContext, idx + 1, total);
       }
     }
-    await this.refreshExtraFiles(UIContext.getHostContext()!);
+    await this.refreshExtraFiles();
   }
 
   /**
@@ -359,7 +359,7 @@ export class meowDictBundle {
    * @param context Context
    * @returns Nothing
    * */
-  private readMDict(fullPath: string, type: meowDictType = meowDictType.MDX, context: Context) {
+  private readMDict(fullPath: string, type: meowDictType = meowDictType.MDX) {
     try {
       const existMdd = fileIo.accessSync(fullPath);
       if (existMdd) {
